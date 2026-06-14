@@ -49,6 +49,10 @@
     <Project Path="Modules/Tickets/Modules.Tickets.Contracts/Modules.Tickets.Contracts.csproj" />
     <Project Path="Modules/Tickets/Modules.Tickets/Modules.Tickets.csproj" />
   </Folder>
+  <Folder Name="/Modules/Patient/">
+    <Project Path="Modules/Patient/Modules.Patient.Contracts/Modules.Patient.Contracts.csproj" />
+    <Project Path="Modules/Patient/Modules.Patient/Modules.Patient.csproj" />
+  </Folder>
   <Folder Name="/Modules/Webhooks/">
     <Project Path="Modules/Webhooks/Modules.Webhooks.Contracts/Modules.Webhooks.Contracts.csproj" />
     <Project Path="Modules/Webhooks/Modules.Webhooks/Modules.Webhooks.csproj" />

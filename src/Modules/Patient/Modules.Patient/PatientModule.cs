@@ -1,0 +1,68 @@
+using Asp.Versioning;
+using FSH.Framework.Persistence;
+using FSH.Framework.Shared.Constants;
+using FSH.Framework.Web.Modules;
+using FSH.Modules.Patient.Contracts.Authorization;
+using FSH.Modules.Patient.Data;
+using FSH.Modules.Patient.Features.v1.Patients.CreatePatient;
+using FSH.Modules.Patient.Features.v1.Patients.DeletePatient;
+using FSH.Modules.Patient.Features.v1.Patients.GetPatientById;
+using FSH.Modules.Patient.Features.v1.Patients.RestorePatient;
+using FSH.Modules.Patient.Features.v1.Patients.SearchPatients;
+using FSH.Modules.Patient.Features.v1.Patients.UpdatePatient;
+using FSH.Modules.Patient.Infrastructure;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
+
+[assembly: FshModule(typeof(FSH.Modules.Patient.PatientModule), 700)]
+
+namespace FSH.Modules.Patient;
+
+public sealed class PatientModule : IModule
+{
+    public void ConfigureServices(IHostApplicationBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        PermissionConstants.Register(PatientPermissions.All);
+
+        builder.Services.AddHeroDbContext<PatientDbContext>();
+        builder.Services.AddScoped<IDbInitializer, PatientDbInitializer>();
+        builder.Services.AddScoped<IPhiEncryptor, PhiEncryptor>();
+
+        builder.Services.AddHealthChecks()
+            .AddDbContextCheck<PatientDbContext>(
+                name: "db:patient",
+                failureStatus: HealthStatus.Unhealthy);
+    }
+
+    public void ConfigureMiddleware(IApplicationBuilder app) { }
+
+    public void MapEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        ArgumentNullException.ThrowIfNull(endpoints);
+
+        var versionSet = endpoints.NewApiVersionSet()
+            .HasApiVersion(new ApiVersion(1))
+            .ReportApiVersions()
+            .Build();
+
+        var group = endpoints
+            .MapGroup("api/v{version:apiVersion}/patient")
+            .WithTags("Patient")
+            .WithApiVersionSet(versionSet)
+            .RequireAuthorization();
+
+        // Restore registered before /{id:guid} so the literal /restore segment wins
+        group.MapRestorePatientEndpoint();
+        group.MapCreatePatientEndpoint();
+        group.MapUpdatePatientEndpoint();
+        group.MapDeletePatientEndpoint();
+        group.MapGetPatientByIdEndpoint();
+        group.MapSearchPatientsEndpoint();
+    }
+}

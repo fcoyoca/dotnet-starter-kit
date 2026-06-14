@@ -6,6 +6,7 @@ using FSH.Framework.Web.Modules;
 using FSH.Modules.Auditing;
 using FSH.Modules.Billing;
 using FSH.Modules.Catalog;
+using FSH.Modules.Patient;
 using FSH.Modules.Identity;
 using FSH.Modules.Identity.Contracts.v1.Tokens.TokenGeneration;
 using FSH.Modules.Identity.Features.v1.Tokens.TokenGeneration;
@@ -93,6 +94,8 @@ builder.Services.AddMediator(o =>
         typeof(FSH.Modules.Billing.BillingModule),
         typeof(FSH.Modules.Catalog.Contracts.CatalogContractsMarker),
         typeof(FSH.Modules.Catalog.CatalogModule),
+        typeof(FSH.Modules.Patient.Contracts.PatientContractsMarker),
+        typeof(FSH.Modules.Patient.PatientModule),
         typeof(FSH.Modules.Tickets.Contracts.TicketsContractsMarker),
         typeof(FSH.Modules.Tickets.TicketsModule),
         typeof(FSH.Modules.Files.Contracts.v1.Commands.RequestUploadUrlCommand),
@@ -113,6 +116,7 @@ var moduleAssemblies = new Assembly[]
     typeof(WebhooksModule).Assembly,
     typeof(BillingModule).Assembly,
     typeof(CatalogModule).Assembly,
+    typeof(PatientModule).Assembly,
     typeof(TicketsModule).Assembly,
     typeof(FSH.Modules.Chat.ChatModule).Assembly,
     typeof(FSH.Modules.Notifications.NotificationsModule).Assembly,
