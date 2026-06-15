@@ -19,6 +19,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 
 [assembly: FshModule(typeof(FSH.Modules.Patient.PatientModule), 700)]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Patient.Tests")]
 
 namespace FSH.Modules.Patient;
 

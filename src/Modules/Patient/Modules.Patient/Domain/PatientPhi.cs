@@ -5,15 +5,15 @@ namespace FSH.Modules.Patient.Domain;
 /// encrypted via EF Core value converters backed by ASP.NET Data Protection.
 /// SsnSearchHash is a deterministic HMAC-SHA256 used for exact-match lookup only.
 /// </summary>
-public sealed class PatientPHI
+public sealed class PatientPhi
 {
     public string? Ssn { get; private set; }
     public string? SsnSearchHash { get; private set; }
     public string? GuardianSsn { get; private set; }
 
-    private PatientPHI() { }
+    private PatientPhi() { }
 
-    internal static PatientPHI Create(
+    internal static PatientPhi Create(
         string? encryptedSsn, string? ssnSearchHash, string? encryptedGuardianSsn) =>
         new()
         {

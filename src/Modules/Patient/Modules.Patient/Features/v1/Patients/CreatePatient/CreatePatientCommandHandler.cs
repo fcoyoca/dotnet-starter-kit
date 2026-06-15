@@ -39,7 +39,7 @@ public sealed class CreatePatientCommandHandler(PatientDbContext dbContext, IPhi
             command.Phone, command.PhoneExtension, command.CellPhone, command.Email,
             command.PreferredContactMethodId);
 
-        var phiValue = PatientPHI.Create(
+        var phiValue = PatientPhi.Create(
             phi.Encrypt(command.Ssn),
             phi.HashForSearch(command.Ssn),
             phi.Encrypt(command.GuardianSsn));

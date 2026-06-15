@@ -2,7 +2,8 @@ using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Persistence.Context;
 using FSH.Framework.Shared.Multitenancy;
 using FSH.Framework.Shared.Persistence;
-using FSH.Modules.Patient.Domain;
+using FSH.Modules.Patient.Data.Configurations;
+using FSH.Modules.Patient.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -13,11 +14,18 @@ public sealed class PatientDbContext : BaseDbContext
 {
     public const string Schema = "patient";
 
+    private readonly IPhiEncryptor _phi;
+
     public PatientDbContext(
         IMultiTenantContextAccessor<AppTenantInfo> multiTenantContextAccessor,
         DbContextOptions<PatientDbContext> options,
         IOptions<DatabaseOptions> settings,
-        IHostEnvironment environment) : base(multiTenantContextAccessor, options, settings, environment) { }
+        IHostEnvironment environment,
+        IPhiEncryptor phi) : base(multiTenantContextAccessor, options, settings, environment)
+    {
+        ArgumentNullException.ThrowIfNull(phi);
+        _phi = phi;
+    }
 
     public DbSet<Domain.Patient> Patients => Set<Domain.Patient>();
 
@@ -25,7 +33,8 @@ public sealed class PatientDbContext : BaseDbContext
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
         modelBuilder.HasDefaultSchema(Schema);
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(PatientDbContext).Assembly);
+        // PatientConfiguration requires IPhiEncryptor — apply it directly instead of via reflection
+        modelBuilder.ApplyConfiguration(new PatientConfiguration(_phi));
         base.OnModelCreating(modelBuilder);
     }
 }

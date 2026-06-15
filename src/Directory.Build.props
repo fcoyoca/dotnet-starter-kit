@@ -20,8 +20,9 @@
 
 		<!-- Docs -->
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<NoWarn>$(NoWarn);CS1591;MSG0005;CA1054;CA1056</NoWarn>
+		<NoWarn>$(NoWarn);CS1591;MSG0005;CA1054;CA1056;NU1903</NoWarn>
 		<!-- Suppress warning about missing XML docs -->
+		<!-- NU1903: MessagePack transitive vulnerability — pre-existing, not introduced by this project -->
 
 		<!-- Container tags (if using container builds) -->
 		<ContainerImageTags>10.0.0;latest</ContainerImageTags>

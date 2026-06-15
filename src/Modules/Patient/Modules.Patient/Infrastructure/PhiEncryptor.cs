@@ -6,6 +6,14 @@ namespace FSH.Modules.Patient.Infrastructure;
 
 public sealed class PhiEncryptor : IPhiEncryptor
 {
+    // Stable, deterministic HMAC key derived from the protector purpose string.
+    // Using Protect() would produce non-deterministic output (random IV), breaking
+    // cross-request/cross-restart hash lookups. Tenant isolation is enforced by
+    // EF Core query filters, not at the hash level.
+    // Sprint 4: rotate to a secret from Key Vault for defense-in-depth.
+    private static readonly byte[] HmacKey =
+        SHA256.HashData(Encoding.UTF8.GetBytes("FSH.Patient.PHI.HMAC.v1"));
+
     private readonly IDataProtector _protector;
 
     public PhiEncryptor(IDataProtectionProvider provider)
@@ -24,12 +32,8 @@ public sealed class PhiEncryptor : IPhiEncryptor
     {
         if (string.IsNullOrEmpty(value)) return null;
 
-        // Derive a stable HMAC key from the data protector so the hash is
-        // tenant-scoped and rotates with the Data Protection key ring.
-        // We protect a fixed sentinel, then use its UTF-8 bytes as the HMAC key.
-        byte[] hmacKey = Encoding.UTF8.GetBytes(_protector.Protect("phi-search-key-v1"));
         byte[] data = Encoding.UTF8.GetBytes(value.Trim().ToUpperInvariant());
-        byte[] hash = HMACSHA256.HashData(hmacKey, data);
+        byte[] hash = HMACSHA256.HashData(HmacKey, data);
 #pragma warning disable CA1308 // hex string is canonical lowercase, not security-sensitive
         return Convert.ToHexString(hash).ToLowerInvariant();
 #pragma warning restore CA1308

@@ -16,7 +16,7 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
 
     public PatientDemographics Demographics { get; private set; } = default!;
     public PatientContact Contact { get; private set; } = default!;
-    public PatientPHI PHI { get; private set; } = default!;
+    public PatientPhi PHI { get; private set; } = default!;
     public PatientEmployment? Employment { get; private set; }
     public PatientGuardian? Guardian { get; private set; }
     public PatientNextOfKin? NextOfKin { get; private set; }
@@ -36,7 +36,7 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
         bool isActive,
         PatientDemographics demographics,
         PatientContact contact,
-        PatientPHI phi,
+        PatientPhi phi,
         PatientEmployment? employment,
         PatientGuardian? guardian,
         PatientNextOfKin? nextOfKin,
@@ -90,7 +90,7 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
         bool isActive,
         PatientDemographics demographics,
         PatientContact contact,
-        PatientPHI phi,
+        PatientPhi phi,
         PatientEmployment? employment,
         PatientGuardian? guardian,
         PatientNextOfKin? nextOfKin,
