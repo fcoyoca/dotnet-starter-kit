@@ -44,10 +44,18 @@ public sealed class UpdatePatientCommandHandler(PatientDbContext dbContext, IPhi
             command.Phone, command.PhoneExtension, command.CellPhone, command.Email,
             command.PreferredContactMethodId);
 
-        var phiValue = PatientPhi.Create(
-            phi.Encrypt(command.Ssn),
-            phi.HashForSearch(command.Ssn),
-            phi.Encrypt(command.GuardianSsn));
+        // The API never echoes plaintext SSN back to the client (PHI never leaves
+        // encrypted-at-rest except masked), so the edit form's SSN fields are always
+        // blank. Treat blank as "leave unchanged" instead of overwriting with null.
+        string? ssnEncrypted = string.IsNullOrWhiteSpace(command.Ssn) ? patient.PHI.Ssn : phi.Encrypt(command.Ssn);
+        string? ssnSearchHash = string.IsNullOrWhiteSpace(command.Ssn)
+            ? patient.PHI.SsnSearchHash
+            : phi.HashForSearch(command.Ssn);
+        string? guardianSsnEncrypted = string.IsNullOrWhiteSpace(command.GuardianSsn)
+            ? patient.PHI.GuardianSsn
+            : phi.Encrypt(command.GuardianSsn);
+
+        var phiValue = PatientPhi.Create(ssnEncrypted, ssnSearchHash, guardianSsnEncrypted);
 
         PatientEmployment? employment = HasEmployment(command)
             ? PatientEmployment.Create(

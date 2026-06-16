@@ -27,6 +27,12 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Domain.Patie
         builder.HasIndex(x => x.IsDeleted);
         builder.HasIndex(x => x.IsActive);
         builder.Property(x => x.DeletedBy).HasMaxLength(64);
+        // Calendar dates with no time-of-day/timezone component — map as "date", not the
+        // Npgsql default "timestamp with time zone". A bare "YYYY-MM-DD" from the frontend's
+        // <input type="date"> deserializes to DateTime Kind=Unspecified, which Npgsql refuses
+        // to write to timestamptz (throws at SaveChangesAsync, surfacing as a generic 500).
+        builder.Property(x => x.LastVisitDate).HasColumnType("date");
+        builder.Property(x => x.NextVisitDate).HasColumnType("date");
         builder.Ignore(x => x.DomainEvents);
 
         // Demographics (owned — same table)
@@ -38,6 +44,9 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Domain.Patie
             d.Property(x => x.Gender).IsRequired().HasMaxLength(10).HasColumnName("Gender");
             d.Property(x => x.MaritalStatus).HasMaxLength(20).HasColumnName("MaritalStatus");
             d.Property(x => x.MedicalAlertNotes).HasMaxLength(8000).HasColumnName("MedicalAlertNotes");
+            d.Property(x => x.DateOfBirth).HasColumnType("date");
+            d.Property(x => x.SmokingStartDate).HasColumnType("date");
+            d.Property(x => x.SmokingEndDate).HasColumnType("date");
             d.HasIndex(x => x.LastName);
         });
 
@@ -97,6 +106,7 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Domain.Patie
             g.Property(x => x.FirstName).HasMaxLength(100).HasColumnName("GuardianFirstName");
             g.Property(x => x.LastName).HasMaxLength(100).HasColumnName("GuardianLastName");
             g.Property(x => x.MiddleInitial).HasMaxLength(5).HasColumnName("GuardianMiddleInitial");
+            g.Property(x => x.DateOfBirth).HasColumnType("date");
             g.Property(x => x.Gender).HasMaxLength(10).HasColumnName("GuardianGender");
             g.Property(x => x.MaritalStatus).HasMaxLength(20).HasColumnName("GuardianMaritalStatus");
             g.Property(x => x.Address1).HasMaxLength(200).HasColumnName("GuardianAddress1");
@@ -128,6 +138,7 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Domain.Patie
         builder.OwnsOne(x => x.Insurance, i =>
         {
             i.Property(x => x.InsuredFullName).HasMaxLength(200).HasColumnName("InsuredFullName");
+            i.Property(x => x.InsuredDateOfBirth).HasColumnType("date");
             i.Property(x => x.InsuredEmployerName).HasMaxLength(200).HasColumnName("InsuredEmployerName");
         });
     }

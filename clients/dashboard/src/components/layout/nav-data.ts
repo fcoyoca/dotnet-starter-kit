@@ -11,6 +11,7 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  Stethoscope,
   Tags,
   Ticket,
   Trash2,
@@ -19,6 +20,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { ALL_TRASH_PERMISSIONS } from "@/lib/trash-permissions";
+import { PATIENT_PERMISSIONS } from "@/lib/patient-permissions";
 
 export type NavSpec = {
   to: string;
@@ -63,6 +65,14 @@ export const topNavBottom: NavSpec[] = [
 
 // Section accordion. Single-select — only one section open at a time.
 export const sections: NavSection[] = [
+  {
+    id: "patients",
+    caption: "Patients",
+    icon: Stethoscope,
+    items: [
+      { to: "/patients", label: "Patients", icon: Stethoscope, perm: PATIENT_PERMISSIONS.view },
+    ],
+  },
   {
     id: "operations",
     caption: "Operations",
