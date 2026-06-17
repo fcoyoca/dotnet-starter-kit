@@ -128,17 +128,20 @@ internal sealed class MssqlPatientMigrationRunner(
     }
 
 #pragma warning disable CA2100 // offset and batchSize are int — no user-controlled string input
-    private static async Task<List<(CreatePatientCommand Cmd, int PId)>> ReadBatchAsync(
+    private static async Task<List<(CreatePatientCommand Cmd, string PId)>> ReadBatchAsync(
         SqlConnection conn, int offset, int batchSize, CancellationToken ct)
     {
-        var results = new List<(CreatePatientCommand, int)>();
+        var results = new List<(CreatePatientCommand, string)>();
         await using var cmd = new SqlCommand(
             MssqlPatientMapper.BuildSelectQuery(offset, batchSize), conn);
         cmd.CommandTimeout = 120;
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         while (await reader.ReadAsync(ct).ConfigureAwait(false))
         {
-            var pId = reader.GetInt32(reader.GetOrdinal("pID"));
+            var pIdOrd = reader.GetOrdinal("pID");
+            var pId = await reader.IsDBNullAsync(pIdOrd, ct).ConfigureAwait(false)
+                ? string.Empty
+                : reader.GetString(pIdOrd).Trim();
             results.Add((MssqlPatientMapper.Map(reader), pId));
         }
         return results;
@@ -146,7 +149,7 @@ internal sealed class MssqlPatientMigrationRunner(
 #pragma warning restore CA2100
 
     private static void ValidateDryRun(
-        CreatePatientCommand cmd, int pId, List<MigrationError> errors)
+        CreatePatientCommand cmd, string pId, List<MigrationError> errors)
     {
         var fieldErrors = new List<string>();
         if (string.IsNullOrWhiteSpace(cmd.FirstName))
@@ -168,7 +171,7 @@ internal sealed class MssqlPatientMigrationRunner(
     }
 
     private async Task<UpsertResult> UpsertAsync(
-        AppTenantInfo tenant, CreatePatientCommand cmd, int pId,
+        AppTenantInfo tenant, CreatePatientCommand cmd, string pId,
         List<MigrationError> errors, CancellationToken ct)
     {
         using var scope = services.CreateScope();
@@ -223,5 +226,5 @@ internal sealed class MssqlPatientMigrationRunner(
 
     private enum UpsertResult { Created, Skipped }
 
-    private sealed record MigrationError(int PId, string PatientCode, string ErrorType, string Message);
+    private sealed record MigrationError(string PId, string PatientCode, string ErrorType, string Message);
 }
