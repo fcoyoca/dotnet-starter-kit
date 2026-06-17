@@ -763,6 +763,10 @@ internal sealed class DemoSeeder
                 "Permissions.Tickets.Create",
                 "Permissions.Tickets.Update",
                 "Permissions.Tickets.Delete",
+                "Permissions.Patient.Patients.View",
+                "Permissions.Patient.Patients.Create",
+                "Permissions.Patient.Patients.Update",
+                "Permissions.Patient.Patients.Delete",
             ]),
 
         new(
@@ -776,6 +780,7 @@ internal sealed class DemoSeeder
                 "Permissions.Tickets.View",
                 "Permissions.Tickets.Create",
                 "Permissions.Tickets.Update",
+                "Permissions.Patient.Patients.View",
             ]),
     ];
 

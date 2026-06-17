@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reflection;
 using FSH.Framework.Shared.Multitenancy;
+using FSH.Starter.DbMigrator.MssqlMigration;
 using FSH.Framework.Web;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Auditing;
@@ -307,6 +308,36 @@ try
         var seeder = scope.ServiceProvider.GetRequiredService<DemoSeeder>();
         await seeder.RunAsync(CancellationToken.None).ConfigureAwait(false);
         await Console.Out.WriteLineAsync("[demo-seed] done").ConfigureAwait(false);
+    }
+
+    // ── Step 4 — MSSQL patient migration (verb: `migrate-from-mssql`) ────────
+    if (cli.Command == "migrate-from-mssql")
+    {
+        if (string.IsNullOrWhiteSpace(cli.SourceConnectionString))
+        {
+            await Console.Error.WriteLineAsync(
+                "[mssql-migration] FAILED: --source-connection is required for migrate-from-mssql.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+        if (string.IsNullOrWhiteSpace(cli.Tenant))
+        {
+            await Console.Error.WriteLineAsync(
+                "[mssql-migration] FAILED: --tenant is required for migrate-from-mssql.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
+        var mode = cli.DryRun ? "DRY-RUN" : "LIVE";
+        await Console.Out.WriteLineAsync(
+            $"[mssql-migration] starting {mode} migration → tenant={cli.Tenant} batch-size={cli.BatchSize}")
+            .ConfigureAwait(false);
+
+        var runner = new MssqlPatientMigrationRunner(host.Services, logger);
+        var exitCode = await runner.RunAsync(
+            cli.SourceConnectionString!, cli.Tenant!, cli.DryRun, cli.BatchSize, CancellationToken.None)
+            .ConfigureAwait(false);
+        return exitCode;
     }
 
     await Console.Out.WriteLineAsync("[migrator] finished successfully.").ConfigureAwait(false);
