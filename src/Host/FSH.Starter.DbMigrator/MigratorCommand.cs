@@ -24,7 +24,7 @@ internal sealed record MigratorCommand(
     int BatchSize = 100)
 {
     private static readonly string[] KnownVerbs =
-        ["apply", "seed", "seed-demo", "list-pending", "migrate-from-mssql"];
+        ["apply", "seed", "seed-demo", "list-pending", "migrate-from-mssql", "migrate-lookups-from-mssql"];
 
     public static MigratorCommand Parse(string[] args)
     {
@@ -82,6 +82,11 @@ internal sealed record MigratorCommand(
           list-pending        Print pending migrations without applying anything.
           migrate-from-mssql  Read patients from a BackChart MSSQL database and upsert them
                               into a target FSH tenant. Requires --source-connection and --tenant.
+          migrate-lookups-from-mssql
+                              Migrate the reference lookup tables (races, ethnicities, languages,
+                              smoking statuses, contact methods, referral types) from a BackChart
+                              MSSQL database into the Administration module, preserving original IDs.
+                              Run BEFORE migrate-from-mssql. Requires --source-connection and --tenant.
 
         Options:
           --tenant <id>              Restrict to a single tenant id (default: all tenants).

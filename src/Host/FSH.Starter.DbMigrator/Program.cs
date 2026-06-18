@@ -353,6 +353,37 @@ try
         return exitCode;
     }
 
+    // ── Step 4b — MSSQL lookup migration (verb: `migrate-lookups-from-mssql`) ──
+    // Populates the Administration reference tables from BackChart, preserving original IDs so the
+    // patient migration's lookup foreign keys resolve. Run before `migrate-from-mssql`.
+    if (cli.Command == "migrate-lookups-from-mssql")
+    {
+        if (string.IsNullOrWhiteSpace(cli.SourceConnectionString))
+        {
+            await Console.Error.WriteLineAsync(
+                "[mssql-lookups] FAILED: --source-connection is required for migrate-lookups-from-mssql.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+        if (string.IsNullOrWhiteSpace(cli.Tenant))
+        {
+            await Console.Error.WriteLineAsync(
+                "[mssql-lookups] FAILED: --tenant is required for migrate-lookups-from-mssql.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
+        var mode = cli.DryRun ? "DRY-RUN" : "LIVE";
+        await Console.Out.WriteLineAsync(
+            $"[mssql-lookups] starting {mode} lookup migration → tenant={cli.Tenant}").ConfigureAwait(false);
+
+        var lookupRunner = new MssqlLookupMigrationRunner(host.Services, logger);
+        var exitCode = await lookupRunner.RunAsync(
+            cli.SourceConnectionString!, cli.Tenant!, cli.DryRun, CancellationToken.None)
+            .ConfigureAwait(false);
+        return exitCode;
+    }
+
     await Console.Out.WriteLineAsync("[migrator] finished successfully.").ConfigureAwait(false);
     return 0;
 }

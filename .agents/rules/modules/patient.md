@@ -45,6 +45,22 @@ BackChart (MSSQL) patients into a tenant. The `BronstonChiro` Bronston DB uses:
 - SQL compat level 100 — use `ROW_NUMBER()` pagination, `CONVERT(datetime, ...)` not `TRY_CONVERT`.
 - Empty `pSex` → default to `"UN"` (Unknown).
 - `IsMinor=true` with no guardian data → set `IsMinor=false` (mapper guard).
+- `pUniqueID` (the source surrogate key) is carried onto `Patient.LegacyUniqueId` (`bigint?`, indexed)
+  for later related-record imports. `PatientCode` is `P-{pID}` and remains the business key.
+
+### MSSQL lookup migration tool
+
+`dotnet run --project src/Host/FSH.Starter.DbMigrator -- migrate-lookups-from-mssql` migrates the six
+Administration reference tables (races, ethnicities, languages, smoking statuses, contact methods,
+referral types) from BackChart, **preserving original integer IDs** so the patient lookup FK columns
+resolve. **Run it BEFORE `migrate-from-mssql`.** Per table it replaces existing rows (incl. the EF
+`HasData` placeholder seeds) and resets the identity sequence. Source table/column names come from the
+legacy AS3 models (`MssqlLookupMapper.Tables`); the `ReferralTypes` source is best-effort (no legacy
+model) and is skipped — leaving its seeded rows — if the source table is absent. Verify all six names
+against the live BronstonChiro DB before a production run.
+**Note:** the lookup tables live in the **`BronstonAuthenticatingDB`** database (not `Bronston`) —
+`Races`/`Ethnicity`/`Languages`/`lupSmokingStatuses`/`PreferedContactMethods`. Point `--source-connection`
+there. No referral-type table exists and patient `pReferralTypeID` is all-NULL, so seeded ReferralTypes stay.
 
 ### Domain events
 
