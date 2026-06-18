@@ -24,7 +24,7 @@ internal sealed record MigratorCommand(
     int BatchSize = 100)
 {
     private static readonly string[] KnownVerbs =
-        ["apply", "seed", "seed-demo", "list-pending", "migrate-from-mssql", "migrate-lookups-from-mssql"];
+        ["apply", "seed", "seed-demo", "list-pending", "migrate-from-mssql", "migrate-lookups-from-mssql", "migrate-users-from-mssql"];
 
     public static MigratorCommand Parse(string[] args)
     {
@@ -87,6 +87,12 @@ internal sealed record MigratorCommand(
                               smoking statuses, contact methods, referral types) from a BackChart
                               MSSQL database into the Administration module, preserving original IDs.
                               Run BEFORE migrate-from-mssql. Requires --source-connection and --tenant.
+          migrate-users-from-mssql
+                              Migrate active staff/provider accounts from a BackChart MSSQL database
+                              into the Identity module for a tenant. Passwords are NOT migrated (each
+                              user gets a discarded random password + confirmed email, so they sign in
+                              via forgot-password). uSuperUser → Admin, all → Basic. Requires
+                              --source-connection and --tenant.
 
         Options:
           --tenant <id>              Restrict to a single tenant id (default: all tenants).

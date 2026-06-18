@@ -62,6 +62,21 @@ against the live BronstonChiro DB before a production run.
 `Races`/`Ethnicity`/`Languages`/`lupSmokingStatuses`/`PreferedContactMethods`. Point `--source-connection`
 there. No referral-type table exists and patient `pReferralTypeID` is all-NULL, so seeded ReferralTypes stay.
 
+### MSSQL user migration tool (Identity module)
+
+`dotnet run --project src/Host/FSH.Starter.DbMigrator -- migrate-users-from-mssql` migrates active staff/
+provider accounts from BackChart `dbo.Users` (the rich table in the **`Bronston`** DB; name/username/email
+are symmetric-key encrypted like patient PHI) into the Identity module. Files: `MssqlUserMapper.cs`,
+`MssqlUserMigrationRunner.cs`. Created **directly via `UserManager<FshUser>`** (not the register pipeline,
+which enqueues a confirmation email + builds a URI from `origin` — both unavailable in the migrator).
+
+- **Passwords are NOT migrated** (legacy hash incompatible with ASP.NET Identity). Each user gets a
+  discarded strong random password + `EmailConfirmed=true`, so they sign in via forgot-password.
+- **Roles:** `uSuperUser` → Admin, everyone → Basic. Roles must be seeded first
+  (`DbMigrator -- seed --tenant <id>`) or `AddToRoleAsync` throws `RoleNotFoundException`.
+- Idempotent: existing emails are skipped but still have roles re-ensured. Source emails are de-duplicated
+  (203 active rows → 151 distinct users for BronstonChiro). Only active users (`uDeletedDate IS NULL`).
+
 ### Domain events
 
 - `PatientCreatedDomainEvent` — raised on create.

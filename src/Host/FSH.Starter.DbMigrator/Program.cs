@@ -384,6 +384,36 @@ try
         return exitCode;
     }
 
+    // ── Step 4c — MSSQL user migration (verb: `migrate-users-from-mssql`) ──────
+    // Creates Identity accounts for active staff/providers. Passwords are not migrated.
+    if (cli.Command == "migrate-users-from-mssql")
+    {
+        if (string.IsNullOrWhiteSpace(cli.SourceConnectionString))
+        {
+            await Console.Error.WriteLineAsync(
+                "[mssql-users] FAILED: --source-connection is required for migrate-users-from-mssql.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+        if (string.IsNullOrWhiteSpace(cli.Tenant))
+        {
+            await Console.Error.WriteLineAsync(
+                "[mssql-users] FAILED: --tenant is required for migrate-users-from-mssql.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
+        var mode = cli.DryRun ? "DRY-RUN" : "LIVE";
+        await Console.Out.WriteLineAsync(
+            $"[mssql-users] starting {mode} user migration → tenant={cli.Tenant}").ConfigureAwait(false);
+
+        var userRunner = new MssqlUserMigrationRunner(host.Services, logger);
+        var exitCode = await userRunner.RunAsync(
+            cli.SourceConnectionString!, cli.Tenant!, cli.DryRun, CancellationToken.None)
+            .ConfigureAwait(false);
+        return exitCode;
+    }
+
     await Console.Out.WriteLineAsync("[migrator] finished successfully.").ConfigureAwait(false);
     return 0;
 }
