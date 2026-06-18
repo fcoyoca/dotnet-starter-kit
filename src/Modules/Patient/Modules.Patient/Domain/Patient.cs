@@ -6,6 +6,14 @@ namespace FSH.Modules.Patient.Domain;
 public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
 {
     public string PatientCode { get; private set; } = default!;
+
+    /// <summary>
+    /// Surrogate key (<c>pUniqueID</c>) of the source record in the legacy BackChart/BronstonChiro
+    /// database. Null for patients created natively in this system. Preserved during migration so
+    /// later related-record imports (visits, charts) can be keyed back to the original patient.
+    /// </summary>
+    public long? LegacyUniqueId { get; private set; }
+
     public bool IsActive { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime? UpdatedAtUtc { get; private set; }
@@ -46,7 +54,8 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
         bool hasNoKnownAllergies,
         bool receivesEmailReminders,
         DateTime? lastVisitDate,
-        DateTime? nextVisitDate)
+        DateTime? nextVisitDate,
+        long? legacyUniqueId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(patientCode);
         ArgumentNullException.ThrowIfNull(demographics);
@@ -62,6 +71,7 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
         {
             Id = Guid.CreateVersion7(),
             PatientCode = patientCode.Trim(),
+            LegacyUniqueId = legacyUniqueId,
             IsActive = isActive,
             Demographics = demographics,
             Contact = contact,

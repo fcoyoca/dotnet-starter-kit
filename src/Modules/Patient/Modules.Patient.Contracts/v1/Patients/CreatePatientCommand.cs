@@ -81,4 +81,6 @@ public sealed record CreatePatientCommand(
     bool HasNoKnownAllergies = false,
     bool ReceivesEmailReminders = false,
     DateTime? LastVisitDate = null,
-    DateTime? NextVisitDate = null) : ICommand<Guid>;
+    DateTime? NextVisitDate = null,
+    // Legacy linkage — source pUniqueID when migrated from BackChart/BronstonChiro; null otherwise.
+    long? LegacyUniqueId = null) : ICommand<Guid>;

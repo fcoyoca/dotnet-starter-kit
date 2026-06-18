@@ -26,6 +26,9 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Domain.Patie
         builder.HasIndex(x => x.PatientCode).IsUnique().HasFilter("\"IsDeleted\" = FALSE");
         builder.HasIndex(x => x.IsDeleted);
         builder.HasIndex(x => x.IsActive);
+        // Legacy linkage to the source BackChart/BronstonChiro pUniqueID (null for native records).
+        builder.Property(x => x.LegacyUniqueId);
+        builder.HasIndex(x => x.LegacyUniqueId);
         builder.Property(x => x.DeletedBy).HasMaxLength(64);
         // Calendar dates with no time-of-day/timezone component — map as "date", not the
         // Npgsql default "timestamp with time zone". A bare "YYYY-MM-DD" from the frontend's

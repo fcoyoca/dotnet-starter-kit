@@ -30,6 +30,7 @@ internal static class MssqlPatientMapper
         $"""
         SELECT
             pID,
+            pUniqueID,
             pIsActive,
             pFirstName,
             pLastName,
@@ -99,6 +100,7 @@ internal static class MssqlPatientMapper
         FROM (
             SELECT
                 p.pID,
+                p.pUniqueID,
                 p.pIsActive,
                 CONVERT(NVARCHAR(256), DECRYPTBYKEY(p.pFirstName))          AS pFirstName,
                 CONVERT(NVARCHAR(256), DECRYPTBYKEY(p.pLastName))           AS pLastName,
@@ -255,7 +257,8 @@ internal static class MssqlPatientMapper
             HasNoKnownProblems: GetBoolOrDefault(r, "pNoProblems", false),
             HasNoKnownMedications: GetBoolOrDefault(r, "pNoMedications", false),
             HasNoKnownAllergies: GetBoolOrDefault(r, "pNoAllergies", false),
-            ReceivesEmailReminders: GetBoolOrDefault(r, "pReceiveEmailReminders", false));
+            ReceivesEmailReminders: GetBoolOrDefault(r, "pReceiveEmailReminders", false),
+            LegacyUniqueId: GetLong(r, "pUniqueID"));
     }
 
     private static string GetStringOrEmpty(SqlDataReader r, string col)
@@ -292,6 +295,12 @@ internal static class MssqlPatientMapper
     {
         var ord = r.GetOrdinal(col);
         return r.IsDBNull(ord) ? null : Convert.ToInt32(r.GetValue(ord), System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static long? GetLong(SqlDataReader r, string col)
+    {
+        var ord = r.GetOrdinal(col);
+        return r.IsDBNull(ord) ? null : Convert.ToInt64(r.GetValue(ord), System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private static bool GetBoolOrDefault(SqlDataReader r, string col, bool defaultValue)

@@ -80,7 +80,8 @@ public sealed class CreatePatientCommandHandler(PatientDbContext dbContext, IPhi
             demographics, contact, phiValue,
             employment, guardian, nextOfKin, insurance,
             command.HasNoKnownProblems, command.HasNoKnownMedications, command.HasNoKnownAllergies,
-            command.ReceivesEmailReminders, command.LastVisitDate, command.NextVisitDate);
+            command.ReceivesEmailReminders, command.LastVisitDate, command.NextVisitDate,
+            command.LegacyUniqueId);
 
         dbContext.Patients.Add(patient);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
