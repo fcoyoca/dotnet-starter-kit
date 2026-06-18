@@ -1,6 +1,7 @@
 using FSH.Modules.Patient.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Patient.Tests.Infrastructure;
 
@@ -11,7 +12,11 @@ public sealed class PhiEncryptorTests
         var services = new ServiceCollection();
         services.AddDataProtection();
         var sp = services.BuildServiceProvider();
-        return new PhiEncryptor(sp.GetRequiredService<IDataProtectionProvider>());
+        var opts = Options.Create(new PatientOptions
+        {
+            PhiHmacKey = "I9YLE3I0GK73szbWwNaMakbIcu7YUwEpIS93WKU/Naw=",
+        });
+        return new PhiEncryptor(sp.GetRequiredService<IDataProtectionProvider>(), opts);
     }
 
     #region Encrypt / Decrypt roundtrip

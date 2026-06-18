@@ -53,6 +53,10 @@
     <Project Path="Modules/Patient/Modules.Patient.Contracts/Modules.Patient.Contracts.csproj" />
     <Project Path="Modules/Patient/Modules.Patient/Modules.Patient.csproj" />
   </Folder>
+  <Folder Name="/Modules/Administration/">
+    <Project Path="Modules/Administration/Modules.Administration.Contracts/Modules.Administration.Contracts.csproj" />
+    <Project Path="Modules/Administration/Modules.Administration/Modules.Administration.csproj" />
+  </Folder>
   <Folder Name="/Modules/Webhooks/">
     <Project Path="Modules/Webhooks/Modules.Webhooks.Contracts/Modules.Webhooks.Contracts.csproj" />
     <Project Path="Modules/Webhooks/Modules.Webhooks/Modules.Webhooks.csproj" />

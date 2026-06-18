@@ -68,6 +68,45 @@ export const AuditingPermissions = Object.freeze({
   },
 } as const);
 
+export const AdministrationPermissions = Object.freeze({
+  Races: {
+    View: "Permissions.Administration.Races.View",
+    Create: "Permissions.Administration.Races.Create",
+    Update: "Permissions.Administration.Races.Update",
+    Delete: "Permissions.Administration.Races.Delete",
+  },
+  Ethnicities: {
+    View: "Permissions.Administration.Ethnicities.View",
+    Create: "Permissions.Administration.Ethnicities.Create",
+    Update: "Permissions.Administration.Ethnicities.Update",
+    Delete: "Permissions.Administration.Ethnicities.Delete",
+  },
+  Languages: {
+    View: "Permissions.Administration.Languages.View",
+    Create: "Permissions.Administration.Languages.Create",
+    Update: "Permissions.Administration.Languages.Update",
+    Delete: "Permissions.Administration.Languages.Delete",
+  },
+  SmokingStatuses: {
+    View: "Permissions.Administration.SmokingStatuses.View",
+    Create: "Permissions.Administration.SmokingStatuses.Create",
+    Update: "Permissions.Administration.SmokingStatuses.Update",
+    Delete: "Permissions.Administration.SmokingStatuses.Delete",
+  },
+  PreferredContactMethods: {
+    View: "Permissions.Administration.PreferredContactMethods.View",
+    Create: "Permissions.Administration.PreferredContactMethods.Create",
+    Update: "Permissions.Administration.PreferredContactMethods.Update",
+    Delete: "Permissions.Administration.PreferredContactMethods.Delete",
+  },
+  ReferralTypes: {
+    View: "Permissions.Administration.ReferralTypes.View",
+    Create: "Permissions.Administration.ReferralTypes.Create",
+    Update: "Permissions.Administration.ReferralTypes.Update",
+    Delete: "Permissions.Administration.ReferralTypes.Delete",
+  },
+} as const);
+
 // ─── Catalog (drives the Role editor) ───────────────────────────────────
 
 export type PermissionEntry = {
@@ -162,6 +201,66 @@ export const PERMISSION_CATALOG: readonly PermissionGroup[] = [
     entries: [
       { name: IdentityPermissions.Impersonation.View, description: "View impersonation grants" },
       { name: IdentityPermissions.Impersonation.Revoke, description: "Revoke active impersonation grants" },
+    ],
+  },
+  {
+    category: "Administration — Races",
+    blurb: "Manage the Race lookup table used across patient records.",
+    entries: [
+      { name: AdministrationPermissions.Races.View, description: "View races" },
+      { name: AdministrationPermissions.Races.Create, description: "Create races" },
+      { name: AdministrationPermissions.Races.Update, description: "Update races" },
+      { name: AdministrationPermissions.Races.Delete, description: "Delete races" },
+    ],
+  },
+  {
+    category: "Administration — Ethnicities",
+    blurb: "Manage the Ethnicity lookup table.",
+    entries: [
+      { name: AdministrationPermissions.Ethnicities.View, description: "View ethnicities" },
+      { name: AdministrationPermissions.Ethnicities.Create, description: "Create ethnicities" },
+      { name: AdministrationPermissions.Ethnicities.Update, description: "Update ethnicities" },
+      { name: AdministrationPermissions.Ethnicities.Delete, description: "Delete ethnicities" },
+    ],
+  },
+  {
+    category: "Administration — Languages",
+    blurb: "Manage the Language lookup table.",
+    entries: [
+      { name: AdministrationPermissions.Languages.View, description: "View languages" },
+      { name: AdministrationPermissions.Languages.Create, description: "Create languages" },
+      { name: AdministrationPermissions.Languages.Update, description: "Update languages" },
+      { name: AdministrationPermissions.Languages.Delete, description: "Delete languages" },
+    ],
+  },
+  {
+    category: "Administration — Smoking Statuses",
+    blurb: "Manage the Smoking Status lookup table (with SNOMED codes).",
+    entries: [
+      { name: AdministrationPermissions.SmokingStatuses.View, description: "View smoking statuses" },
+      { name: AdministrationPermissions.SmokingStatuses.Create, description: "Create smoking statuses" },
+      { name: AdministrationPermissions.SmokingStatuses.Update, description: "Update smoking statuses" },
+      { name: AdministrationPermissions.SmokingStatuses.Delete, description: "Delete smoking statuses" },
+    ],
+  },
+  {
+    category: "Administration — Contact Methods",
+    blurb: "Manage the Preferred Contact Method lookup table.",
+    entries: [
+      { name: AdministrationPermissions.PreferredContactMethods.View, description: "View contact methods" },
+      { name: AdministrationPermissions.PreferredContactMethods.Create, description: "Create contact methods" },
+      { name: AdministrationPermissions.PreferredContactMethods.Update, description: "Update contact methods" },
+      { name: AdministrationPermissions.PreferredContactMethods.Delete, description: "Delete contact methods" },
+    ],
+  },
+  {
+    category: "Administration — Referral Types",
+    blurb: "Manage the Referral Type lookup table.",
+    entries: [
+      { name: AdministrationPermissions.ReferralTypes.View, description: "View referral types" },
+      { name: AdministrationPermissions.ReferralTypes.Create, description: "Create referral types" },
+      { name: AdministrationPermissions.ReferralTypes.Update, description: "Update referral types" },
+      { name: AdministrationPermissions.ReferralTypes.Delete, description: "Delete referral types" },
     ],
   },
 ];

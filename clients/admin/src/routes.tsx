@@ -8,6 +8,7 @@ import { LoginPage } from "@/pages/login";
 import { DashboardPage } from "@/pages/dashboard";
 import { NotFoundPage } from "@/pages/not-found";
 import {
+  AdministrationPermissions,
   AuditingPermissions,
   BillingPermissions,
   IdentityPermissions,
@@ -59,6 +60,12 @@ const ConfirmEmailPage = lazyNamed(
   () => import("@/pages/auth/confirm-email"),
   "ConfirmEmailPage",
 );
+const RacesPage = lazyNamed(() => import("@/pages/administration/races"), "RacesPage");
+const EthnicitiesPage = lazyNamed(() => import("@/pages/administration/ethnicities"), "EthnicitiesPage");
+const LanguagesPage = lazyNamed(() => import("@/pages/administration/languages"), "LanguagesPage");
+const SmokingStatusesPage = lazyNamed(() => import("@/pages/administration/smoking-statuses"), "SmokingStatusesPage");
+const ContactMethodsPage = lazyNamed(() => import("@/pages/administration/contact-methods"), "ContactMethodsPage");
+const ReferralTypesPage = lazyNamed(() => import("@/pages/administration/referral-types"), "ReferralTypesPage");
 
 // Each route's element is wrapped in RouteGuard with the same permissions the
 // server endpoint requires, so the UI mirrors server-side authorization. Auth
@@ -190,6 +197,56 @@ export const router = createBrowserRouter([
           {
             path: "audits/:id",
             element: <Navigate to="/audits" replace />,
+          },
+
+          // Administration — system-wide lookup tables
+          {
+            path: "administration/races",
+            element: (
+              <RouteGuard perms={[AdministrationPermissions.Races.View]}>
+                <RacesPage />
+              </RouteGuard>
+            ),
+          },
+          {
+            path: "administration/ethnicities",
+            element: (
+              <RouteGuard perms={[AdministrationPermissions.Ethnicities.View]}>
+                <EthnicitiesPage />
+              </RouteGuard>
+            ),
+          },
+          {
+            path: "administration/languages",
+            element: (
+              <RouteGuard perms={[AdministrationPermissions.Languages.View]}>
+                <LanguagesPage />
+              </RouteGuard>
+            ),
+          },
+          {
+            path: "administration/smoking-statuses",
+            element: (
+              <RouteGuard perms={[AdministrationPermissions.SmokingStatuses.View]}>
+                <SmokingStatusesPage />
+              </RouteGuard>
+            ),
+          },
+          {
+            path: "administration/contact-methods",
+            element: (
+              <RouteGuard perms={[AdministrationPermissions.PreferredContactMethods.View]}>
+                <ContactMethodsPage />
+              </RouteGuard>
+            ),
+          },
+          {
+            path: "administration/referral-types",
+            element: (
+              <RouteGuard perms={[AdministrationPermissions.ReferralTypes.View]}>
+                <ReferralTypesPage />
+              </RouteGuard>
+            ),
           },
 
           // Webhooks — any signed-in user can manage their tenant's subscriptions

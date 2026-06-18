@@ -11,6 +11,7 @@ using FSH.Modules.Patient.Features.v1.Patients.RestorePatient;
 using FSH.Modules.Patient.Features.v1.Patients.SearchPatients;
 using FSH.Modules.Patient.Features.v1.Patients.UpdatePatient;
 using FSH.Modules.Patient.Infrastructure;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -30,6 +31,11 @@ public sealed class PatientModule : IModule
         ArgumentNullException.ThrowIfNull(builder);
 
         PermissionConstants.Register(PatientPermissions.All);
+
+        builder.Services.AddOptions<PatientOptions>()
+            .BindConfiguration(PatientOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         builder.Services.AddHeroDbContext<PatientDbContext>();
         builder.Services.AddScoped<IDbInitializer, PatientDbInitializer>();

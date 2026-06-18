@@ -34,16 +34,16 @@ import {
 } from "@/api/patients";
 import { mergePatientUpdate } from "@/pages/patients/patient-mappers";
 import {
-  ETHNICITY_OPTIONS,
   GENDER_OPTIONS,
-  LANGUAGE_OPTIONS,
   MARITAL_STATUS_OPTIONS,
-  PREFERRED_CONTACT_METHOD_OPTIONS,
-  RACE_OPTIONS,
-  REFERRAL_TYPE_OPTIONS,
   RELATION_OPTIONS,
-  SMOKING_STATUS_OPTIONS,
   findRelationOption,
+  useRaceOptions,
+  useEthnicityOptions,
+  useLanguageOptions,
+  useSmokingStatusOptions,
+  useContactMethodOptions,
+  useReferralTypeOptions,
 } from "@/lib/patient-lookups";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -497,6 +497,10 @@ function PatientHero({
 
 function DemographicsPanel({ patient }: { patient: PatientDetailDto }) {
   const { demographics } = patient;
+  const raceOptions = useRaceOptions() ?? [];
+  const ethnicityOptions = useEthnicityOptions() ?? [];
+  const languageOptions = useLanguageOptions() ?? [];
+  const smokingStatusOptions = useSmokingStatusOptions() ?? [];
   return (
     <dl className="space-y-3 text-[13px]">
       <MetaRow label="Gender" value={findOptionLabel(GENDER_OPTIONS, demographics.gender)} />
@@ -504,12 +508,12 @@ function DemographicsPanel({ patient }: { patient: PatientDetailDto }) {
         label="Marital status"
         value={findOptionLabel(MARITAL_STATUS_OPTIONS, demographics.maritalStatus) ?? "—"}
       />
-      <MetaRow label="Race" value={findOptionLabel(RACE_OPTIONS, demographics.raceId != null ? String(demographics.raceId) : null) ?? "—"} />
-      <MetaRow label="Ethnicity" value={findOptionLabel(ETHNICITY_OPTIONS, demographics.ethnicityId != null ? String(demographics.ethnicityId) : null) ?? "—"} />
-      <MetaRow label="Language" value={findOptionLabel(LANGUAGE_OPTIONS, demographics.languageId != null ? String(demographics.languageId) : null) ?? "—"} />
+      <MetaRow label="Race" value={findOptionLabel(raceOptions, demographics.raceId != null ? String(demographics.raceId) : null) ?? "—"} />
+      <MetaRow label="Ethnicity" value={findOptionLabel(ethnicityOptions, demographics.ethnicityId != null ? String(demographics.ethnicityId) : null) ?? "—"} />
+      <MetaRow label="Language" value={findOptionLabel(languageOptions, demographics.languageId != null ? String(demographics.languageId) : null) ?? "—"} />
       <MetaRow
         label="Smoking"
-        value={findOptionLabel(SMOKING_STATUS_OPTIONS, demographics.smokingStatusId != null ? String(demographics.smokingStatusId) : null) ?? "—"}
+        value={findOptionLabel(smokingStatusOptions, demographics.smokingStatusId != null ? String(demographics.smokingStatusId) : null) ?? "—"}
       />
       {demographics.medicalAlertNotes && (
         <MetaRow label="Alerts" value={demographics.medicalAlertNotes} tone="warning" />
@@ -590,6 +594,7 @@ function AuditPanel({ patient }: { patient: PatientDetailDto }) {
 
 function ContactPanel({ patient }: { patient: PatientDetailDto }) {
   const { contact } = patient;
+  const contactMethodOptions = useContactMethodOptions() ?? [];
   const addressParts = [contact.address1, contact.address2, contact.city, contact.state, contact.zipCode].filter(
     Boolean,
   );
@@ -603,7 +608,7 @@ function ContactPanel({ patient }: { patient: PatientDetailDto }) {
         label="Preferred contact"
         value={
           findOptionLabel(
-            PREFERRED_CONTACT_METHOD_OPTIONS,
+            contactMethodOptions,
             contact.preferredContactMethodId != null ? String(contact.preferredContactMethodId) : null,
           ) ?? "—"
         }
@@ -670,6 +675,7 @@ function GuardianPanel({ patient }: { patient: PatientDetailDto }) {
 
 function InsurancePanel({ patient }: { patient: PatientDetailDto }) {
   const insurance = patient.insurance;
+  const referralTypeOptions = useReferralTypeOptions() ?? [];
   if (!insurance || !insurance.insuredFullName) {
     return <EmptySection label="No insurance info on file." />;
   }
@@ -684,7 +690,7 @@ function InsurancePanel({ patient }: { patient: PatientDetailDto }) {
       <MetaRow
         label="Referral type"
         value={
-          findOptionLabel(REFERRAL_TYPE_OPTIONS, insurance.referralTypeId != null ? String(insurance.referralTypeId) : null) ??
+          findOptionLabel(referralTypeOptions, insurance.referralTypeId != null ? String(insurance.referralTypeId) : null) ??
           "—"
         }
       />
@@ -838,6 +844,10 @@ function DemographicsDialog({
   onClose: () => void;
 }) {
   const { demographics } = patient;
+  const raceOptions = useRaceOptions() ?? [];
+  const ethnicityOptions = useEthnicityOptions() ?? [];
+  const languageOptions = useLanguageOptions() ?? [];
+  const smokingStatusOptions = useSmokingStatusOptions() ?? [];
   const [firstName, setFirstName] = useState(demographics.firstName);
   const [lastName, setLastName] = useState(demographics.lastName);
   const [middleInitial, setMiddleInitial] = useState(demographics.middleInitial ?? "");
@@ -963,7 +973,7 @@ function DemographicsDialog({
                 />
               </Field>
               <Field id="demo-race" label="Race">
-                <Combobox id="demo-race" label="Race" value={raceId} onChange={setRaceId} options={RACE_OPTIONS} clearable />
+                <Combobox id="demo-race" label="Race" value={raceId} onChange={setRaceId} options={raceOptions} clearable />
               </Field>
             </div>
 
@@ -974,7 +984,7 @@ function DemographicsDialog({
                   label="Ethnicity"
                   value={ethnicityId}
                   onChange={setEthnicityId}
-                  options={ETHNICITY_OPTIONS}
+                  options={ethnicityOptions}
                   clearable
                 />
               </Field>
@@ -984,7 +994,7 @@ function DemographicsDialog({
                   label="Language"
                   value={languageId}
                   onChange={setLanguageId}
-                  options={LANGUAGE_OPTIONS}
+                  options={languageOptions}
                   clearable
                 />
               </Field>
@@ -997,7 +1007,7 @@ function DemographicsDialog({
                   label="Smoking status"
                   value={smokingStatusId}
                   onChange={setSmokingStatusId}
-                  options={SMOKING_STATUS_OPTIONS}
+                  options={smokingStatusOptions}
                   clearable
                 />
               </Field>
@@ -1047,6 +1057,7 @@ function ContactDialog({
   onClose: () => void;
 }) {
   const { contact } = patient;
+  const contactMethodOptions = useContactMethodOptions() ?? [];
   const [address1, setAddress1] = useState(contact.address1 ?? "");
   const [address2, setAddress2] = useState(contact.address2 ?? "");
   const [city, setCity] = useState(contact.city ?? "");
@@ -1144,7 +1155,7 @@ function ContactDialog({
                 label="Preferred contact method"
                 value={preferredContactMethodId}
                 onChange={setPreferredContactMethodId}
-                options={PREFERRED_CONTACT_METHOD_OPTIONS}
+                options={contactMethodOptions}
                 clearable
               />
             </Field>
@@ -1660,6 +1671,7 @@ function InsuranceDialog({
   onClose: () => void;
 }) {
   const insurance = patient.insurance;
+  const referralTypeOptions = useReferralTypeOptions() ?? [];
   const [insuredFullName, setInsuredFullName] = useState(insurance?.insuredFullName ?? "");
   const [insuredDateOfBirth, setInsuredDateOfBirth] = useState(toDateInputValue(insurance?.insuredDateOfBirth));
   const [insuredEmployerName, setInsuredEmployerName] = useState(insurance?.insuredEmployerName ?? "");
@@ -1715,7 +1727,7 @@ function InsuranceDialog({
                 label="Referral type"
                 value={referralTypeId}
                 onChange={setReferralTypeId}
-                options={REFERRAL_TYPE_OPTIONS}
+                options={referralTypeOptions}
                 clearable
               />
             </Field>

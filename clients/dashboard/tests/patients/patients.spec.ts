@@ -14,6 +14,42 @@ import { mockJsonResponse } from "../helpers/api-mocks";
 import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
 import { installShellMocks, paged } from "../helpers/shell-mocks";
 
+// ─── Administration lookup fixtures ──────────────────────────────────────
+
+const RACE_LOOKUP = [
+  { id: 1, name: "White", isActive: true },
+  { id: 2, name: "Black or African American", isActive: true },
+];
+const ETHNICITY_LOOKUP = [
+  { id: 1, name: "Hispanic or Latino", isActive: true },
+  { id: 2, name: "Not Hispanic or Latino", isActive: true },
+];
+const LANGUAGE_LOOKUP = [
+  { id: 1, name: "English", isActive: true },
+  { id: 2, name: "Spanish", isActive: true },
+];
+const SMOKING_STATUS_LOOKUP = [
+  { id: 1, name: "Never smoker", isActive: true },
+  { id: 2, name: "Former smoker", isActive: true },
+];
+const CONTACT_METHOD_LOOKUP = [
+  { id: 1, name: "Phone", isActive: true },
+  { id: 2, name: "Email", isActive: true },
+];
+const REFERRAL_TYPE_LOOKUP = [
+  { id: 1, name: "Physician referral", isActive: true },
+  { id: 2, name: "Self-referral", isActive: true },
+];
+
+async function mockAdministrationLookups(page: Parameters<typeof mockJsonResponse>[0]) {
+  await mockJsonResponse(page, "**/api/v1/administration/races**", RACE_LOOKUP);
+  await mockJsonResponse(page, "**/api/v1/administration/ethnicities**", ETHNICITY_LOOKUP);
+  await mockJsonResponse(page, "**/api/v1/administration/languages**", LANGUAGE_LOOKUP);
+  await mockJsonResponse(page, "**/api/v1/administration/smoking-statuses**", SMOKING_STATUS_LOOKUP);
+  await mockJsonResponse(page, "**/api/v1/administration/preferred-contact-methods**", CONTACT_METHOD_LOOKUP);
+  await mockJsonResponse(page, "**/api/v1/administration/referral-types**", REFERRAL_TYPE_LOOKUP);
+}
+
 // ─── Fixtures ────────────────────────────────────────────────────────────
 
 const PATIENT_LIST_ALICE = {
@@ -213,6 +249,7 @@ test.describe("patients/:patientId — detail", () => {
   test.beforeEach(async ({ page }) => {
     await seedAuthedSession(page, TEST_USER);
     await installShellMocks(page);
+    await mockAdministrationLookups(page);
   });
 
   test("loads an adult patient: back link, name, next of kin, no Guardian section", async ({
@@ -266,6 +303,7 @@ test.describe("patients/:patientId — next of kin relation/role-code coupling",
   test.beforeEach(async ({ page }) => {
     await seedAuthedSession(page, TEST_USER);
     await installShellMocks(page);
+    await mockAdministrationLookups(page);
     // Unfiltered: satisfies the initial GET. The PUT-specific mock the test
     // registers later wins for the save and falls back to this one for GET.
     await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_ADULT_ID}`, PATIENT_NO_KIN);
@@ -307,5 +345,110 @@ test.describe("patients/:patientId — next of kin relation/role-code coupling",
     const body = (await putRequest).postDataJSON();
     expect(body.nextOfKinRelation).toBe("Spouse");
     expect(body.nextOfKinRelationRoleCode).toBe("SPS");
+  });
+});
+
+// ─── Edit sections — dialog pre-fill + full-replace merge ────────────────
+
+test.describe("patients/:patientId — edit section dialogs", () => {
+  test.beforeEach(async ({ page }) => {
+    await seedAuthedSession(page, TEST_USER);
+    await installShellMocks(page);
+    await mockAdministrationLookups(page);
+    await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_ADULT_ID}`, PATIENT_ADULT);
+  });
+
+  test("Demographics dialog opens pre-filled with current values", async ({ page }) => {
+    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
+    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
+
+    const section = page.locator("section", {
+      has: page.getByRole("heading", { name: "Demographics" }),
+    });
+    await section.getByRole("button", { name: /edit/i }).click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: /edit demographics/i })).toBeVisible();
+    await expect(dialog.getByLabel("First name")).toHaveValue("Alice");
+    await expect(dialog.getByLabel("Last name")).toHaveValue("Vance");
+  });
+
+  test("Demographics dialog save sends full-replace payload preserving untouched sections", async ({
+    page,
+  }) => {
+    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
+    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
+
+    const section = page.locator("section", {
+      has: page.getByRole("heading", { name: "Demographics" }),
+    });
+    await section.getByRole("button", { name: /edit/i }).click();
+
+    const dialog = page.getByRole("dialog");
+    // Change only first name.
+    await dialog.getByLabel("First name").fill("Alicia");
+
+    await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_ADULT_ID}`, '""', {
+      method: "PUT",
+    });
+    const putRequest = page.waitForRequest(
+      (req) =>
+        req.url().includes(`/api/v1/patient/patients/${PATIENT_ADULT_ID}`) &&
+        req.method() === "PUT",
+    );
+    await dialog.getByRole("button", { name: /save changes/i }).click();
+
+    const body = (await putRequest).postDataJSON();
+    // Changed field.
+    expect(body.firstName).toBe("Alicia");
+    // Untouched contact field still present (full-replace merge).
+    expect(body.address1).toBe("123 Main St");
+    // Untouched next-of-kin still present.
+    expect(body.nextOfKinRelation).toBe("Spouse");
+  });
+
+  test("Contact dialog opens pre-filled with current address", async ({ page }) => {
+    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
+    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
+
+    const section = page.locator("section", {
+      has: page.getByRole("heading", { name: "Contact" }),
+    });
+    await section.getByRole("button", { name: /edit/i }).click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: /edit contact/i })).toBeVisible();
+    await expect(dialog.getByLabel("Address line 1")).toHaveValue("123 Main St");
+    await expect(dialog.getByLabel("City")).toHaveValue("Springfield");
+  });
+
+  test("Contact dialog save preserves demographics in the PUT body", async ({ page }) => {
+    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
+    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
+
+    const section = page.locator("section", {
+      has: page.getByRole("heading", { name: "Contact" }),
+    });
+    await section.getByRole("button", { name: /edit/i }).click();
+
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("City").fill("Shelbyville");
+
+    await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_ADULT_ID}`, '""', {
+      method: "PUT",
+    });
+    const putRequest = page.waitForRequest(
+      (req) =>
+        req.url().includes(`/api/v1/patient/patients/${PATIENT_ADULT_ID}`) &&
+        req.method() === "PUT",
+    );
+    await dialog.getByRole("button", { name: /save changes/i }).click();
+
+    const body = (await putRequest).postDataJSON();
+    // Changed field.
+    expect(body.city).toBe("Shelbyville");
+    // Demographics preserved in the full-replace payload.
+    expect(body.firstName).toBe("Alice");
+    expect(body.lastName).toBe("Vance");
   });
 });

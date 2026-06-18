@@ -1,6 +1,7 @@
 import {
   Activity,
   Building2,
+  Database,
   LayoutDashboard,
   Receipt,
   ScrollText,
@@ -12,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
+  AdministrationPermissions,
   AuditingPermissions,
   BillingPermissions,
   IdentityPermissions,
@@ -83,6 +85,49 @@ export const sections: NavSection[] = [
         label: "Impersonation",
         icon: UserCog,
         perms: [IdentityPermissions.Impersonation.View],
+      },
+    ],
+  },
+  {
+    id: "administration",
+    caption: "Administration",
+    icon: Database,
+    items: [
+      {
+        to: "/administration/races",
+        label: "Races",
+        icon: Database,
+        perms: [AdministrationPermissions.Races.View],
+      },
+      {
+        to: "/administration/ethnicities",
+        label: "Ethnicities",
+        icon: Database,
+        perms: [AdministrationPermissions.Ethnicities.View],
+      },
+      {
+        to: "/administration/languages",
+        label: "Languages",
+        icon: Database,
+        perms: [AdministrationPermissions.Languages.View],
+      },
+      {
+        to: "/administration/smoking-statuses",
+        label: "Smoking Statuses",
+        icon: Database,
+        perms: [AdministrationPermissions.SmokingStatuses.View],
+      },
+      {
+        to: "/administration/contact-methods",
+        label: "Contact Methods",
+        icon: Database,
+        perms: [AdministrationPermissions.PreferredContactMethods.View],
+      },
+      {
+        to: "/administration/referral-types",
+        label: "Referral Types",
+        icon: Database,
+        perms: [AdministrationPermissions.ReferralTypes.View],
       },
     ],
   },

@@ -1,25 +1,27 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
 
 namespace FSH.Modules.Patient.Infrastructure;
 
 public sealed class PhiEncryptor : IPhiEncryptor
 {
-    // Stable, deterministic HMAC key derived from the protector purpose string.
-    // Using Protect() would produce non-deterministic output (random IV), breaking
-    // cross-request/cross-restart hash lookups. Tenant isolation is enforced by
-    // EF Core query filters, not at the hash level.
-    // Sprint 4: rotate to a secret from Key Vault for defense-in-depth.
-    private static readonly byte[] HmacKey =
-        SHA256.HashData(Encoding.UTF8.GetBytes("FSH.Patient.PHI.HMAC.v1"));
-
     private readonly IDataProtector _protector;
+    private readonly byte[] _hmacKey;
 
-    public PhiEncryptor(IDataProtectionProvider provider)
+    public PhiEncryptor(IDataProtectionProvider provider, IOptions<PatientOptions> options)
     {
         ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(options);
+
         _protector = provider.CreateProtector("FSH.Patient.PHI.v1");
+
+        // Derive a fixed-length key from the configured base64 secret so the hash
+        // is stable across restarts, tenant boundaries are enforced by EF query
+        // filters (not at hash level), and the secret is rotatable via config.
+        byte[] raw = Convert.FromBase64String(options.Value.PhiHmacKey);
+        _hmacKey = SHA256.HashData(raw);
     }
 
     public string? Encrypt(string? plaintext) =>
@@ -33,7 +35,7 @@ public sealed class PhiEncryptor : IPhiEncryptor
         if (string.IsNullOrEmpty(value)) return null;
 
         byte[] data = Encoding.UTF8.GetBytes(value.Trim().ToUpperInvariant());
-        byte[] hash = HMACSHA256.HashData(HmacKey, data);
+        byte[] hash = HMACSHA256.HashData(_hmacKey, data);
 #pragma warning disable CA1308 // hex string is canonical lowercase, not security-sensitive
         return Convert.ToHexString(hash).ToLowerInvariant();
 #pragma warning restore CA1308

@@ -140,65 +140,14 @@ export function findRelationOption(roleCode: string | null | undefined): Combobo
   return RELATION_OPTIONS.find((option) => option.value === roleCode);
 }
 
-// ─── Placeholders pending a dedicated lookup module (future sprint) ───────
-//
 // Race/Ethnicity/Language/SmokingStatus/PreferredContactMethod/ReferralType
-// are `int?` foreign keys on the backend with no lookup table yet — that's
-// real backend/EF work deferred to a later sprint (no stored procedures).
-// These id/label pairs are reasonable placeholders so the form is usable
-// today; swap for a server-fetched list once the lookup endpoints exist.
-
-export const RACE_OPTIONS: ComboboxOption[] = [
-  { value: "1", label: "White" },
-  { value: "2", label: "Black or African American" },
-  { value: "3", label: "American Indian or Alaska Native" },
-  { value: "4", label: "Asian" },
-  { value: "5", label: "Native Hawaiian or Other Pacific Islander" },
-  { value: "6", label: "Other" },
-  { value: "7", label: "Declined to specify" },
-];
-
-export const ETHNICITY_OPTIONS: ComboboxOption[] = [
-  { value: "1", label: "Hispanic or Latino" },
-  { value: "2", label: "Not Hispanic or Latino" },
-  { value: "3", label: "Declined to specify" },
-];
-
-export const LANGUAGE_OPTIONS: ComboboxOption[] = [
-  { value: "1", label: "English" },
-  { value: "2", label: "Spanish" },
-  { value: "3", label: "Mandarin" },
-  { value: "4", label: "Cantonese" },
-  { value: "5", label: "Vietnamese" },
-  { value: "6", label: "Tagalog" },
-  { value: "7", label: "Korean" },
-  { value: "8", label: "Other" },
-];
-
-export const SMOKING_STATUS_OPTIONS: ComboboxOption[] = [
-  { value: "1", label: "Never smoker" },
-  { value: "2", label: "Former smoker" },
-  { value: "3", label: "Current every day smoker" },
-  { value: "4", label: "Current some day smoker" },
-  { value: "5", label: "Smoker, current status unknown" },
-  { value: "6", label: "Unknown if ever smoked" },
-  { value: "7", label: "Heavy tobacco smoker" },
-  { value: "8", label: "Light tobacco smoker" },
-];
-
-export const PREFERRED_CONTACT_METHOD_OPTIONS: ComboboxOption[] = [
-  { value: "1", label: "Phone" },
-  { value: "2", label: "Email" },
-  { value: "3", label: "Text/SMS" },
-  { value: "4", label: "Mail" },
-  { value: "5", label: "Portal message" },
-];
-
-export const REFERRAL_TYPE_OPTIONS: ComboboxOption[] = [
-  { value: "1", label: "Physician referral" },
-  { value: "2", label: "Self-referral" },
-  { value: "3", label: "Insurance referral" },
-  { value: "4", label: "Online/web" },
-  { value: "5", label: "Word of mouth" },
-  { value: "6", label: "Other" },
-];
+// are managed by the Administration module and served live from the API.
+// Import hooks from @/api/administration and call them inside components.
+export {
+  useRaceOptions,
+  useEthnicityOptions,
+  useLanguageOptions,
+  useSmokingStatusOptions,
+  useContactMethodOptions,
+  useReferralTypeOptions,
+} from "@/api/administration";

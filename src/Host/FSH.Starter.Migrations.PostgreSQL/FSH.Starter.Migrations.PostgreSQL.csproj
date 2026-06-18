@@ -21,6 +21,7 @@
 	  <ProjectReference Include="..\..\Modules\Notifications\Modules.Notifications\Modules.Notifications.csproj" />
 	  <ProjectReference Include="..\..\Modules\Files\Modules.Files\Modules.Files.csproj" />
 	  <ProjectReference Include="..\..\Modules\Patient\Modules.Patient\Modules.Patient.csproj" />
+	  <ProjectReference Include="..\..\Modules\Administration\Modules.Administration\Modules.Administration.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -33,6 +34,7 @@
 	  <Folder Include="Notifications\" />
 	  <Folder Include="Files\" />
 	  <Folder Include="Patient\" />
+	  <Folder Include="Administration\" />
 	</ItemGroup>
 
 </Project>
