@@ -65,6 +65,16 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["JwtOptions:SigningKey"]))
     });
 }
 
+// PatientModule's PhiEncryptor requires PatientOptions:PhiHmacKey via ValidateOnStart, but the
+// migrator never encrypts/decrypts PHI — inject a placeholder so startup validation passes.
+if (string.IsNullOrWhiteSpace(builder.Configuration["PatientOptions:PhiHmacKey"]))
+{
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["PatientOptions:PhiHmacKey"] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    });
+}
+
 // Fail-fast with one clear line if DatabaseOptions__ConnectionString is unset, rather than letting
 // host-build-time option validation throw a stack trace.
 if (string.IsNullOrWhiteSpace(builder.Configuration["DatabaseOptions:ConnectionString"]))
