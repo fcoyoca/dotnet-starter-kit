@@ -4,6 +4,11 @@ using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Administration.Contracts.Authorization;
 using FSH.Modules.Administration.Data;
+using FSH.Modules.Administration.Features.v1.Clinics.CreateClinic;
+using FSH.Modules.Administration.Features.v1.Clinics.DeleteClinic;
+using FSH.Modules.Administration.Features.v1.Clinics.GetClinicById;
+using FSH.Modules.Administration.Features.v1.Clinics.ListClinics;
+using FSH.Modules.Administration.Features.v1.Clinics.UpdateClinic;
 using FSH.Modules.Administration.Features.v1.Ethnicities.CreateEthnicity;
 using FSH.Modules.Administration.Features.v1.Ethnicities.DeleteEthnicity;
 using FSH.Modules.Administration.Features.v1.Ethnicities.GetEthnicityById;
@@ -78,6 +83,12 @@ public sealed class AdministrationModule : IModule
             .WithTags("Administration")
             .WithApiVersionSet(versionSet)
             .RequireAuthorization();
+
+        group.MapCreateClinicEndpoint();
+        group.MapListClinicsEndpoint();
+        group.MapGetClinicByIdEndpoint();
+        group.MapUpdateClinicEndpoint();
+        group.MapDeleteClinicEndpoint();
 
         group.MapCreateRaceEndpoint();
         group.MapListRacesEndpoint();

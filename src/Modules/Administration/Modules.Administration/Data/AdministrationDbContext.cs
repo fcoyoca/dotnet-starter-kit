@@ -19,6 +19,7 @@ public sealed class AdministrationDbContext : BaseDbContext
         IOptions<DatabaseOptions> settings,
         IHostEnvironment environment) : base(multiTenantContextAccessor, options, settings, environment) { }
 
+    public DbSet<Clinic> Clinics => Set<Clinic>();
     public DbSet<Race> Races => Set<Race>();
     public DbSet<Ethnicity> Ethnicities => Set<Ethnicity>();
     public DbSet<Language> Languages => Set<Language>();
