@@ -93,6 +93,12 @@ internal sealed record MigratorCommand(
                               user gets a discarded random password + confirmed email, so they sign in
                               via forgot-password). uSuperUser → Admin, all → Basic. Requires
                               --source-connection and --tenant.
+          apply           Apply pending migrations (default). Use --seed to also run SeedAsync.
+          seed            Run only the SeedAsync step per tenant.
+          seed-demo       Provision the demo tenants (acme, globex) with users, catalog,
+                          tickets, and chat. Dev-only — refuses to run unless
+                          DOTNET_ENVIRONMENT=Development.
+          list-pending    Print pending migrations without applying anything.
 
         Options:
           --tenant <id>              Restrict to a single tenant id (default: all tenants).

@@ -7,15 +7,18 @@ using FSH.Framework.Shared.Multitenancy;
 using FSH.Modules.Billing.Contracts;
 using FSH.Modules.Billing.Data;
 using FSH.Modules.Billing.Domain;
+using FSH.Modules.Catalog.Contracts.Authorization;
 using FSH.Modules.Catalog.Data;
 using FSH.Modules.Catalog.Domain;
 using FSH.Modules.Chat.Data;
 using FSH.Modules.Chat.Domain;
+using FSH.Modules.Identity.Contracts.Authorization;
 using FSH.Modules.Identity.Data;
 using FSH.Modules.Identity.Domain;
 using FSH.Modules.Multitenancy.Contracts;
 using FSH.Modules.Multitenancy.Data;
 using FSH.Modules.Multitenancy.Provisioning;
+using FSH.Modules.Tickets.Contracts.Authorization;
 using FSH.Modules.Tickets.Contracts.Dtos;
 using FSH.Modules.Tickets.Data;
 using FSH.Modules.Tickets.Domain;
@@ -734,6 +737,10 @@ internal sealed class DemoSeeder
         new("globex.dave",   "dave@globex.com",   "Dave",   "Hartwell", [RoleConstants.Basic]),
     ];
 
+    // Permission claims reference the module contracts constants — never raw strings.
+    // A hand-typed name that doesn't match a registry entry (e.g. the old
+    // "Permissions.Brands.View" vs the real "Permissions.Catalog.Brands.View")
+    // is a claim that grants nothing, silently.
     private static IReadOnlyList<DemoRole> BuildAcmeCustomRoles() =>
     [
         new(
@@ -767,6 +774,29 @@ internal sealed class DemoSeeder
                 "Permissions.Patient.Patients.Create",
                 "Permissions.Patient.Patients.Update",
                 "Permissions.Patient.Patients.Delete",
+                IdentityPermissions.Users.View,
+                IdentityPermissions.Users.Update,
+                IdentityPermissions.UserRoles.View,
+                IdentityPermissions.Roles.View,
+                IdentityPermissions.Sessions.View,
+                IdentityPermissions.Sessions.Revoke,
+                IdentityPermissions.Groups.View,
+                CatalogPermissions.Brands.View,
+                CatalogPermissions.Brands.Create,
+                CatalogPermissions.Brands.Update,
+                CatalogPermissions.Brands.Delete,
+                CatalogPermissions.Categories.View,
+                CatalogPermissions.Categories.Create,
+                CatalogPermissions.Categories.Update,
+                CatalogPermissions.Categories.Delete,
+                CatalogPermissions.Products.View,
+                CatalogPermissions.Products.Create,
+                CatalogPermissions.Products.Update,
+                CatalogPermissions.Products.Delete,
+                TicketsPermissions.Tickets.View,
+                TicketsPermissions.Tickets.Create,
+                TicketsPermissions.Tickets.Update,
+                TicketsPermissions.Tickets.Delete,
             ]),
 
         new(
@@ -781,6 +811,13 @@ internal sealed class DemoSeeder
                 "Permissions.Tickets.Create",
                 "Permissions.Tickets.Update",
                 "Permissions.Patient.Patients.View",
+                IdentityPermissions.Users.View,
+                IdentityPermissions.UserRoles.View,
+                IdentityPermissions.Sessions.View,
+                IdentityPermissions.Sessions.Revoke,
+                TicketsPermissions.Tickets.View,
+                TicketsPermissions.Tickets.Create,
+                TicketsPermissions.Tickets.Update,
             ]),
     ];
 

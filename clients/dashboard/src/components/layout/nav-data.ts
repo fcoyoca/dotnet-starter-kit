@@ -55,8 +55,11 @@ export type NavSection = {
 // Settings is account-scoped and lives at the very bottom.
 export const topNavTop: NavSpec[] = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
-  { to: "/chat", label: "Chat", icon: MessageCircle },
-  { to: "/files", label: "My Files", icon: FolderOpen },
+  // Each gate mirrors the permission the page's primary list endpoint enforces
+  // server-side (Chat → channels list, Files → /files/mine). Same convention
+  // as trash-permissions.ts: if the endpoint's permission changes, mirror it.
+  { to: "/chat", label: "Chat", icon: MessageCircle, perm: "Permissions.Chat.Channels.View" },
+  { to: "/files", label: "My Files", icon: FolderOpen, perm: "Permissions.Files.Upload" },
 ];
 
 export const topNavBottom: NavSpec[] = [
@@ -78,9 +81,10 @@ export const sections: NavSection[] = [
     caption: "Operations",
     icon: Activity,
     items: [
+      // Live activity is SSE-backed; the stream is auth-only (no permission), so no gate.
       { to: "/activity", label: "Live activity", icon: Activity },
-      { to: "/subscription", label: "Subscription", icon: CreditCard },
-      { to: "/invoices", label: "Invoices", icon: Receipt },
+      { to: "/subscription", label: "Subscription", icon: CreditCard, perm: "Permissions.Billing.View" },
+      { to: "/invoices", label: "Invoices", icon: Receipt, perm: "Permissions.Billing.View" },
     ],
   },
   {
@@ -88,9 +92,9 @@ export const sections: NavSection[] = [
     caption: "Catalog",
     icon: Package,
     items: [
-      { to: "/catalog/products", label: "Products", icon: Package },
-      { to: "/catalog/brands", label: "Brands", icon: Tags },
-      { to: "/catalog/categories", label: "Categories", icon: FolderTree },
+      { to: "/catalog/products", label: "Products", icon: Package, perm: "Permissions.Catalog.Products.View" },
+      { to: "/catalog/brands", label: "Brands", icon: Tags, perm: "Permissions.Catalog.Brands.View" },
+      { to: "/catalog/categories", label: "Categories", icon: FolderTree, perm: "Permissions.Catalog.Categories.View" },
     ],
   },
   {
@@ -98,7 +102,7 @@ export const sections: NavSection[] = [
     caption: "Helpdesk",
     icon: Ticket,
     items: [
-      { to: "/tickets", label: "Tickets", icon: Ticket },
+      { to: "/tickets", label: "Tickets", icon: Ticket, perm: "Permissions.Tickets.View" },
     ],
   },
   {
@@ -119,6 +123,7 @@ export const sections: NavSection[] = [
     caption: "System",
     icon: HeartPulse,
     items: [
+      // Health hits the anonymous /health/ready probe — visible to everyone.
       { to: "/system/health", label: "Health", icon: HeartPulse },
       { to: "/system/audits", label: "Audit trail", icon: ScrollText, perm: "Permissions.AuditTrails.View" },
       { to: "/system/sessions", label: "Sessions", icon: Wifi, perm: "Permissions.Sessions.ViewAll" },
