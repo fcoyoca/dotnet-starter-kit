@@ -109,6 +109,10 @@ const GroupDetailPage = lazyNamed(
 );
 const MyFilesPage = lazyNamed(() => import("@/pages/files/my-files"), "MyFilesPage");
 const ChatPage = lazyNamed(() => import("@/pages/chat/chat-page"), "ChatPage");
+const ClinicsPage = lazyNamed(
+  () => import("@/pages/administration/clinics"),
+  "ClinicsPage",
+);
 const PatientsListPage = lazyNamed(() => import("@/pages/patients/list"), "PatientsListPage");
 const PatientDetailPage = lazyNamed(
   () => import("@/pages/patients/patient-detail"),
@@ -214,6 +218,8 @@ export const router = createBrowserRouter([
           { path: "tickets/:ticketId", element: withSuspense(<TicketDetailPage />) },
           { path: "patients", element: withSuspense(<PatientsListPage />) },
           { path: "patients/:patientId", element: withSuspense(<PatientDetailPage />) },
+          { path: "administration", element: <Navigate to="/administration/clinics" replace /> },
+          { path: "administration/clinics", element: withSuspense(<ClinicsPage />) },
           { path: "identity", element: <Navigate to="/identity/users" replace /> },
           { path: "identity/users", element: withSuspense(<UsersPage />) },
           { path: "identity/users/:userId", element: withSuspense(<UserDetailPage />) },

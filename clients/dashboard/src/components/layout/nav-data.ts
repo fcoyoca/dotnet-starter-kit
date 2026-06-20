@@ -1,5 +1,6 @@
 import {
   Activity,
+  Building2,
   CreditCard,
   FolderOpen,
   FolderTree,
@@ -85,6 +86,22 @@ export const sections: NavSection[] = [
       { to: "/activity", label: "Live activity", icon: Activity },
       { to: "/subscription", label: "Subscription", icon: CreditCard, perm: "Permissions.Billing.View" },
       { to: "/invoices", label: "Invoices", icon: Receipt, perm: "Permissions.Billing.View" },
+    ],
+  },
+  {
+    id: "administration",
+    caption: "Administration",
+    icon: Building2,
+    items: [
+      // Mirrors the permission the Clinics list endpoint enforces server-side
+      // (Administration.Clinics.View). View is IsBasic, so members can reach the
+      // page; create/update/delete actions hide for those lacking the perms.
+      {
+        to: "/administration/clinics",
+        label: "Clinics",
+        icon: Building2,
+        perm: "Permissions.Administration.Clinics.View",
+      },
     ],
   },
   {
