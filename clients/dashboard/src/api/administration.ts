@@ -424,47 +424,25 @@ export type InsuranceTypeProcedureDto = {
   updatedAtUtc?: string | null;
 };
 
+export type InsuranceTypeProcedureItem = { procedureCodeId: string; price: number };
+
 export function listInsuranceTypeProcedures(insuranceTypeId: string): Promise<InsuranceTypeProcedureDto[]> {
   return apiFetch<InsuranceTypeProcedureDto[]>(
     `/api/v1/administration/insurance-types/${encodeURIComponent(insuranceTypeId)}/procedures`,
   );
 }
 
-export async function associateProcedureToInsuranceType(
+/** Replace the full set of procedure-code price associations for an insurance type (legacy batch save). */
+export async function setInsuranceTypeProcedures(
   insuranceTypeId: string,
-  procedureCodeId: string,
-  price: number,
-): Promise<string> {
-  return apiFetch<string>(
+  items: InsuranceTypeProcedureItem[],
+): Promise<void> {
+  await apiFetch<void>(
     `/api/v1/administration/insurance-types/${encodeURIComponent(insuranceTypeId)}/procedures`,
     {
-      method: "POST",
-      body: JSON.stringify({ insuranceTypeId, procedureCodeId, price }),
-    },
-  );
-}
-
-export async function updateInsuranceTypeProcedurePrice(
-  insuranceTypeId: string,
-  procedureCodeId: string,
-  price: number,
-): Promise<void> {
-  await apiFetch<void>(
-    `/api/v1/administration/insurance-types/${encodeURIComponent(insuranceTypeId)}/procedures/${encodeURIComponent(procedureCodeId)}`,
-    {
       method: "PUT",
-      body: JSON.stringify({ insuranceTypeId, procedureCodeId, price }),
+      body: JSON.stringify({ insuranceTypeId, items }),
     },
-  );
-}
-
-export async function removeProcedureFromInsuranceType(
-  insuranceTypeId: string,
-  procedureCodeId: string,
-): Promise<void> {
-  await apiFetch<void>(
-    `/api/v1/administration/insurance-types/${encodeURIComponent(insuranceTypeId)}/procedures/${encodeURIComponent(procedureCodeId)}`,
-    { method: "DELETE" },
   );
 }
 
