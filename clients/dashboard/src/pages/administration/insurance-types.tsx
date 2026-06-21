@@ -282,21 +282,21 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
     enabled: isOpen && !!type,
   });
 
+  // Reset the form AND the working selection whenever the dialog opens or targets a different type, so a
+  // previous type's checked codes never linger into another type (initial is memoized per-type).
   useEffect(() => {
-    if (isOpen) setForm(initial);
+    if (isOpen) {
+      setForm(initial);
+      setSelections({});
+    }
   }, [isOpen, initial]);
 
+  // Seed the selection from the edited type's existing associations once they load.
   useEffect(() => {
-    if (!isOpen) return;
-    if (!type) {
-      setSelections({});
-      return;
-    }
-    if (assocQuery.data) {
-      const seed: Record<string, number> = {};
-      for (const a of assocQuery.data) seed[a.procedureCodeId] = a.price;
-      setSelections(seed);
-    }
+    if (!isOpen || !type || !assocQuery.data) return;
+    const seed: Record<string, number> = {};
+    for (const a of assocQuery.data) seed[a.procedureCodeId] = a.price;
+    setSelections(seed);
   }, [isOpen, type, assocQuery.data]);
 
   const invalidate = () => {
@@ -411,6 +411,7 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
             )}
 
             <AssociatedProcedureCodes
+              key={type?.id ?? "create"}
               categoryId={form.procedureCategoryId}
               selections={selections}
               onToggle={toggleSelection}
