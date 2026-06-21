@@ -492,3 +492,314 @@ export async function deleteInsuranceCompany(id: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// ─── Diagnostic Categories (tenant-scoped CRUD) ────────────────────────
+
+export type DiagnosticCategoryDto = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListDiagnosticCategoriesParams = {
+  search?: string;
+  isActive?: boolean | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type CreateDiagnosticCategoryInput = { name: string };
+export type UpdateDiagnosticCategoryInput = { categoryId: string; name: string; isActive: boolean };
+
+export function listDiagnosticCategories(
+  params: ListDiagnosticCategoriesParams = {},
+): Promise<PagedResponse<DiagnosticCategoryDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<DiagnosticCategoryDto>>(
+    `/api/v1/administration/diagnostic-categories?${query.toString()}`,
+  );
+}
+
+export async function createDiagnosticCategory(input: CreateDiagnosticCategoryInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/diagnostic-categories", {
+    method: "POST",
+    body: JSON.stringify({ name: input.name }),
+  });
+}
+
+export async function updateDiagnosticCategory(input: UpdateDiagnosticCategoryInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/diagnostic-categories/${encodeURIComponent(input.categoryId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ id: input.categoryId, name: input.name, isActive: input.isActive }),
+  });
+}
+
+export async function deleteDiagnosticCategory(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/diagnostic-categories/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+// ─── Custom Diagnostics (tenant-scoped CRUD) ───────────────────────────
+
+export type CustomDiagnosticDto = {
+  id: string;
+  code: string;
+  description?: string | null;
+  longDescription?: string | null;
+  isChiropractic: boolean;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListCustomDiagnosticsParams = {
+  search?: string;
+  isActive?: boolean | null;
+  isChiropractic?: boolean | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type CustomDiagnosticInput = {
+  code: string;
+  description?: string | null;
+  longDescription?: string | null;
+  isChiropractic: boolean;
+};
+
+export type CreateCustomDiagnosticInput = CustomDiagnosticInput;
+export type UpdateCustomDiagnosticInput = CustomDiagnosticInput & { diagnosticId: string; isActive: boolean };
+
+export function listCustomDiagnostics(
+  params: ListCustomDiagnosticsParams = {},
+): Promise<PagedResponse<CustomDiagnosticDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  if (params.isChiropractic !== undefined && params.isChiropractic !== null)
+    query.set("isChiropractic", String(params.isChiropractic));
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<CustomDiagnosticDto>>(
+    `/api/v1/administration/custom-diagnostics?${query.toString()}`,
+  );
+}
+
+function customDiagnosticBody(input: CustomDiagnosticInput): Record<string, unknown> {
+  return {
+    code: input.code,
+    description: input.description ?? null,
+    longDescription: input.longDescription ?? null,
+    isChiropractic: input.isChiropractic,
+  };
+}
+
+export async function createCustomDiagnostic(input: CreateCustomDiagnosticInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/custom-diagnostics", {
+    method: "POST",
+    body: JSON.stringify(customDiagnosticBody(input)),
+  });
+}
+
+export async function updateCustomDiagnostic(input: UpdateCustomDiagnosticInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/custom-diagnostics/${encodeURIComponent(input.diagnosticId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...customDiagnosticBody(input), id: input.diagnosticId, isActive: input.isActive }),
+  });
+}
+
+export async function deleteCustomDiagnostic(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/custom-diagnostics/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+// ─── Procedure Categories (tenant-scoped CRUD) ─────────────────────────
+
+export type ProcedureCategoryDto = {
+  id: string;
+  name: string;
+  description?: string | null;
+  isImaging: boolean;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListProcedureCategoriesParams = {
+  search?: string;
+  isActive?: boolean | null;
+  isImaging?: boolean | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type ProcedureCategoryInput = {
+  name: string;
+  description?: string | null;
+  isImaging: boolean;
+};
+
+export type CreateProcedureCategoryInput = ProcedureCategoryInput;
+export type UpdateProcedureCategoryInput = ProcedureCategoryInput & { categoryId: string; isActive: boolean };
+
+export function listProcedureCategories(
+  params: ListProcedureCategoriesParams = {},
+): Promise<PagedResponse<ProcedureCategoryDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  if (params.isImaging !== undefined && params.isImaging !== null)
+    query.set("isImaging", String(params.isImaging));
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<ProcedureCategoryDto>>(
+    `/api/v1/administration/procedure-categories?${query.toString()}`,
+  );
+}
+
+function procedureCategoryBody(input: ProcedureCategoryInput): Record<string, unknown> {
+  return {
+    name: input.name,
+    description: input.description ?? null,
+    isImaging: input.isImaging,
+  };
+}
+
+export async function createProcedureCategory(input: CreateProcedureCategoryInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/procedure-categories", {
+    method: "POST",
+    body: JSON.stringify(procedureCategoryBody(input)),
+  });
+}
+
+export async function updateProcedureCategory(input: UpdateProcedureCategoryInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/procedure-categories/${encodeURIComponent(input.categoryId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...procedureCategoryBody(input), id: input.categoryId, isActive: input.isActive }),
+  });
+}
+
+export async function deleteProcedureCategory(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/procedure-categories/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+/** Active procedure categories as combobox options — for the code's category picker. */
+export function useProcedureCategoryOptions(): ComboboxOption[] | undefined {
+  const { data } = useQuery({
+    queryKey: ["administration.procedureCategoryOptions"],
+    queryFn: () => listProcedureCategories({ isActive: true, pageSize: 200, sortBy: "name", sortDir: "asc" }),
+    staleTime: 5 * 60 * 1000,
+  });
+  return data ? data.items.map((c) => ({ value: c.id, label: c.name })) : undefined;
+}
+
+// ─── Procedure Codes (tenant-scoped CRUD) ──────────────────────────────
+
+export type ProcedureCodeDto = {
+  id: string;
+  code: string;
+  name?: string | null;
+  description?: string | null;
+  procedureCategoryId?: string | null;
+  procedureCategoryName?: string | null;
+  codeSource?: string | null;
+  macroText?: string | null;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListProcedureCodesParams = {
+  search?: string;
+  isActive?: boolean | null;
+  procedureCategoryId?: string | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type ProcedureCodeInput = {
+  code: string;
+  name?: string | null;
+  description?: string | null;
+  procedureCategoryId?: string | null;
+  codeSource?: string | null;
+  macroText?: string | null;
+};
+
+export type CreateProcedureCodeInput = ProcedureCodeInput;
+export type UpdateProcedureCodeInput = ProcedureCodeInput & { codeId: string; isActive: boolean };
+
+export function listProcedureCodes(
+  params: ListProcedureCodesParams = {},
+): Promise<PagedResponse<ProcedureCodeDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  if (params.procedureCategoryId) query.set("procedureCategoryId", params.procedureCategoryId);
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<ProcedureCodeDto>>(
+    `/api/v1/administration/procedure-codes?${query.toString()}`,
+  );
+}
+
+function procedureCodeBody(input: ProcedureCodeInput): Record<string, unknown> {
+  return {
+    code: input.code,
+    name: input.name ?? null,
+    description: input.description ?? null,
+    procedureCategoryId: input.procedureCategoryId ?? null,
+    codeSource: input.codeSource ?? null,
+    macroText: input.macroText ?? null,
+  };
+}
+
+export async function createProcedureCode(input: CreateProcedureCodeInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/procedure-codes", {
+    method: "POST",
+    body: JSON.stringify(procedureCodeBody(input)),
+  });
+}
+
+export async function updateProcedureCode(input: UpdateProcedureCodeInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/procedure-codes/${encodeURIComponent(input.codeId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...procedureCodeBody(input), id: input.codeId, isActive: input.isActive }),
+  });
+}
+
+export async function deleteProcedureCode(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/procedure-codes/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}

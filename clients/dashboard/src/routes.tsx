@@ -129,6 +129,22 @@ const InsuranceCompaniesPage = lazyNamed(
   () => import("@/pages/administration/insurance-companies"),
   "InsuranceCompaniesPage",
 );
+const DiagnosticCategoriesPage = lazyNamed(
+  () => import("@/pages/administration/diagnostic-categories"),
+  "DiagnosticCategoriesPage",
+);
+const CustomDiagnosticsPage = lazyNamed(
+  () => import("@/pages/administration/custom-diagnostics"),
+  "CustomDiagnosticsPage",
+);
+const ProcedureCategoriesPage = lazyNamed(
+  () => import("@/pages/administration/procedure-categories"),
+  "ProcedureCategoriesPage",
+);
+const ProcedureCodesPage = lazyNamed(
+  () => import("@/pages/administration/procedure-codes"),
+  "ProcedureCodesPage",
+);
 const PatientsListPage = lazyNamed(() => import("@/pages/patients/list"), "PatientsListPage");
 const PatientDetailPage = lazyNamed(
   () => import("@/pages/patients/patient-detail"),
@@ -240,6 +256,10 @@ export const router = createBrowserRouter([
           { path: "administration/providers", element: withSuspense(<ProvidersPage />) },
           { path: "administration/insurance-types", element: withSuspense(<InsuranceTypesPage />) },
           { path: "administration/insurance-companies", element: withSuspense(<InsuranceCompaniesPage />) },
+          { path: "administration/diagnostic-categories", element: withSuspense(<DiagnosticCategoriesPage />) },
+          { path: "administration/custom-diagnostics", element: withSuspense(<CustomDiagnosticsPage />) },
+          { path: "administration/procedure-categories", element: withSuspense(<ProcedureCategoriesPage />) },
+          { path: "administration/procedure-codes", element: withSuspense(<ProcedureCodesPage />) },
           { path: "identity", element: <Navigate to="/identity/users" replace /> },
           { path: "identity/users", element: withSuspense(<UsersPage />) },
           { path: "identity/users/:userId", element: withSuspense(<UserDetailPage />) },
