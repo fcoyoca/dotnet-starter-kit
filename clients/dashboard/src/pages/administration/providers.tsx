@@ -61,20 +61,29 @@ function fullName(p: ProviderDto): string {
   return [p.prefix, p.firstName, p.lastName, p.suffix].filter(Boolean).join(" ");
 }
 
-/** Active users as combobox options for the optional provider→user link. */
-function useUserOptions(): ComboboxOption[] {
-  const { data } = useQuery({
+/**
+ * Tenant users as combobox options for the optional provider→user link. Loads the
+ * tenant's users (no active-only filter, so a provider can be linked to any account)
+ * and exposes load/error state so the picker never shows a silent empty box.
+ *
+ * PageSize is capped at 100 — the Identity SearchUsers endpoint rejects anything
+ * larger (PagedQueryValidator: PageSize InclusiveBetween(1, 100)) with a 400, which
+ * is what made an over-large request come back empty.
+ */
+function useUserOptions(): { options: ComboboxOption[]; isLoading: boolean; isError: boolean } {
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["administration", "providerUserOptions"],
-    queryFn: () => searchUsers({ pageNumber: 1, pageSize: 200, isActive: true }),
+    queryFn: () => searchUsers({ pageNumber: 1, pageSize: 100, sort: "userName asc" }),
     staleTime: 5 * 60 * 1000,
   });
-  return (data?.items ?? [])
+  const options = (data?.items ?? [])
     .filter((u): u is typeof u & { id: string } => Boolean(u.id))
     .map((u) => ({
       value: u.id,
       label: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.userName || u.email || u.id,
       hint: u.email ?? undefined,
     }));
+  return { options, isLoading, isError };
 }
 
 export function ProvidersPage() {
@@ -300,7 +309,7 @@ function ProviderEditorDialog({ state, onClose }: { state: EditorState; onClose:
   const provider = state.mode === "edit" ? state.provider : undefined;
   const queryClient = useQueryClient();
   const clinicOptions = useClinicOptions() ?? [];
-  const userOptions = useUserOptions();
+  const { options: userOptions, isLoading: usersLoading, isError: usersError } = useUserOptions();
 
   const initial = useMemo(
     () => ({
@@ -426,7 +435,19 @@ function ProviderEditorDialog({ state, onClose }: { state: EditorState; onClose:
               />
             </Field>
 
-            <Field id="prov-user" label="Linked user account" hint="Optional — link this provider to a login account.">
+            <Field
+              id="prov-user"
+              label="Linked user account"
+              hint={
+                usersError
+                  ? "Couldn't load users — you may not have permission to view them."
+                  : usersLoading
+                    ? "Loading users…"
+                    : userOptions.length === 0
+                      ? "No user accounts found in this organization yet."
+                      : "Optional — link this provider to a login account."
+              }
+            >
               <Combobox
                 id="prov-user"
                 label="Linked user account"
@@ -434,10 +455,11 @@ function ProviderEditorDialog({ state, onClose }: { state: EditorState; onClose:
                 searchable
                 clearable
                 emptyOptionLabel="No linked account"
-                placeholder="Select a user…"
+                placeholder={usersLoading ? "Loading users…" : "Select a user…"}
                 value={form.userId}
                 onChange={(v) => set("userId", v)}
                 options={userOptions}
+                disabled={usersLoading}
               />
             </Field>
 
