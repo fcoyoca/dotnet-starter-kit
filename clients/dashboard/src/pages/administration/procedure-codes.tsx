@@ -63,10 +63,14 @@ type EditorState =
   | { mode: "delete"; code: ProcedureCodeDto };
 
 export function ProcedureCodesPage() {
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
   const [editor, setEditor] = useState<EditorState>({ mode: "closed" });
+
+  const categoryOptions = useProcedureCategoryOptions();
+  const categoryName = categoryOptions?.find((o) => o.value === categoryId)?.label ?? "";
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -76,10 +80,25 @@ export function ProcedureCodesPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Reset paging/search when switching categories.
+  useEffect(() => {
+    setPageNumber(1);
+    setSearch("");
+    setDebouncedSearch("");
+  }, [categoryId]);
+
   const query = useQuery({
-    queryKey: ["administration", "procedure-codes", { search: debouncedSearch, pageNumber, pageSize: PAGE_SIZE }],
+    queryKey: ["administration", "procedure-codes", { categoryId, search: debouncedSearch, pageNumber, pageSize: PAGE_SIZE }],
     queryFn: () =>
-      listProcedureCodes({ search: debouncedSearch || undefined, pageNumber, pageSize: PAGE_SIZE, sortBy: "code", sortDir: "asc" }),
+      listProcedureCodes({
+        procedureCategoryId: categoryId,
+        search: debouncedSearch || undefined,
+        pageNumber,
+        pageSize: PAGE_SIZE,
+        sortBy: "code",
+        sortDir: "asc",
+      }),
+    enabled: !!categoryId,
     placeholderData: keepPreviousData,
   });
 
@@ -92,12 +111,13 @@ export function ProcedureCodesPage() {
       <EntityPageHeader
         icon={ListChecks}
         title="Procedure Codes"
-        total={data?.totalCount ?? null}
+        total={categoryId ? (data?.totalCount ?? null) : null}
         unit="code"
-        description="Procedure (CPT/HCPCS) codes your organization bills, optionally grouped under a category."
+        description="Procedure (CPT/HCPCS) codes live within a procedure category. Pick a category to view and manage its codes."
       >
         <Button
           onClick={() => setEditor({ mode: "create" })}
+          disabled={!categoryId}
           className="h-9 flex-1 gap-1.5 rounded-lg px-4 text-[13px] font-semibold sm:flex-none"
         >
           <Plus className="size-4" />
@@ -105,74 +125,100 @@ export function ProcedureCodesPage() {
         </Button>
       </EntityPageHeader>
 
-      <EntitySearch value={search} onChange={setSearch} placeholder="Search by code, name or description…" />
+      <div className="max-w-md">
+        <Field id="pc-category-select" label="Procedure category" required>
+          <Combobox
+            id="pc-category-select"
+            label="Procedure category"
+            variant="field"
+            searchable
+            emptyOptionLabel="Select a category…"
+            placeholder="Select a category…"
+            value={categoryId}
+            onChange={setCategoryId}
+            options={categoryOptions ?? []}
+          />
+        </Field>
+      </div>
 
-      {query.isLoading && items.length === 0 ? (
-        <EntityListLoading desktopColumns="grid-cols-[140px_1fr_150px_90px_24px]" />
-      ) : items.length === 0 ? (
+      {!categoryId ? (
         <EntityEmpty
-          icon={searchActive ? Search : ListChecks}
-          title={searchActive ? "No procedure codes found" : "No procedure codes yet"}
-          body={
-            searchActive
-              ? `Nothing matches "${debouncedSearch}". Try a different term or clear the search.`
-              : "Add your first procedure code."
-          }
-          action={
-            searchActive ? (
-              <Button variant="outline" onClick={() => setSearch("")} className="h-9 rounded-lg px-4 text-[13px]">
-                Clear search
-              </Button>
-            ) : (
-              <Button onClick={() => setEditor({ mode: "create" })} className="h-9 rounded-lg px-4 text-[13px]">
-                <Plus className="mr-1.5 size-4" />
-                Add code
-              </Button>
-            )
-          }
+          icon={ListChecks}
+          title="Select a procedure category"
+          body="Choose a procedure category above to view and add the codes that belong to it."
         />
       ) : (
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-[12px] font-medium text-[var(--color-muted-foreground)]">
-              {data?.totalCount ?? 0} code{(data?.totalCount ?? 0) !== 1 ? "s" : ""} found
-            </p>
-          </div>
+        <>
+          <EntitySearch value={search} onChange={setSearch} placeholder={`Search codes in ${categoryName}…`} />
 
-          <div className="space-y-2 md:hidden">
-            {items.map((c) => (
-              <MobileCard key={c.id} code={c} onEdit={() => setEditor({ mode: "edit", code: c })} />
-            ))}
-          </div>
+          {query.isLoading && items.length === 0 ? (
+            <EntityListLoading desktopColumns="grid-cols-[140px_1fr_130px_90px_24px]" />
+          ) : items.length === 0 ? (
+            <EntityEmpty
+              icon={searchActive ? Search : ListChecks}
+              title={searchActive ? "No procedure codes found" : `No codes in ${categoryName} yet`}
+              body={
+                searchActive
+                  ? `Nothing matches "${debouncedSearch}". Try a different term or clear the search.`
+                  : "Add the first procedure code to this category."
+              }
+              action={
+                searchActive ? (
+                  <Button variant="outline" onClick={() => setSearch("")} className="h-9 rounded-lg px-4 text-[13px]">
+                    Clear search
+                  </Button>
+                ) : (
+                  <Button onClick={() => setEditor({ mode: "create" })} className="h-9 rounded-lg px-4 text-[13px]">
+                    <Plus className="mr-1.5 size-4" />
+                    Add code
+                  </Button>
+                )
+              }
+            />
+          ) : (
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[12px] font-medium text-[var(--color-muted-foreground)]">
+                  {data?.totalCount ?? 0} code{(data?.totalCount ?? 0) !== 1 ? "s" : ""} in {categoryName}
+                </p>
+              </div>
 
-          <EntityListCard className="hidden md:block">
-            <EntityListHeader className="grid-cols-[140px_1fr_150px_90px_24px]">
-              <span>Code</span>
-              <span>Name</span>
-              <span>Category</span>
-              <span>Status</span>
-              <span />
-            </EntityListHeader>
-            {items.map((c, i) => (
-              <DesktopRow
-                key={c.id}
-                code={c}
-                isLast={i === items.length - 1}
-                onEdit={() => setEditor({ mode: "edit", code: c })}
-                onDelete={() => setEditor({ mode: "delete", code: c })}
+              <div className="space-y-2 md:hidden">
+                {items.map((c) => (
+                  <MobileCard key={c.id} code={c} onEdit={() => setEditor({ mode: "edit", code: c })} />
+                ))}
+              </div>
+
+              <EntityListCard className="hidden md:block">
+                <EntityListHeader className="grid-cols-[140px_1fr_130px_90px_24px]">
+                  <span>Code</span>
+                  <span>Name</span>
+                  <span>Source</span>
+                  <span>Status</span>
+                  <span />
+                </EntityListHeader>
+                {items.map((c, i) => (
+                  <DesktopRow
+                    key={c.id}
+                    code={c}
+                    isLast={i === items.length - 1}
+                    onEdit={() => setEditor({ mode: "edit", code: c })}
+                    onDelete={() => setEditor({ mode: "delete", code: c })}
+                  />
+                ))}
+              </EntityListCard>
+
+              <EntityPager
+                page={data?.pageNumber ?? 1}
+                totalPages={data?.totalPages ?? 1}
+                hasPrev={!!data?.hasPrevious}
+                hasNext={!!data?.hasNext}
+                onPrev={() => setPageNumber((p) => Math.max(1, p - 1))}
+                onNext={() => setPageNumber((p) => p + 1)}
               />
-            ))}
-          </EntityListCard>
-
-          <EntityPager
-            page={data?.pageNumber ?? 1}
-            totalPages={data?.totalPages ?? 1}
-            hasPrev={!!data?.hasPrevious}
-            hasNext={!!data?.hasNext}
-            onPrev={() => setPageNumber((p) => Math.max(1, p - 1))}
-            onNext={() => setPageNumber((p) => p + 1)}
-          />
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       {query.isError && (
@@ -184,8 +230,17 @@ export function ProcedureCodesPage() {
         </div>
       )}
 
-      <ProcedureCodeEditorDialog state={editor} onClose={() => setEditor({ mode: "closed" })} />
-      <DeleteProcedureCodeDialog state={editor} onClose={() => setEditor({ mode: "closed" })} />
+      {categoryId && (
+        <>
+          <ProcedureCodeEditorDialog
+            state={editor}
+            categoryId={categoryId}
+            categoryName={categoryName}
+            onClose={() => setEditor({ mode: "closed" })}
+          />
+          <DeleteProcedureCodeDialog state={editor} onClose={() => setEditor({ mode: "closed" })} />
+        </>
+      )}
     </div>
   );
 }
@@ -230,16 +285,14 @@ function DesktopRow({
   onDelete: () => void;
 }) {
   return (
-    <EntityListRow className="grid-cols-[140px_1fr_150px_90px_24px]" isLast={isLast}>
+    <EntityListRow className="grid-cols-[140px_1fr_130px_90px_24px]" isLast={isLast}>
       <div className="min-w-0 truncate text-[14px] font-medium text-[var(--color-foreground)] transition-colors group-hover:text-[var(--color-primary)]">
         {code.code}
       </div>
       <div className="min-w-0 truncate text-[12px] text-[var(--color-muted-foreground)]">
         {code.name ?? code.description ?? "—"}
       </div>
-      <div className="min-w-0 truncate text-[12px] text-[var(--color-muted-foreground)]">
-        {code.procedureCategoryName ?? "—"}
-      </div>
+      <div className="min-w-0 truncate text-[12px] text-[var(--color-muted-foreground)]">{code.codeSource ?? "—"}</div>
       <div className="flex items-center">
         <EntityStatusBadge tone={code.isActive ? "success" : "default"}>
           {code.isActive ? "Active" : "Inactive"}
@@ -268,18 +321,26 @@ function DesktopRow({
   );
 }
 
-function ProcedureCodeEditorDialog({ state, onClose }: { state: EditorState; onClose: () => void }) {
+function ProcedureCodeEditorDialog({
+  state,
+  categoryId,
+  categoryName,
+  onClose,
+}: {
+  state: EditorState;
+  categoryId: string;
+  categoryName: string;
+  onClose: () => void;
+}) {
   const isOpen = state.mode === "create" || state.mode === "edit";
   const code = state.mode === "edit" ? state.code : undefined;
   const queryClient = useQueryClient();
-  const categoryOptions = useProcedureCategoryOptions() ?? [];
 
   const initial = useMemo(
     () => ({
       code: code?.code ?? "",
       name: code?.name ?? "",
       description: code?.description ?? "",
-      procedureCategoryId: code?.procedureCategoryId ?? null,
       codeSource: code?.codeSource ?? "",
       macroText: code?.macroText ?? "",
       isActive: code?.isActive ?? true,
@@ -325,9 +386,9 @@ function ProcedureCodeEditorDialog({ state, onClose }: { state: EditorState; onC
     if (!trimmedCode) return;
     const payload = {
       code: trimmedCode,
+      procedureCategoryId: code?.procedureCategoryId ?? categoryId,
       name: form.name.trim() || null,
       description: form.description.trim() || null,
-      procedureCategoryId: form.procedureCategoryId,
       codeSource: form.codeSource.trim() || null,
       macroText: form.macroText.trim() || null,
     };
@@ -345,7 +406,7 @@ function ProcedureCodeEditorDialog({ state, onClose }: { state: EditorState; onC
           <DialogHeader>
             <DialogTitle>{code ? "Edit procedure code" : "Add a procedure code"}</DialogTitle>
             <DialogDescription>
-              {code ? `Update details for ${code.code}.` : "Add a procedure code to your organization."}
+              {code ? `Update details for ${code.code}.` : `Add a procedure code to ${categoryName}.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -383,31 +444,15 @@ function ProcedureCodeEditorDialog({ state, onClose }: { state: EditorState; onC
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field id="pc-category" label="Category">
-                <Combobox
-                  id="pc-category"
-                  label="Category"
-                  variant="field"
-                  searchable
-                  clearable
-                  emptyOptionLabel="No category"
-                  placeholder="Select a category…"
-                  value={form.procedureCategoryId}
-                  onChange={(v) => set("procedureCategoryId", v)}
-                  options={categoryOptions}
-                />
-              </Field>
-              <Field id="pc-source" label="Code source" hint="e.g. CPT, HCPCS.">
-                <Input
-                  id="pc-source"
-                  value={form.codeSource}
-                  onChange={(e) => set("codeSource", e.target.value)}
-                  placeholder="CPT"
-                  maxLength={50}
-                />
-              </Field>
-            </div>
+            <Field id="pc-source" label="Code source" hint="e.g. CPT, HCPCS.">
+              <Input
+                id="pc-source"
+                value={form.codeSource}
+                onChange={(e) => set("codeSource", e.target.value)}
+                placeholder="CPT"
+                maxLength={50}
+              />
+            </Field>
 
             <Field id="pc-macro" label="Macro text" hint="Boilerplate inserted when this code is selected.">
               <textarea

@@ -783,7 +783,7 @@ export type ProcedureCodeDto = {
   code: string;
   name?: string | null;
   description?: string | null;
-  procedureCategoryId?: string | null;
+  procedureCategoryId: string;
   procedureCategoryName?: string | null;
   codeSource?: string | null;
   macroText?: string | null;
@@ -804,9 +804,9 @@ export type ListProcedureCodesParams = {
 
 export type ProcedureCodeInput = {
   code: string;
+  procedureCategoryId: string;
   name?: string | null;
   description?: string | null;
-  procedureCategoryId?: string | null;
   codeSource?: string | null;
   macroText?: string | null;
 };
@@ -834,9 +834,9 @@ export function listProcedureCodes(
 function procedureCodeBody(input: ProcedureCodeInput): Record<string, unknown> {
   return {
     code: input.code,
+    procedureCategoryId: input.procedureCategoryId,
     name: input.name ?? null,
     description: input.description ?? null,
-    procedureCategoryId: input.procedureCategoryId ?? null,
     codeSource: input.codeSource ?? null,
     macroText: input.macroText ?? null,
   };
