@@ -24,6 +24,7 @@ public sealed class AdministrationDbContext : BaseDbContext
     public DbSet<Provider> Providers => Set<Provider>();
     public DbSet<InsuranceType> InsuranceTypes => Set<InsuranceType>();
     public DbSet<InsuranceCompany> InsuranceCompanies => Set<InsuranceCompany>();
+    public DbSet<DiagnosticCategory> DiagnosticCategories => Set<DiagnosticCategory>();
     public DbSet<Race> Races => Set<Race>();
     public DbSet<Ethnicity> Ethnicities => Set<Ethnicity>();
     public DbSet<Language> Languages => Set<Language>();

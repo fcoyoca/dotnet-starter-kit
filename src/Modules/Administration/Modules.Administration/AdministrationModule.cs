@@ -39,6 +39,11 @@ using FSH.Modules.Administration.Features.v1.InsuranceCompanies.DeleteInsuranceC
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.GetInsuranceCompanyById;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.ListInsuranceCompanies;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.UpdateInsuranceCompany;
+using FSH.Modules.Administration.Features.v1.DiagnosticCategories.CreateDiagnosticCategory;
+using FSH.Modules.Administration.Features.v1.DiagnosticCategories.DeleteDiagnosticCategory;
+using FSH.Modules.Administration.Features.v1.DiagnosticCategories.GetDiagnosticCategoryById;
+using FSH.Modules.Administration.Features.v1.DiagnosticCategories.ListDiagnosticCategories;
+using FSH.Modules.Administration.Features.v1.DiagnosticCategories.UpdateDiagnosticCategory;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.CreatePreferredContactMethod;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.DeletePreferredContactMethod;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.GetPreferredContactMethodById;
@@ -133,6 +138,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetInsuranceCompanyByIdEndpoint();
         group.MapUpdateInsuranceCompanyEndpoint();
         group.MapDeleteInsuranceCompanyEndpoint();
+
+        group.MapCreateDiagnosticCategoryEndpoint();
+        group.MapListDiagnosticCategoriesEndpoint();
+        group.MapGetDiagnosticCategoryByIdEndpoint();
+        group.MapUpdateDiagnosticCategoryEndpoint();
+        group.MapDeleteDiagnosticCategoryEndpoint();
 
         group.MapCreateRaceEndpoint();
         group.MapListRacesEndpoint();
