@@ -67,6 +67,15 @@ public static class AdministrationPermissions
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
+    public static class ProcedureCategories
+    {
+        public const string Resource = "Administration.ProcedureCategories";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
     public static class Races
     {
         public const string Resource = "Administration.Races";
@@ -157,6 +166,11 @@ public static class AdministrationPermissions
         new("Create Custom Diagnostics", ActionConstants.Create, CustomDiagnostics.Resource),
         new("Update Custom Diagnostics", ActionConstants.Update, CustomDiagnostics.Resource),
         new("Delete Custom Diagnostics", ActionConstants.Delete, CustomDiagnostics.Resource),
+
+        new("View Procedure Categories",   ActionConstants.View,   ProcedureCategories.Resource, IsBasic: true),
+        new("Create Procedure Categories", ActionConstants.Create, ProcedureCategories.Resource),
+        new("Update Procedure Categories", ActionConstants.Update, ProcedureCategories.Resource),
+        new("Delete Procedure Categories", ActionConstants.Delete, ProcedureCategories.Resource),
 
         new("View Races",   ActionConstants.View,   Races.Resource, IsBasic: true),
         new("Create Races", ActionConstants.Create, Races.Resource),

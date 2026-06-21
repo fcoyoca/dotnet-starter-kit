@@ -24,6 +24,11 @@ using FSH.Modules.Administration.Features.v1.Languages.DeleteLanguage;
 using FSH.Modules.Administration.Features.v1.Languages.GetLanguageById;
 using FSH.Modules.Administration.Features.v1.Languages.ListLanguages;
 using FSH.Modules.Administration.Features.v1.Languages.UpdateLanguage;
+using FSH.Modules.Administration.Features.v1.ProcedureCategories.CreateProcedureCategory;
+using FSH.Modules.Administration.Features.v1.ProcedureCategories.DeleteProcedureCategory;
+using FSH.Modules.Administration.Features.v1.ProcedureCategories.GetProcedureCategoryById;
+using FSH.Modules.Administration.Features.v1.ProcedureCategories.ListProcedureCategories;
+using FSH.Modules.Administration.Features.v1.ProcedureCategories.UpdateProcedureCategory;
 using FSH.Modules.Administration.Features.v1.Providers.CreateProvider;
 using FSH.Modules.Administration.Features.v1.Providers.DeleteProvider;
 using FSH.Modules.Administration.Features.v1.Providers.GetProviderById;
@@ -155,6 +160,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetCustomDiagnosticByIdEndpoint();
         group.MapUpdateCustomDiagnosticEndpoint();
         group.MapDeleteCustomDiagnosticEndpoint();
+
+        group.MapCreateProcedureCategoryEndpoint();
+        group.MapListProcedureCategoriesEndpoint();
+        group.MapGetProcedureCategoryByIdEndpoint();
+        group.MapUpdateProcedureCategoryEndpoint();
+        group.MapDeleteProcedureCategoryEndpoint();
 
         group.MapCreateRaceEndpoint();
         group.MapListRacesEndpoint();
