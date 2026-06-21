@@ -24,6 +24,11 @@ using FSH.Modules.Administration.Features.v1.Languages.DeleteLanguage;
 using FSH.Modules.Administration.Features.v1.Languages.GetLanguageById;
 using FSH.Modules.Administration.Features.v1.Languages.ListLanguages;
 using FSH.Modules.Administration.Features.v1.Languages.UpdateLanguage;
+using FSH.Modules.Administration.Features.v1.ProcedureCodes.CreateProcedureCode;
+using FSH.Modules.Administration.Features.v1.ProcedureCodes.DeleteProcedureCode;
+using FSH.Modules.Administration.Features.v1.ProcedureCodes.GetProcedureCodeById;
+using FSH.Modules.Administration.Features.v1.ProcedureCodes.ListProcedureCodes;
+using FSH.Modules.Administration.Features.v1.ProcedureCodes.UpdateProcedureCode;
 using FSH.Modules.Administration.Features.v1.ProcedureCategories.CreateProcedureCategory;
 using FSH.Modules.Administration.Features.v1.ProcedureCategories.DeleteProcedureCategory;
 using FSH.Modules.Administration.Features.v1.ProcedureCategories.GetProcedureCategoryById;
@@ -166,6 +171,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetProcedureCategoryByIdEndpoint();
         group.MapUpdateProcedureCategoryEndpoint();
         group.MapDeleteProcedureCategoryEndpoint();
+
+        group.MapCreateProcedureCodeEndpoint();
+        group.MapListProcedureCodesEndpoint();
+        group.MapGetProcedureCodeByIdEndpoint();
+        group.MapUpdateProcedureCodeEndpoint();
+        group.MapDeleteProcedureCodeEndpoint();
 
         group.MapCreateRaceEndpoint();
         group.MapListRacesEndpoint();
