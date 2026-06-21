@@ -24,6 +24,11 @@ using FSH.Modules.Administration.Features.v1.Languages.DeleteLanguage;
 using FSH.Modules.Administration.Features.v1.Languages.GetLanguageById;
 using FSH.Modules.Administration.Features.v1.Languages.ListLanguages;
 using FSH.Modules.Administration.Features.v1.Languages.UpdateLanguage;
+using FSH.Modules.Administration.Features.v1.Providers.CreateProvider;
+using FSH.Modules.Administration.Features.v1.Providers.DeleteProvider;
+using FSH.Modules.Administration.Features.v1.Providers.GetProviderById;
+using FSH.Modules.Administration.Features.v1.Providers.ListProviders;
+using FSH.Modules.Administration.Features.v1.Providers.UpdateProvider;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.CreatePreferredContactMethod;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.DeletePreferredContactMethod;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.GetPreferredContactMethodById;
@@ -100,6 +105,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetDepartmentByIdEndpoint();
         group.MapUpdateDepartmentEndpoint();
         group.MapDeleteDepartmentEndpoint();
+
+        group.MapCreateProviderEndpoint();
+        group.MapListProvidersEndpoint();
+        group.MapGetProviderByIdEndpoint();
+        group.MapUpdateProviderEndpoint();
+        group.MapDeleteProviderEndpoint();
 
         group.MapCreateRaceEndpoint();
         group.MapListRacesEndpoint();
