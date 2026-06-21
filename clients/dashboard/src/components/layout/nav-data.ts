@@ -157,6 +157,12 @@ export const sections: NavSection[] = [
         icon: ListChecks,
         perm: "Permissions.Administration.ProcedureCodes.View",
       },
+      {
+        to: "/administration/code-sources",
+        label: "Code Sources",
+        icon: Tags,
+        perm: "Permissions.Administration.CodeSources.View",
+      },
     ],
   },
   {

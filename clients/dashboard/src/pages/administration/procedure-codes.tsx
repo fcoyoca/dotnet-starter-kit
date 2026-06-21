@@ -12,6 +12,7 @@ import {
   deleteProcedureCode,
   listProcedureCodes,
   updateProcedureCode,
+  useCodeSourceOptions,
   useProcedureCategoryOptions,
   type ProcedureCodeDto,
   type CreateProcedureCodeInput,
@@ -292,7 +293,7 @@ function DesktopRow({
       <div className="min-w-0 truncate text-[12px] text-[var(--color-muted-foreground)]">
         {code.name ?? code.description ?? "—"}
       </div>
-      <div className="min-w-0 truncate text-[12px] text-[var(--color-muted-foreground)]">{code.codeSource ?? "—"}</div>
+      <div className="min-w-0 truncate text-[12px] text-[var(--color-muted-foreground)]">{code.codeSourceName ?? "—"}</div>
       <div className="flex items-center">
         <EntityStatusBadge tone={code.isActive ? "success" : "default"}>
           {code.isActive ? "Active" : "Inactive"}
@@ -341,13 +342,14 @@ function ProcedureCodeEditorDialog({
       code: code?.code ?? "",
       name: code?.name ?? "",
       description: code?.description ?? "",
-      codeSource: code?.codeSource ?? "",
+      codeSourceId: code?.codeSourceId ?? null,
       macroText: code?.macroText ?? "",
       isActive: code?.isActive ?? true,
     }),
     [code],
   );
 
+  const codeSourceOptions = useCodeSourceOptions() ?? [];
   const [form, setForm] = useState(initial);
   useEffect(() => {
     if (isOpen) setForm(initial);
@@ -389,7 +391,7 @@ function ProcedureCodeEditorDialog({
       procedureCategoryId: code?.procedureCategoryId ?? categoryId,
       name: form.name.trim() || null,
       description: form.description.trim() || null,
-      codeSource: form.codeSource.trim() || null,
+      codeSourceId: form.codeSourceId,
       macroText: form.macroText.trim() || null,
     };
     if (state.mode === "edit" && code) {
@@ -444,13 +446,18 @@ function ProcedureCodeEditorDialog({
               />
             </Field>
 
-            <Field id="pc-source" label="Code source" hint="e.g. CPT, HCPCS.">
-              <Input
+            <Field id="pc-source" label="Code source" hint="The code system, e.g. CPT or HCPCS.">
+              <Combobox
                 id="pc-source"
-                value={form.codeSource}
-                onChange={(e) => set("codeSource", e.target.value)}
-                placeholder="CPT"
-                maxLength={50}
+                label="Code source"
+                variant="field"
+                searchable
+                clearable
+                emptyOptionLabel="No code source"
+                placeholder="Select a code source…"
+                value={form.codeSourceId != null ? String(form.codeSourceId) : null}
+                onChange={(v) => set("codeSourceId", v ? Number(v) : null)}
+                options={codeSourceOptions}
               />
             </Field>
 

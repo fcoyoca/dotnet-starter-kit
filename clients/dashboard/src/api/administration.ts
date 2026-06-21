@@ -72,6 +72,42 @@ export function useReferralTypeOptions(): ComboboxOption[] | undefined {
   return data ? toOptions(data) : undefined;
 }
 
+// ─── Code Sources (global lookup CRUD) ─────────────────────────────────
+
+export type CodeSourceDto = { id: number; name: string; isActive: boolean };
+
+export function listCodeSources(isActive?: boolean): Promise<CodeSourceDto[]> {
+  const qs = isActive === undefined ? "" : `?isActive=${isActive}`;
+  return apiFetch<CodeSourceDto[]>(`/api/v1/administration/code-sources${qs}`);
+}
+
+export async function createCodeSource(name: string): Promise<number> {
+  return apiFetch<number>("/api/v1/administration/code-sources", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function updateCodeSource(input: { id: number; name: string; isActive: boolean }): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/code-sources/${input.id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteCodeSource(id: number): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/code-sources/${id}`, { method: "DELETE" });
+}
+
+export function useCodeSourceOptions(): ComboboxOption[] | undefined {
+  const { data } = useQuery({
+    queryKey: ["administration.codeSources"],
+    queryFn: () => fetchLookup("code-sources"),
+    staleTime: 10 * 60 * 1000,
+  });
+  return data ? toOptions(data) : undefined;
+}
+
 // ─── Clinics (tenant-scoped CRUD) ──────────────────────────────────────
 
 export type ClinicDto = {
@@ -775,7 +811,8 @@ export type ProcedureCodeDto = {
   description?: string | null;
   procedureCategoryId: string;
   procedureCategoryName?: string | null;
-  codeSource?: string | null;
+  codeSourceId?: number | null;
+  codeSourceName?: string | null;
   macroText?: string | null;
   isActive: boolean;
   createdAtUtc: string;
@@ -797,7 +834,7 @@ export type ProcedureCodeInput = {
   procedureCategoryId: string;
   name?: string | null;
   description?: string | null;
-  codeSource?: string | null;
+  codeSourceId?: number | null;
   macroText?: string | null;
 };
 
@@ -827,7 +864,7 @@ function procedureCodeBody(input: ProcedureCodeInput): Record<string, unknown> {
     procedureCategoryId: input.procedureCategoryId,
     name: input.name ?? null,
     description: input.description ?? null,
-    codeSource: input.codeSource ?? null,
+    codeSourceId: input.codeSourceId ?? null,
     macroText: input.macroText ?? null,
   };
 }
