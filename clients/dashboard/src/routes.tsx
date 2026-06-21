@@ -121,6 +121,14 @@ const ProvidersPage = lazyNamed(
   () => import("@/pages/administration/providers"),
   "ProvidersPage",
 );
+const InsuranceTypesPage = lazyNamed(
+  () => import("@/pages/administration/insurance-types"),
+  "InsuranceTypesPage",
+);
+const InsuranceCompaniesPage = lazyNamed(
+  () => import("@/pages/administration/insurance-companies"),
+  "InsuranceCompaniesPage",
+);
 const PatientsListPage = lazyNamed(() => import("@/pages/patients/list"), "PatientsListPage");
 const PatientDetailPage = lazyNamed(
   () => import("@/pages/patients/patient-detail"),
@@ -230,6 +238,8 @@ export const router = createBrowserRouter([
           { path: "administration/clinics", element: withSuspense(<ClinicsPage />) },
           { path: "administration/departments", element: withSuspense(<DepartmentsPage />) },
           { path: "administration/providers", element: withSuspense(<ProvidersPage />) },
+          { path: "administration/insurance-types", element: withSuspense(<InsuranceTypesPage />) },
+          { path: "administration/insurance-companies", element: withSuspense(<InsuranceCompaniesPage />) },
           { path: "identity", element: <Navigate to="/identity/users" replace /> },
           { path: "identity/users", element: withSuspense(<UsersPage />) },
           { path: "identity/users/:userId", element: withSuspense(<UserDetailPage />) },

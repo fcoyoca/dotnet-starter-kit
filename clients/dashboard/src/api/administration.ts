@@ -329,3 +329,166 @@ export async function deleteProvider(id: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// ─── Insurance Types (tenant-scoped CRUD) ──────────────────────────────
+
+export type InsuranceTypeDto = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListInsuranceTypesParams = {
+  search?: string;
+  isActive?: boolean | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type CreateInsuranceTypeInput = { name: string };
+export type UpdateInsuranceTypeInput = { insuranceTypeId: string; name: string; isActive: boolean };
+
+export function listInsuranceTypes(
+  params: ListInsuranceTypesParams = {},
+): Promise<PagedResponse<InsuranceTypeDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<InsuranceTypeDto>>(
+    `/api/v1/administration/insurance-types?${query.toString()}`,
+  );
+}
+
+export async function createInsuranceType(input: CreateInsuranceTypeInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/insurance-types", {
+    method: "POST",
+    body: JSON.stringify({ name: input.name }),
+  });
+}
+
+export async function updateInsuranceType(input: UpdateInsuranceTypeInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/insurance-types/${encodeURIComponent(input.insuranceTypeId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ id: input.insuranceTypeId, name: input.name, isActive: input.isActive }),
+  });
+}
+
+export async function deleteInsuranceType(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/insurance-types/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+/** Active insurance types as combobox options — for the company's type picker. */
+export function useInsuranceTypeOptions(): ComboboxOption[] | undefined {
+  const { data } = useQuery({
+    queryKey: ["administration.insuranceTypeOptions"],
+    queryFn: () => listInsuranceTypes({ isActive: true, pageSize: 200, sortBy: "name", sortDir: "asc" }),
+    staleTime: 5 * 60 * 1000,
+  });
+  return data ? data.items.map((t) => ({ value: t.id, label: t.name })) : undefined;
+}
+
+// ─── Insurance Companies (tenant-scoped CRUD) ──────────────────────────
+
+export type InsuranceCompanyDto = {
+  id: string;
+  name: string;
+  insuranceTypeId?: string | null;
+  insuranceTypeName?: string | null;
+  formularyTiers: number;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  phone?: string | null;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListInsuranceCompaniesParams = {
+  search?: string;
+  isActive?: boolean | null;
+  insuranceTypeId?: string | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type InsuranceCompanyInput = {
+  name: string;
+  insuranceTypeId?: string | null;
+  formularyTiers: number;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  phone?: string | null;
+};
+
+export type CreateInsuranceCompanyInput = InsuranceCompanyInput;
+export type UpdateInsuranceCompanyInput = InsuranceCompanyInput & { companyId: string; isActive: boolean };
+
+export function listInsuranceCompanies(
+  params: ListInsuranceCompaniesParams = {},
+): Promise<PagedResponse<InsuranceCompanyDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  if (params.insuranceTypeId) query.set("insuranceTypeId", params.insuranceTypeId);
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<InsuranceCompanyDto>>(
+    `/api/v1/administration/insurance-companies?${query.toString()}`,
+  );
+}
+
+function insuranceCompanyBody(input: InsuranceCompanyInput): Record<string, unknown> {
+  return {
+    name: input.name,
+    insuranceTypeId: input.insuranceTypeId ?? null,
+    formularyTiers: input.formularyTiers,
+    address1: input.address1 ?? null,
+    address2: input.address2 ?? null,
+    city: input.city ?? null,
+    state: input.state ?? null,
+    zip: input.zip ?? null,
+    phone: input.phone ?? null,
+  };
+}
+
+export async function createInsuranceCompany(input: CreateInsuranceCompanyInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/insurance-companies", {
+    method: "POST",
+    body: JSON.stringify(insuranceCompanyBody(input)),
+  });
+}
+
+export async function updateInsuranceCompany(input: UpdateInsuranceCompanyInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/insurance-companies/${encodeURIComponent(input.companyId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...insuranceCompanyBody(input), id: input.companyId, isActive: input.isActive }),
+  });
+}
+
+export async function deleteInsuranceCompany(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/insurance-companies/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}

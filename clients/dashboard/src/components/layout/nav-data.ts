@@ -1,5 +1,6 @@
 import {
   Activity,
+  Building,
   Building2,
   CreditCard,
   FolderOpen,
@@ -13,6 +14,7 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  ShieldPlus,
   Stethoscope,
   Tags,
   Ticket,
@@ -115,6 +117,18 @@ export const sections: NavSection[] = [
         label: "Providers",
         icon: Stethoscope,
         perm: "Permissions.Administration.Providers.View",
+      },
+      {
+        to: "/administration/insurance-types",
+        label: "Insurance Types",
+        icon: ShieldPlus,
+        perm: "Permissions.Administration.InsuranceTypes.View",
+      },
+      {
+        to: "/administration/insurance-companies",
+        label: "Insurance Companies",
+        icon: Building,
+        perm: "Permissions.Administration.InsuranceCompanies.View",
       },
     ],
   },
