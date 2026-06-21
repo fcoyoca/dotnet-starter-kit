@@ -274,30 +274,42 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
   const [form, setForm] = useState(initial);
   // Local working set of associated codes (codeId -> price); captured on Save.
   const [selections, setSelections] = useState<Record<string, number>>({});
+  const [loadingExisting, setLoadingExisting] = useState(false);
 
-  // Existing associations for an edit, used to seed the selection set.
-  const assocQuery = useQuery({
-    queryKey: ["administration", "insurance-type-procedures", type?.id],
-    queryFn: () => listInsuranceTypeProcedures(type!.id),
-    enabled: isOpen && !!type,
-  });
-
-  // Reset the form AND the working selection whenever the dialog opens or targets a different type, so a
-  // previous type's checked codes never linger into another type (initial is memoized per-type).
+  // On open (and per type) reset the form + working selection, then seed the selection from this type's OWN
+  // associations fetched fresh. A one-shot fetchQuery (not a live useQuery) means background refetches can
+  // never re-seed over the user's in-progress checks, and a reopen always reflects the latest saved set.
   useEffect(() => {
-    if (isOpen) {
-      setForm(initial);
-      setSelections({});
-    }
-  }, [isOpen, initial]);
+    if (!isOpen) return;
+    setForm(initial);
+    setSelections({});
+    if (!type) return;
 
-  // Seed the selection from the edited type's existing associations once they load.
-  useEffect(() => {
-    if (!isOpen || !type || !assocQuery.data) return;
-    const seed: Record<string, number> = {};
-    for (const a of assocQuery.data) seed[a.procedureCodeId] = a.price;
-    setSelections(seed);
-  }, [isOpen, type, assocQuery.data]);
+    let cancelled = false;
+    setLoadingExisting(true);
+    queryClient
+      .fetchQuery({
+        queryKey: ["administration", "insurance-type-procedures", type.id],
+        queryFn: () => listInsuranceTypeProcedures(type.id),
+        staleTime: 0,
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const seed: Record<string, number> = {};
+        for (const a of data) seed[a.procedureCodeId] = a.price;
+        setSelections(seed);
+      })
+      .catch(() => {
+        if (!cancelled) toast.error("Could not load associated procedure codes");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingExisting(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, type, initial, queryClient]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["administration", "insurance-types"] });
@@ -416,7 +428,7 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
               selections={selections}
               onToggle={toggleSelection}
               onPriceChange={setSelectionPrice}
-              loadingExisting={!!type && assocQuery.isLoading}
+              loadingExisting={loadingExisting}
             />
           </DialogBody>
 
