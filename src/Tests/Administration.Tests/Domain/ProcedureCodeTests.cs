@@ -25,12 +25,13 @@ public sealed class ProcedureCodeTests
     [Fact]
     public void Create_Should_TrimCode_And_NullBlankOptionalFields()
     {
-        var code = ProcedureCode.Create("  99214  ", "   ", "", null, "  ", "");
+        var categoryId = Guid.CreateVersion7();
+        var code = ProcedureCode.Create("  99214  ", "   ", "", categoryId, "  ", "");
 
         code.Code.ShouldBe("99214");
         code.Name.ShouldBeNull();
         code.Description.ShouldBeNull();
-        code.ProcedureCategoryId.ShouldBeNull();
+        code.ProcedureCategoryId.ShouldBe(categoryId);
         code.CodeSource.ShouldBeNull();
         code.MacroText.ShouldBeNull();
     }
@@ -40,13 +41,19 @@ public sealed class ProcedureCodeTests
     [InlineData("   ")]
     public void Create_Should_Throw_When_CodeIsBlank(string code)
     {
-        Should.Throw<ArgumentException>(() => ProcedureCode.Create(code, null, null, null, null, null));
+        Should.Throw<ArgumentException>(() => ProcedureCode.Create(code, null, null, Guid.CreateVersion7(), null, null));
+    }
+
+    [Fact]
+    public void Create_Should_Throw_When_ProcedureCategoryIdEmpty()
+    {
+        Should.Throw<ArgumentException>(() => ProcedureCode.Create("99213", null, null, Guid.Empty, null, null));
     }
 
     [Fact]
     public void Update_Should_MutateFields_And_StampUpdatedAt()
     {
-        var code = ProcedureCode.Create("99213", "Office visit", null, null, "CPT", null);
+        var code = ProcedureCode.Create("99213", "Office visit", null, Guid.CreateVersion7(), "CPT", null);
         var categoryId = Guid.CreateVersion7();
 
         code.Update("99215", "Complex visit", "Long", categoryId, "HCPCS", "Macro", isActive: false);
@@ -64,7 +71,7 @@ public sealed class ProcedureCodeTests
     [Fact]
     public void Delete_Should_SoftDelete()
     {
-        var code = ProcedureCode.Create("99213", null, null, null, null, null);
+        var code = ProcedureCode.Create("99213", null, null, Guid.CreateVersion7(), null, null);
 
         code.Delete("admin@tenant");
 

@@ -5,7 +5,7 @@ public sealed record ProcedureCodeDto(
     string Code,
     string? Name,
     string? Description,
-    Guid? ProcedureCategoryId,
+    Guid ProcedureCategoryId,
     string? ProcedureCategoryName,
     string? CodeSource,
     string? MacroText,

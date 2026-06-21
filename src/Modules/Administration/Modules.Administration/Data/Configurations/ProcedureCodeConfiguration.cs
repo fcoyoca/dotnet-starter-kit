@@ -16,6 +16,7 @@ public sealed class ProcedureCodeConfiguration : IEntityTypeConfiguration<Proced
         builder.Property(x => x.Description).HasMaxLength(1000);
         builder.Property(x => x.CodeSource).HasMaxLength(50);
         builder.Property(x => x.MacroText).HasMaxLength(4000);
+        builder.Property(x => x.ProcedureCategoryId).IsRequired();
         builder.Property(x => x.IsActive).IsRequired();
         builder.Property(x => x.DeletedBy).HasMaxLength(64);
         builder.Property(x => x.LegacyId);
@@ -25,12 +26,12 @@ public sealed class ProcedureCodeConfiguration : IEntityTypeConfiguration<Proced
         builder.HasIndex(x => x.IsActive);
         builder.HasIndex(x => x.Code).IsUnique().HasFilter("\"IsDeleted\" = FALSE");
 
-        // Optional foreign key to a ProcedureCategory in the same module. Codes are soft-deleted so this
-        // delete behaviour rarely fires; null-on-delete keeps the column consistent on a hard delete.
+        // Required foreign key to the owning ProcedureCategory in the same module. Restrict on delete so a
+        // category that still has codes cannot be hard-deleted out from under them.
         builder.HasOne<ProcedureCategory>()
             .WithMany()
             .HasForeignKey(x => x.ProcedureCategoryId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(x => x.ProcedureCategoryId);
 
         builder.Ignore(x => x.DomainEvents);

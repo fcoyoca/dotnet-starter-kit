@@ -10,9 +10,9 @@ public sealed class CreateProcedureCodeCommandValidatorTests
 
     private static CreateProcedureCodeCommand Valid() => new(
         Code: "99213",
+        ProcedureCategoryId: Guid.CreateVersion7(),
         Name: "Office visit",
         Description: "Established patient",
-        ProcedureCategoryId: null,
         CodeSource: "CPT",
         MacroText: "Note macro");
 
@@ -36,6 +36,13 @@ public sealed class CreateProcedureCodeCommandValidatorTests
     {
         _sut.TestValidate(Valid() with { Code = new string('X', 51) })
             .ShouldHaveValidationErrorFor(x => x.Code);
+    }
+
+    [Fact]
+    public void Validate_Should_Fail_When_ProcedureCategoryIdEmpty()
+    {
+        _sut.TestValidate(Valid() with { ProcedureCategoryId = Guid.Empty })
+            .ShouldHaveValidationErrorFor(x => x.ProcedureCategoryId);
     }
 
     [Fact]

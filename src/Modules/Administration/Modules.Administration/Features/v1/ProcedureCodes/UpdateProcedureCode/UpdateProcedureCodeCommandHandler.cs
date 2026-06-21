@@ -18,15 +18,12 @@ public sealed class UpdateProcedureCodeCommandHandler(AdministrationDbContext db
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"Procedure code {command.Id} not found.");
 
-        if (command.ProcedureCategoryId is { } categoryId)
+        bool categoryExists = await dbContext.ProcedureCategories
+            .AnyAsync(c => c.Id == command.ProcedureCategoryId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!categoryExists)
         {
-            bool categoryExists = await dbContext.ProcedureCategories
-                .AnyAsync(c => c.Id == categoryId, cancellationToken)
-                .ConfigureAwait(false);
-            if (!categoryExists)
-            {
-                throw new NotFoundException($"Procedure category {categoryId} not found.");
-            }
+            throw new NotFoundException($"Procedure category {command.ProcedureCategoryId} not found.");
         }
 
         entity.Update(

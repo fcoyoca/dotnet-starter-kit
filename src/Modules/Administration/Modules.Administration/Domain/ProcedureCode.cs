@@ -14,8 +14,8 @@ public sealed class ProcedureCode : AggregateRoot<Guid>, ISoftDeletable
     public string? Name { get; private set; }
     public string? Description { get; private set; }
 
-    /// <summary>Optional FK to a <see cref="ProcedureCategory"/> in this module (same DbContext).</summary>
-    public Guid? ProcedureCategoryId { get; private set; }
+    /// <summary>Required FK to the <see cref="ProcedureCategory"/> this code belongs to (legacy codes live within a category).</summary>
+    public Guid ProcedureCategoryId { get; private set; }
 
     /// <summary>Legacy <c>pcCodeSource</c> — e.g. CPT, HCPCS, custom.</summary>
     public string? CodeSource { get; private set; }
@@ -41,12 +41,16 @@ public sealed class ProcedureCode : AggregateRoot<Guid>, ISoftDeletable
         string code,
         string? name,
         string? description,
-        Guid? procedureCategoryId,
+        Guid procedureCategoryId,
         string? codeSource,
         string? macroText,
         int? legacyId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        if (procedureCategoryId == Guid.Empty)
+        {
+            throw new ArgumentException("Procedure category id is required.", nameof(procedureCategoryId));
+        }
 
         return new ProcedureCode
         {
@@ -67,12 +71,16 @@ public sealed class ProcedureCode : AggregateRoot<Guid>, ISoftDeletable
         string code,
         string? name,
         string? description,
-        Guid? procedureCategoryId,
+        Guid procedureCategoryId,
         string? codeSource,
         string? macroText,
         bool isActive)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        if (procedureCategoryId == Guid.Empty)
+        {
+            throw new ArgumentException("Procedure category id is required.", nameof(procedureCategoryId));
+        }
 
         Code = code.Trim();
         Name = Clean(name);
