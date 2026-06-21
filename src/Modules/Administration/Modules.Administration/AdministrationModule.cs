@@ -44,6 +44,10 @@ using FSH.Modules.Administration.Features.v1.InsuranceTypes.DeleteInsuranceType;
 using FSH.Modules.Administration.Features.v1.InsuranceTypes.GetInsuranceTypeById;
 using FSH.Modules.Administration.Features.v1.InsuranceTypes.ListInsuranceTypes;
 using FSH.Modules.Administration.Features.v1.InsuranceTypes.UpdateInsuranceType;
+using FSH.Modules.Administration.Features.v1.InsuranceTypeProcedures.AssociateProcedure;
+using FSH.Modules.Administration.Features.v1.InsuranceTypeProcedures.ListInsuranceTypeProcedures;
+using FSH.Modules.Administration.Features.v1.InsuranceTypeProcedures.RemoveProcedure;
+using FSH.Modules.Administration.Features.v1.InsuranceTypeProcedures.UpdateProcedurePrice;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.CreateInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.DeleteInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.GetInsuranceCompanyById;
@@ -147,6 +151,11 @@ public sealed class AdministrationModule : IModule
         group.MapGetInsuranceTypeByIdEndpoint();
         group.MapUpdateInsuranceTypeEndpoint();
         group.MapDeleteInsuranceTypeEndpoint();
+
+        group.MapListInsuranceTypeProceduresEndpoint();
+        group.MapAddProcedureToInsuranceTypeEndpoint();
+        group.MapUpdateInsuranceTypeProcedurePriceEndpoint();
+        group.MapRemoveProcedureFromInsuranceTypeEndpoint();
 
         group.MapCreateInsuranceCompanyEndpoint();
         group.MapListInsuranceCompaniesEndpoint();
