@@ -16,7 +16,19 @@ public sealed class UpdateInsuranceTypeCommandHandler(AdministrationDbContext db
             .FirstOrDefaultAsync(t => t.Id == command.Id, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"Insurance type {command.Id} not found.");
-        entity.Update(command.Name, command.IsActive);
+
+        if (command.ProcedureCategoryId is { } categoryId)
+        {
+            bool categoryExists = await dbContext.ProcedureCategories
+                .AnyAsync(c => c.Id == categoryId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!categoryExists)
+            {
+                throw new NotFoundException($"Procedure category {categoryId} not found.");
+            }
+        }
+
+        entity.Update(command.Name, command.ProcedureCategoryId, command.IsActive);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Unit.Value;
     }

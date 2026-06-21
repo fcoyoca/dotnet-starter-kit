@@ -18,6 +18,15 @@ public sealed class InsuranceTypeConfiguration : IEntityTypeConfiguration<Insura
         builder.HasIndex(x => x.LegacyId);
         builder.HasIndex(x => x.IsDeleted);
         builder.HasIndex(x => x.Name).IsUnique().HasFilter("\"IsDeleted\" = FALSE");
+
+        // Optional default procedure category for this type (legacy lpcID). Types are soft-deleted, so this
+        // delete behaviour rarely fires; null-on-delete keeps the column consistent on a hard delete.
+        builder.HasOne<ProcedureCategory>()
+            .WithMany()
+            .HasForeignKey(x => x.ProcedureCategoryId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(x => x.ProcedureCategoryId);
+
         builder.Ignore(x => x.DomainEvents);
     }
 }

@@ -34,15 +34,19 @@ public sealed class ListInsuranceTypesQueryHandler(AdministrationDbContext dbCon
         q = desc ? q.OrderByDescending(t => t.Name) : q.OrderBy(t => t.Name);
 
         long total = await q.LongCountAsync(cancellationToken).ConfigureAwait(false);
-        List<Domain.InsuranceType> items = await q
+        List<InsuranceTypeDto> items = await q
             .Skip((page - 1) * size)
             .Take(size)
+            .Select(t => new InsuranceTypeDto(
+                t.Id, t.Name, t.IsActive, t.ProcedureCategoryId,
+                dbContext.ProcedureCategories.Where(c => c.Id == t.ProcedureCategoryId).Select(c => c.Name).FirstOrDefault(),
+                t.CreatedAtUtc, t.UpdatedAtUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return new PagedResponse<InsuranceTypeDto>
         {
-            Items = items.Select(t => new InsuranceTypeDto(t.Id, t.Name, t.IsActive, t.CreatedAtUtc, t.UpdatedAtUtc)).ToList(),
+            Items = items,
             PageNumber = page,
             PageSize = size,
             TotalCount = total,

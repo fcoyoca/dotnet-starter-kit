@@ -11,6 +11,9 @@ public sealed class InsuranceType : AggregateRoot<Guid>, ISoftDeletable
     public string Name { get; private set; } = default!;
     public bool IsActive { get; private set; }
 
+    /// <summary>Optional default <see cref="ProcedureCategory"/> associated with this type (legacy <c>lpcID</c>).</summary>
+    public Guid? ProcedureCategoryId { get; private set; }
+
     /// <summary>Legacy <c>itID</c> of the source record; null for native records.</summary>
     public int? LegacyId { get; private set; }
 
@@ -23,7 +26,7 @@ public sealed class InsuranceType : AggregateRoot<Guid>, ISoftDeletable
 
     private InsuranceType() { }
 
-    public static InsuranceType Create(string name, int? legacyId = null)
+    public static InsuranceType Create(string name, Guid? procedureCategoryId = null, int? legacyId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return new InsuranceType
@@ -31,15 +34,17 @@ public sealed class InsuranceType : AggregateRoot<Guid>, ISoftDeletable
             Id = Guid.CreateVersion7(),
             Name = name.Trim(),
             IsActive = true,
+            ProcedureCategoryId = procedureCategoryId,
             LegacyId = legacyId,
             CreatedAtUtc = DateTime.UtcNow
         };
     }
 
-    public void Update(string name, bool isActive)
+    public void Update(string name, Guid? procedureCategoryId, bool isActive)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         Name = name.Trim();
+        ProcedureCategoryId = procedureCategoryId;
         IsActive = isActive;
         UpdatedAtUtc = DateTime.UtcNow;
     }

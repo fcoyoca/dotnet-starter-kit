@@ -31,13 +31,23 @@ public sealed class InsuranceTypeTests
     }
 
     [Fact]
+    public void Create_Should_StoreOptionalProcedureCategory()
+    {
+        var categoryId = Guid.CreateVersion7();
+        InsuranceType.Create("PPO", categoryId).ProcedureCategoryId.ShouldBe(categoryId);
+        InsuranceType.Create("PPO").ProcedureCategoryId.ShouldBeNull();
+    }
+
+    [Fact]
     public void Update_Should_MutateFields_And_StampUpdatedAt()
     {
         var type = InsuranceType.Create("PPO");
+        var categoryId = Guid.CreateVersion7();
 
-        type.Update("Preferred Provider Org", isActive: false);
+        type.Update("Preferred Provider Org", categoryId, isActive: false);
 
         type.Name.ShouldBe("Preferred Provider Org");
+        type.ProcedureCategoryId.ShouldBe(categoryId);
         type.IsActive.ShouldBeFalse();
         type.UpdatedAtUtc.ShouldNotBeNull();
     }
