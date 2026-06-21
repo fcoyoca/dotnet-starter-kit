@@ -34,6 +34,11 @@ using FSH.Modules.Administration.Features.v1.InsuranceTypes.DeleteInsuranceType;
 using FSH.Modules.Administration.Features.v1.InsuranceTypes.GetInsuranceTypeById;
 using FSH.Modules.Administration.Features.v1.InsuranceTypes.ListInsuranceTypes;
 using FSH.Modules.Administration.Features.v1.InsuranceTypes.UpdateInsuranceType;
+using FSH.Modules.Administration.Features.v1.InsuranceCompanies.CreateInsuranceCompany;
+using FSH.Modules.Administration.Features.v1.InsuranceCompanies.DeleteInsuranceCompany;
+using FSH.Modules.Administration.Features.v1.InsuranceCompanies.GetInsuranceCompanyById;
+using FSH.Modules.Administration.Features.v1.InsuranceCompanies.ListInsuranceCompanies;
+using FSH.Modules.Administration.Features.v1.InsuranceCompanies.UpdateInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.CreatePreferredContactMethod;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.DeletePreferredContactMethod;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.GetPreferredContactMethodById;
@@ -122,6 +127,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetInsuranceTypeByIdEndpoint();
         group.MapUpdateInsuranceTypeEndpoint();
         group.MapDeleteInsuranceTypeEndpoint();
+
+        group.MapCreateInsuranceCompanyEndpoint();
+        group.MapListInsuranceCompaniesEndpoint();
+        group.MapGetInsuranceCompanyByIdEndpoint();
+        group.MapUpdateInsuranceCompanyEndpoint();
+        group.MapDeleteInsuranceCompanyEndpoint();
 
         group.MapCreateRaceEndpoint();
         group.MapListRacesEndpoint();
