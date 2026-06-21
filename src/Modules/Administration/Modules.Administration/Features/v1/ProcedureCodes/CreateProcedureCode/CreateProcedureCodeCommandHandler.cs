@@ -22,12 +22,23 @@ public sealed class CreateProcedureCodeCommandHandler(AdministrationDbContext db
             throw new NotFoundException($"Procedure category {command.ProcedureCategoryId} not found.");
         }
 
+        if (command.CodeSourceId is { } codeSourceId)
+        {
+            bool codeSourceExists = await dbContext.CodeSources
+                .AnyAsync(s => s.Id == codeSourceId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!codeSourceExists)
+            {
+                throw new NotFoundException($"Code source {codeSourceId} not found.");
+            }
+        }
+
         ProcedureCode entity = ProcedureCode.Create(
             command.Code,
             command.Name,
             command.Description,
             command.ProcedureCategoryId,
-            command.CodeSource,
+            command.CodeSourceId,
             command.MacroText);
         dbContext.ProcedureCodes.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

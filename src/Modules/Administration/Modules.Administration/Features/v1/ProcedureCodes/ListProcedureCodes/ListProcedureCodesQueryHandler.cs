@@ -46,13 +46,17 @@ public sealed class ListProcedureCodesQueryHandler(AdministrationDbContext dbCon
         };
 
         long total = await q.LongCountAsync(cancellationToken).ConfigureAwait(false);
-        List<ProcedureCodeDto> items = await q
-            .Skip((page - 1) * size)
-            .Take(size)
-            .Select(c => new ProcedureCodeDto(
-                c.Id, c.Code, c.Name, c.Description, c.ProcedureCategoryId,
-                dbContext.ProcedureCategories.Where(p => p.Id == c.ProcedureCategoryId).Select(p => p.Name).FirstOrDefault(),
-                c.CodeSource, c.MacroText, c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc))
+        List<ProcedureCodeDto> items = await (
+            from c in q.Skip((page - 1) * size).Take(size)
+            join cat in dbContext.ProcedureCategories on c.ProcedureCategoryId equals cat.Id into catJoin
+            from cat in catJoin.DefaultIfEmpty()
+            join src in dbContext.CodeSources on c.CodeSourceId equals src.Id into srcJoin
+            from src in srcJoin.DefaultIfEmpty()
+            select new ProcedureCodeDto(
+                c.Id, c.Code, c.Name, c.Description,
+                c.ProcedureCategoryId, cat != null ? cat.Name : null,
+                c.CodeSourceId, src != null ? src.Name : null,
+                c.MacroText, c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

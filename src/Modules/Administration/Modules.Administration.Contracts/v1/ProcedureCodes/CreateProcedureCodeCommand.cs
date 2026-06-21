@@ -7,5 +7,5 @@ public sealed record CreateProcedureCodeCommand(
     Guid ProcedureCategoryId,
     string? Name = null,
     string? Description = null,
-    string? CodeSource = null,
+    int? CodeSourceId = null,
     string? MacroText = null) : ICommand<Guid>;

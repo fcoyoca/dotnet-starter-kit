@@ -13,7 +13,7 @@ public sealed class CreateProcedureCodeCommandValidatorTests
         ProcedureCategoryId: Guid.CreateVersion7(),
         Name: "Office visit",
         Description: "Established patient",
-        CodeSource: "CPT",
+        CodeSourceId: 1,
         MacroText: "Note macro");
 
     [Fact]
@@ -48,7 +48,7 @@ public sealed class CreateProcedureCodeCommandValidatorTests
     [Fact]
     public void Validate_Should_Pass_When_OptionalFieldsAreNull()
     {
-        _sut.TestValidate(Valid() with { Name = null, Description = null, CodeSource = null, MacroText = null })
+        _sut.TestValidate(Valid() with { Name = null, Description = null, CodeSourceId = null, MacroText = null })
             .ShouldNotHaveAnyValidationErrors();
     }
 }

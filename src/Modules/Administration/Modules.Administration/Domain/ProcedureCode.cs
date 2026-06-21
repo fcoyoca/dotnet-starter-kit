@@ -17,8 +17,8 @@ public sealed class ProcedureCode : AggregateRoot<Guid>, ISoftDeletable
     /// <summary>Required FK to the <see cref="ProcedureCategory"/> this code belongs to (legacy codes live within a category).</summary>
     public Guid ProcedureCategoryId { get; private set; }
 
-    /// <summary>Legacy <c>pcCodeSource</c> — e.g. CPT, HCPCS, custom.</summary>
-    public string? CodeSource { get; private set; }
+    /// <summary>Optional FK to a <see cref="Domain.CodeSource"/> (legacy <c>pcCodeSource</c> — e.g. CPT, HCPCS).</summary>
+    public int? CodeSourceId { get; private set; }
 
     /// <summary>Boilerplate note text inserted when this code is selected (legacy <c>pcMacroText</c>).</summary>
     public string? MacroText { get; private set; }
@@ -42,7 +42,7 @@ public sealed class ProcedureCode : AggregateRoot<Guid>, ISoftDeletable
         string? name,
         string? description,
         Guid procedureCategoryId,
-        string? codeSource,
+        int? codeSourceId,
         string? macroText,
         int? legacyId = null)
     {
@@ -59,7 +59,7 @@ public sealed class ProcedureCode : AggregateRoot<Guid>, ISoftDeletable
             Name = Clean(name),
             Description = Clean(description),
             ProcedureCategoryId = procedureCategoryId,
-            CodeSource = Clean(codeSource),
+            CodeSourceId = codeSourceId,
             MacroText = Clean(macroText),
             IsActive = true,
             LegacyId = legacyId,
@@ -72,7 +72,7 @@ public sealed class ProcedureCode : AggregateRoot<Guid>, ISoftDeletable
         string? name,
         string? description,
         Guid procedureCategoryId,
-        string? codeSource,
+        int? codeSourceId,
         string? macroText,
         bool isActive)
     {
@@ -86,7 +86,7 @@ public sealed class ProcedureCode : AggregateRoot<Guid>, ISoftDeletable
         Name = Clean(name);
         Description = Clean(description);
         ProcedureCategoryId = procedureCategoryId;
-        CodeSource = Clean(codeSource);
+        CodeSourceId = codeSourceId;
         MacroText = Clean(macroText);
         IsActive = isActive;
         UpdatedAtUtc = DateTime.UtcNow;

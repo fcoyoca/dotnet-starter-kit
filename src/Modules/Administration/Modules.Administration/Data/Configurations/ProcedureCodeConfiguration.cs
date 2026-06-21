@@ -14,7 +14,6 @@ public sealed class ProcedureCodeConfiguration : IEntityTypeConfiguration<Proced
         builder.Property(x => x.Code).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Name).HasMaxLength(200);
         builder.Property(x => x.Description).HasMaxLength(1000);
-        builder.Property(x => x.CodeSource).HasMaxLength(50);
         builder.Property(x => x.MacroText).HasMaxLength(4000);
         builder.Property(x => x.ProcedureCategoryId).IsRequired();
         builder.Property(x => x.IsActive).IsRequired();
@@ -33,6 +32,14 @@ public sealed class ProcedureCodeConfiguration : IEntityTypeConfiguration<Proced
             .HasForeignKey(x => x.ProcedureCategoryId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(x => x.ProcedureCategoryId);
+
+        // Optional foreign key to a global CodeSource lookup (legacy pcCodeSource). Null-on-delete keeps the
+        // column consistent if a source is hard-deleted.
+        builder.HasOne<CodeSource>()
+            .WithMany()
+            .HasForeignKey(x => x.CodeSourceId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(x => x.CodeSourceId);
 
         builder.Ignore(x => x.DomainEvents);
     }

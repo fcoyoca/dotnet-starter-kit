@@ -8,6 +8,6 @@ public sealed record UpdateProcedureCodeCommand(
     Guid ProcedureCategoryId,
     string? Name,
     string? Description,
-    string? CodeSource,
+    int? CodeSourceId,
     string? MacroText,
     bool IsActive) : ICommand<Unit>;

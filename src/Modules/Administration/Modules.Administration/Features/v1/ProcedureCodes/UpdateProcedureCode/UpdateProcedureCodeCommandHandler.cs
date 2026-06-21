@@ -26,12 +26,23 @@ public sealed class UpdateProcedureCodeCommandHandler(AdministrationDbContext db
             throw new NotFoundException($"Procedure category {command.ProcedureCategoryId} not found.");
         }
 
+        if (command.CodeSourceId is { } codeSourceId)
+        {
+            bool codeSourceExists = await dbContext.CodeSources
+                .AnyAsync(s => s.Id == codeSourceId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!codeSourceExists)
+            {
+                throw new NotFoundException($"Code source {codeSourceId} not found.");
+            }
+        }
+
         entity.Update(
             command.Code,
             command.Name,
             command.Description,
             command.ProcedureCategoryId,
-            command.CodeSource,
+            command.CodeSourceId,
             command.MacroText,
             command.IsActive);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
