@@ -113,6 +113,14 @@ const ClinicsPage = lazyNamed(
   () => import("@/pages/administration/clinics"),
   "ClinicsPage",
 );
+const DepartmentsPage = lazyNamed(
+  () => import("@/pages/administration/departments"),
+  "DepartmentsPage",
+);
+const ProvidersPage = lazyNamed(
+  () => import("@/pages/administration/providers"),
+  "ProvidersPage",
+);
 const PatientsListPage = lazyNamed(() => import("@/pages/patients/list"), "PatientsListPage");
 const PatientDetailPage = lazyNamed(
   () => import("@/pages/patients/patient-detail"),
@@ -220,6 +228,8 @@ export const router = createBrowserRouter([
           { path: "patients/:patientId", element: withSuspense(<PatientDetailPage />) },
           { path: "administration", element: <Navigate to="/administration/clinics" replace /> },
           { path: "administration/clinics", element: withSuspense(<ClinicsPage />) },
+          { path: "administration/departments", element: withSuspense(<DepartmentsPage />) },
+          { path: "administration/providers", element: withSuspense(<ProvidersPage />) },
           { path: "identity", element: <Navigate to="/identity/users" replace /> },
           { path: "identity/users", element: withSuspense(<UsersPage />) },
           { path: "identity/users/:userId", element: withSuspense(<UserDetailPage />) },

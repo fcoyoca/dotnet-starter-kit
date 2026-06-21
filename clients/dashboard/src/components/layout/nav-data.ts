@@ -7,6 +7,7 @@ import {
   HeartPulse,
   LayoutDashboard,
   MessageCircle,
+  Network,
   Package,
   Receipt,
   ScrollText,
@@ -93,14 +94,27 @@ export const sections: NavSection[] = [
     caption: "Administration",
     icon: Building2,
     items: [
-      // Mirrors the permission the Clinics list endpoint enforces server-side
-      // (Administration.Clinics.View). View is IsBasic, so members can reach the
-      // page; create/update/delete actions hide for those lacking the perms.
+      // Each gate mirrors the permission the page's list endpoint enforces
+      // server-side (Administration.{Resource}.View). View is IsBasic, so members
+      // can reach the page; create/update/delete actions hide for those lacking
+      // the manage perms.
       {
         to: "/administration/clinics",
         label: "Clinics",
         icon: Building2,
         perm: "Permissions.Administration.Clinics.View",
+      },
+      {
+        to: "/administration/departments",
+        label: "Departments",
+        icon: Network,
+        perm: "Permissions.Administration.Departments.View",
+      },
+      {
+        to: "/administration/providers",
+        label: "Providers",
+        icon: Stethoscope,
+        perm: "Permissions.Administration.Providers.View",
       },
     ],
   },

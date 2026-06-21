@@ -167,3 +167,165 @@ export async function deleteClinic(id: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+/** Active clinics as combobox options — for the Provider primary-clinic picker. */
+export function useClinicOptions(): ComboboxOption[] | undefined {
+  const { data } = useQuery({
+    queryKey: ["administration.clinicOptions"],
+    queryFn: () => listClinics({ isActive: true, pageSize: 200, sortBy: "name", sortDir: "asc" }),
+    staleTime: 5 * 60 * 1000,
+  });
+  return data ? data.items.map((c) => ({ value: c.id, label: c.name })) : undefined;
+}
+
+// ─── Departments (tenant-scoped CRUD) ──────────────────────────────────
+
+export type DepartmentDto = {
+  id: string;
+  name: string;
+  displayOrder: number;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListDepartmentsParams = {
+  search?: string;
+  isActive?: boolean | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type CreateDepartmentInput = { name: string; displayOrder: number };
+export type UpdateDepartmentInput = CreateDepartmentInput & { departmentId: string; isActive: boolean };
+
+export function listDepartments(params: ListDepartmentsParams = {}): Promise<PagedResponse<DepartmentDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<DepartmentDto>>(`/api/v1/administration/departments?${query.toString()}`);
+}
+
+export async function createDepartment(input: CreateDepartmentInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/departments", {
+    method: "POST",
+    body: JSON.stringify({ name: input.name, displayOrder: input.displayOrder }),
+  });
+}
+
+export async function updateDepartment(input: UpdateDepartmentInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/departments/${encodeURIComponent(input.departmentId)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      id: input.departmentId,
+      name: input.name,
+      displayOrder: input.displayOrder,
+      isActive: input.isActive,
+    }),
+  });
+}
+
+export async function deleteDepartment(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/departments/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+// ─── Providers (tenant-scoped CRUD) ────────────────────────────────────
+
+export type ProviderDto = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  prefix?: string | null;
+  suffix?: string | null;
+  specialty?: string | null;
+  npi?: string | null;
+  kareoExternalId?: string | null;
+  primaryClinicId?: string | null;
+  primaryClinicName?: string | null;
+  userId?: string | null;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListProvidersParams = {
+  search?: string;
+  isActive?: boolean | null;
+  primaryClinicId?: string | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type ProviderInput = {
+  firstName: string;
+  lastName: string;
+  prefix?: string | null;
+  suffix?: string | null;
+  specialty?: string | null;
+  npi?: string | null;
+  kareoExternalId?: string | null;
+  primaryClinicId?: string | null;
+  userId?: string | null;
+};
+
+export type CreateProviderInput = ProviderInput;
+export type UpdateProviderInput = ProviderInput & { providerId: string; isActive: boolean };
+
+export function listProviders(params: ListProvidersParams = {}): Promise<PagedResponse<ProviderDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  if (params.primaryClinicId) query.set("primaryClinicId", params.primaryClinicId);
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<ProviderDto>>(`/api/v1/administration/providers?${query.toString()}`);
+}
+
+function providerBody(input: ProviderInput): string {
+  return JSON.stringify({
+    firstName: input.firstName,
+    lastName: input.lastName,
+    prefix: input.prefix ?? null,
+    suffix: input.suffix ?? null,
+    specialty: input.specialty ?? null,
+    npi: input.npi ?? null,
+    kareoExternalId: input.kareoExternalId ?? null,
+    primaryClinicId: input.primaryClinicId ?? null,
+    userId: input.userId ?? null,
+  });
+}
+
+export async function createProvider(input: CreateProviderInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/providers", {
+    method: "POST",
+    body: providerBody(input),
+  });
+}
+
+export async function updateProvider(input: UpdateProviderInput): Promise<void> {
+  const base = JSON.parse(providerBody(input)) as Record<string, unknown>;
+  await apiFetch<void>(`/api/v1/administration/providers/${encodeURIComponent(input.providerId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...base, id: input.providerId, isActive: input.isActive }),
+  });
+}
+
+export async function deleteProvider(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/providers/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
