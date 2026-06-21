@@ -336,6 +336,8 @@ export type InsuranceTypeDto = {
   id: string;
   name: string;
   isActive: boolean;
+  procedureCategoryId?: string | null;
+  procedureCategoryName?: string | null;
   createdAtUtc: string;
   updatedAtUtc?: string | null;
 };
@@ -349,8 +351,13 @@ export type ListInsuranceTypesParams = {
   sortDir?: "asc" | "desc";
 };
 
-export type CreateInsuranceTypeInput = { name: string };
-export type UpdateInsuranceTypeInput = { insuranceTypeId: string; name: string; isActive: boolean };
+export type CreateInsuranceTypeInput = { name: string; procedureCategoryId?: string | null };
+export type UpdateInsuranceTypeInput = {
+  insuranceTypeId: string;
+  name: string;
+  isActive: boolean;
+  procedureCategoryId?: string | null;
+};
 
 export function listInsuranceTypes(
   params: ListInsuranceTypesParams = {},
@@ -371,14 +378,19 @@ export function listInsuranceTypes(
 export async function createInsuranceType(input: CreateInsuranceTypeInput): Promise<string> {
   return apiFetch<string>("/api/v1/administration/insurance-types", {
     method: "POST",
-    body: JSON.stringify({ name: input.name }),
+    body: JSON.stringify({ name: input.name, procedureCategoryId: input.procedureCategoryId ?? null }),
   });
 }
 
 export async function updateInsuranceType(input: UpdateInsuranceTypeInput): Promise<void> {
   await apiFetch<void>(`/api/v1/administration/insurance-types/${encodeURIComponent(input.insuranceTypeId)}`, {
     method: "PUT",
-    body: JSON.stringify({ id: input.insuranceTypeId, name: input.name, isActive: input.isActive }),
+    body: JSON.stringify({
+      id: input.insuranceTypeId,
+      name: input.name,
+      isActive: input.isActive,
+      procedureCategoryId: input.procedureCategoryId ?? null,
+    }),
   });
 }
 

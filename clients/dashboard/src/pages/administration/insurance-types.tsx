@@ -261,8 +261,14 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
   const type = state.mode === "edit" ? state.type : undefined;
   const queryClient = useQueryClient();
 
+  const categoryOptions = useProcedureCategoryOptions() ?? [];
+
   const initial = useMemo(
-    () => ({ name: type?.name ?? "", isActive: type?.isActive ?? true }),
+    () => ({
+      name: type?.name ?? "",
+      isActive: type?.isActive ?? true,
+      procedureCategoryId: type?.procedureCategoryId ?? null,
+    }),
     [type],
   );
 
@@ -303,9 +309,14 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
     e.preventDefault();
     if (!trimmedName) return;
     if (state.mode === "edit" && type) {
-      updateMutation.mutate({ insuranceTypeId: type.id, name: trimmedName, isActive: form.isActive });
+      updateMutation.mutate({
+        insuranceTypeId: type.id,
+        name: trimmedName,
+        isActive: form.isActive,
+        procedureCategoryId: form.procedureCategoryId,
+      });
     } else {
-      createMutation.mutate({ name: trimmedName });
+      createMutation.mutate({ name: trimmedName, procedureCategoryId: form.procedureCategoryId });
     }
   };
 
@@ -333,6 +344,21 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
               />
             </Field>
 
+            <Field id="ins-type-category" label="Procedure category" hint="Scopes the associated procedure codes below.">
+              <Combobox
+                id="ins-type-category"
+                label="Procedure category"
+                variant="field"
+                searchable
+                clearable
+                emptyOptionLabel="No category"
+                placeholder="Select a category…"
+                value={form.procedureCategoryId}
+                onChange={(v) => setForm((f) => ({ ...f, procedureCategoryId: v }))}
+                options={categoryOptions}
+              />
+            </Field>
+
             {type && (
               <div className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2.5">
                 <div>
@@ -349,7 +375,9 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
               </div>
             )}
 
-            {type && <AssociatedProcedureCodes insuranceTypeId={type.id} />}
+            {type && (
+              <AssociatedProcedureCodes insuranceTypeId={type.id} categoryId={form.procedureCategoryId} />
+            )}
           </DialogBody>
 
           <DialogFooter>
@@ -416,20 +444,32 @@ function DeleteInsuranceTypeDialog({ state, onClose }: { state: EditorState; onC
 }
 
 /**
- * Associated Procedure Codes — legacy InsuranceTypes > ItpPrice. Lists active procedure codes with a
- * checkbox (associated?) and a price input. Saves are incremental: toggling associates/removes, and
- * editing the price (on blur) updates it. Only rendered for a saved insurance type.
+ * Associated Procedure Codes — legacy InsuranceTypes > ItpPrice. Lists the active procedure codes within
+ * the type's selected procedure category (or all codes when none is chosen) with a checkbox (associated?)
+ * and a price input. Saves are incremental: toggling associates/removes, and editing the price (on blur)
+ * updates it. Only rendered for a saved insurance type.
  */
-function AssociatedProcedureCodes({ insuranceTypeId }: { insuranceTypeId: string }) {
+function AssociatedProcedureCodes({
+  insuranceTypeId,
+  categoryId,
+}: {
+  insuranceTypeId: string;
+  categoryId: string | null;
+}) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
-  const categoryOptions = useProcedureCategoryOptions() ?? [];
 
   const codesQuery = useQuery({
-    queryKey: ["administration", "procedure-codes", "picker"],
-    queryFn: () => listProcedureCodes({ isActive: true, pageSize: 200, sortBy: "code", sortDir: "asc" }),
+    queryKey: ["administration", "procedure-codes", "picker", categoryId],
+    queryFn: () =>
+      listProcedureCodes({
+        isActive: true,
+        procedureCategoryId: categoryId,
+        pageSize: 200,
+        sortBy: "code",
+        sortDir: "asc",
+      }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -470,7 +510,6 @@ function AssociatedProcedureCodes({ insuranceTypeId }: { insuranceTypeId: string
   const codes = codesQuery.data?.items ?? [];
   const term = search.trim().toLowerCase();
   const filtered = codes.filter((c) => {
-    if (categoryId && c.procedureCategoryId !== categoryId) return false;
     if (!term) return true;
     return (
       c.code.toLowerCase().includes(term) ||
@@ -511,25 +550,11 @@ function AssociatedProcedureCodes({ insuranceTypeId }: { insuranceTypeId: string
         </p>
       </div>
 
-      <div className="grid grid-cols-[1fr_200px] gap-3">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search code, name or description…"
-        />
-        <Combobox
-          id="itp-category"
-          label="Category"
-          variant="field"
-          searchable
-          clearable
-          emptyOptionLabel="All categories"
-          placeholder="All categories"
-          value={categoryId}
-          onChange={setCategoryId}
-          options={categoryOptions}
-        />
-      </div>
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search code, name or description…"
+      />
 
       {codesQuery.isError || assocQuery.isError ? (
         <div
