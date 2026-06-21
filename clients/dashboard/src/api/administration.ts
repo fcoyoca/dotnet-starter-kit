@@ -398,6 +398,64 @@ export function useInsuranceTypeOptions(): ComboboxOption[] | undefined {
   return data ? data.items.map((t) => ({ value: t.id, label: t.name })) : undefined;
 }
 
+// ─── Insurance Type ↔ Procedure Code associations (with price) ─────────
+
+export type InsuranceTypeProcedureDto = {
+  id: string;
+  insuranceTypeId: string;
+  procedureCodeId: string;
+  procedureCode: string;
+  procedureName?: string | null;
+  procedureCategoryName?: string | null;
+  price: number;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export function listInsuranceTypeProcedures(insuranceTypeId: string): Promise<InsuranceTypeProcedureDto[]> {
+  return apiFetch<InsuranceTypeProcedureDto[]>(
+    `/api/v1/administration/insurance-types/${encodeURIComponent(insuranceTypeId)}/procedures`,
+  );
+}
+
+export async function associateProcedureToInsuranceType(
+  insuranceTypeId: string,
+  procedureCodeId: string,
+  price: number,
+): Promise<string> {
+  return apiFetch<string>(
+    `/api/v1/administration/insurance-types/${encodeURIComponent(insuranceTypeId)}/procedures`,
+    {
+      method: "POST",
+      body: JSON.stringify({ insuranceTypeId, procedureCodeId, price }),
+    },
+  );
+}
+
+export async function updateInsuranceTypeProcedurePrice(
+  insuranceTypeId: string,
+  procedureCodeId: string,
+  price: number,
+): Promise<void> {
+  await apiFetch<void>(
+    `/api/v1/administration/insurance-types/${encodeURIComponent(insuranceTypeId)}/procedures/${encodeURIComponent(procedureCodeId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ insuranceTypeId, procedureCodeId, price }),
+    },
+  );
+}
+
+export async function removeProcedureFromInsuranceType(
+  insuranceTypeId: string,
+  procedureCodeId: string,
+): Promise<void> {
+  await apiFetch<void>(
+    `/api/v1/administration/insurance-types/${encodeURIComponent(insuranceTypeId)}/procedures/${encodeURIComponent(procedureCodeId)}`,
+    { method: "DELETE" },
+  );
+}
+
 // ─── Insurance Companies (tenant-scoped CRUD) ──────────────────────────
 
 export type InsuranceCompanyDto = {

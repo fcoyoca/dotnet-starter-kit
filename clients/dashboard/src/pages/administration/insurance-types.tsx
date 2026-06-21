@@ -8,11 +8,18 @@ import {
 import { ChevronRight, Pencil, Plus, Search, ShieldPlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  associateProcedureToInsuranceType,
   createInsuranceType,
   deleteInsuranceType,
+  listInsuranceTypeProcedures,
   listInsuranceTypes,
+  listProcedureCodes,
+  removeProcedureFromInsuranceType,
   updateInsuranceType,
+  updateInsuranceTypeProcedurePrice,
+  useProcedureCategoryOptions,
   type InsuranceTypeDto,
+  type InsuranceTypeProcedureDto,
   type CreateInsuranceTypeInput,
   type UpdateInsuranceTypeInput,
 } from "@/api/administration";
@@ -30,6 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
+  Combobox,
   EntityEmpty,
   EntityInitialsAvatar,
   EntityListCard,
@@ -303,7 +311,7 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => (!o ? onClose() : undefined)}>
-      <DialogContent className="!max-w-md">
+      <DialogContent className={type ? "!max-w-2xl" : "!max-w-md"}>
         <form onSubmit={onSubmit}>
           <DialogHeader>
             <DialogTitle>{type ? "Edit insurance type" : "Add an insurance type"}</DialogTitle>
@@ -340,6 +348,8 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
                 />
               </div>
             )}
+
+            {type && <AssociatedProcedureCodes insuranceTypeId={type.id} />}
           </DialogBody>
 
           <DialogFooter>
@@ -402,5 +412,189 @@ function DeleteInsuranceTypeDialog({ state, onClose }: { state: EditorState; onC
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Associated Procedure Codes — legacy InsuranceTypes > ItpPrice. Lists active procedure codes with a
+ * checkbox (associated?) and a price input. Saves are incremental: toggling associates/removes, and
+ * editing the price (on blur) updates it. Only rendered for a saved insurance type.
+ */
+function AssociatedProcedureCodes({ insuranceTypeId }: { insuranceTypeId: string }) {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const categoryOptions = useProcedureCategoryOptions() ?? [];
+
+  const codesQuery = useQuery({
+    queryKey: ["administration", "procedure-codes", "picker"],
+    queryFn: () => listProcedureCodes({ isActive: true, pageSize: 200, sortBy: "code", sortDir: "asc" }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const assocQuery = useQuery({
+    queryKey: ["administration", "insurance-type-procedures", insuranceTypeId],
+    queryFn: () => listInsuranceTypeProcedures(insuranceTypeId),
+  });
+
+  const assocByCode = useMemo(() => {
+    const m = new Map<string, InsuranceTypeProcedureDto>();
+    for (const a of assocQuery.data ?? []) m.set(a.procedureCodeId, a);
+    return m;
+  }, [assocQuery.data]);
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["administration", "insurance-type-procedures", insuranceTypeId] });
+
+  const associateMutation = useMutation({
+    mutationFn: ({ codeId, price }: { codeId: string; price: number }) =>
+      associateProcedureToInsuranceType(insuranceTypeId, codeId, price),
+    onSuccess: invalidate,
+    onError: (err) => toast.error("Could not associate code", { description: describe(err) }),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (codeId: string) => removeProcedureFromInsuranceType(insuranceTypeId, codeId),
+    onSuccess: invalidate,
+    onError: (err) => toast.error("Could not remove code", { description: describe(err) }),
+  });
+
+  const priceMutation = useMutation({
+    mutationFn: ({ codeId, price }: { codeId: string; price: number }) =>
+      updateInsuranceTypeProcedurePrice(insuranceTypeId, codeId, price),
+    onSuccess: invalidate,
+    onError: (err) => toast.error("Could not update price", { description: describe(err) }),
+  });
+
+  const codes = codesQuery.data?.items ?? [];
+  const term = search.trim().toLowerCase();
+  const filtered = codes.filter((c) => {
+    if (categoryId && c.procedureCategoryId !== categoryId) return false;
+    if (!term) return true;
+    return (
+      c.code.toLowerCase().includes(term) ||
+      (c.name?.toLowerCase().includes(term) ?? false) ||
+      (c.description?.toLowerCase().includes(term) ?? false)
+    );
+  });
+
+  const draftFor = (codeId: string) =>
+    priceDrafts[codeId] ?? (assocByCode.get(codeId)?.price?.toString() ?? "0");
+
+  const toggle = (codeId: string, checked: boolean) => {
+    if (checked) {
+      associateMutation.mutate({ codeId, price: Number(draftFor(codeId)) || 0 });
+    } else {
+      removeMutation.mutate(codeId);
+    }
+  };
+
+  const commitPrice = (codeId: string) => {
+    const assoc = assocByCode.get(codeId);
+    if (!assoc) return;
+    const next = Number(draftFor(codeId));
+    if (Number.isNaN(next) || next < 0 || next === assoc.price) return;
+    priceMutation.mutate({ codeId, price: next });
+  };
+
+  const selectedCount = assocByCode.size;
+  const isLoading = codesQuery.isLoading || assocQuery.isLoading;
+
+  return (
+    <div className="space-y-3 border-t border-[var(--color-border)] pt-4">
+      <div>
+        <p className="text-[13px] font-semibold text-[var(--color-foreground)]">Associated Procedure Codes</p>
+        <p className="text-[12px] text-[var(--color-muted-foreground)]">
+          Select the procedure codes covered by this insurance type and set a price for each.
+          {selectedCount > 0 ? ` ${selectedCount} associated.` : ""}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-[1fr_200px] gap-3">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search code, name or description…"
+        />
+        <Combobox
+          id="itp-category"
+          label="Category"
+          variant="field"
+          searchable
+          clearable
+          emptyOptionLabel="All categories"
+          placeholder="All categories"
+          value={categoryId}
+          onChange={setCategoryId}
+          options={categoryOptions}
+        />
+      </div>
+
+      {codesQuery.isError || assocQuery.isError ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-[oklch(from_var(--color-destructive)_l_c_h_/_0.30)] bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.06)] px-3 py-2 text-sm text-[var(--color-destructive)]"
+        >
+          {describe(codesQuery.error ?? assocQuery.error)}
+        </div>
+      ) : isLoading ? (
+        <p className="px-1 py-6 text-center text-[13px] text-[var(--color-muted-foreground)]">Loading procedure codes…</p>
+      ) : filtered.length === 0 ? (
+        <p className="px-1 py-6 text-center text-[13px] text-[var(--color-muted-foreground)]">
+          {codes.length === 0 ? "No procedure codes yet. Add some under Procedure Codes." : "No codes match your filters."}
+        </p>
+      ) : (
+        <div className="max-h-72 overflow-auto rounded-lg border border-[var(--color-border)]">
+          <table className="w-full text-[13px]">
+            <thead className="sticky top-0 bg-[var(--color-muted)] text-[12px] font-medium text-[var(--color-muted-foreground)]">
+              <tr>
+                <th className="w-10 px-2 py-2 text-left" />
+                <th className="px-2 py-2 text-left">Code</th>
+                <th className="px-2 py-2 text-left">Description</th>
+                <th className="px-2 py-2 text-left">Category</th>
+                <th className="w-28 px-2 py-2 text-right">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => {
+                const selected = assocByCode.has(c.id);
+                return (
+                  <tr key={c.id} className="border-t border-[var(--color-border)]">
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={(e) => toggle(c.id, e.target.checked)}
+                        aria-label={`Associate ${c.code}`}
+                        className="size-4 cursor-pointer accent-[var(--color-primary)]"
+                      />
+                    </td>
+                    <td className="px-2 py-1.5 font-medium text-[var(--color-foreground)]">{c.code}</td>
+                    <td className="max-w-[1px] truncate px-2 py-1.5 text-[var(--color-muted-foreground)]">
+                      {c.name ?? c.description ?? "—"}
+                    </td>
+                    <td className="px-2 py-1.5 text-[var(--color-muted-foreground)]">{c.procedureCategoryName ?? "—"}</td>
+                    <td className="px-2 py-1.5 text-right">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={draftFor(c.id)}
+                        disabled={!selected}
+                        aria-label={`Price for ${c.code}`}
+                        onChange={(e) => setPriceDrafts((d) => ({ ...d, [c.id]: e.target.value }))}
+                        onBlur={() => commitPrice(c.id)}
+                        className="w-24 rounded-md border border-[var(--color-input)] bg-transparent px-2 py-1 text-right text-[13px] disabled:opacity-40 focus-visible:border-[var(--color-ring)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[oklch(from_var(--color-ring)_l_c_h_/_0.5)]"
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
