@@ -13,27 +13,23 @@ public sealed class ListInsuranceTypeProceduresQueryHandler(AdministrationDbCont
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        List<InsuranceTypeProcedureDto> items = await dbContext.InsuranceTypeProcedures
-            .AsNoTracking()
-            .Where(x => x.InsuranceTypeId == query.InsuranceTypeId)
-            .Join(
-                dbContext.ProcedureCodes,
-                itp => itp.ProcedureCodeId,
-                pc => pc.Id,
-                (itp, pc) => new InsuranceTypeProcedureDto(
-                    itp.Id,
-                    itp.InsuranceTypeId,
-                    itp.ProcedureCodeId,
-                    pc.Code,
-                    pc.Name,
-                    dbContext.ProcedureCategories
-                        .Where(cat => cat.Id == pc.ProcedureCategoryId)
-                        .Select(cat => cat.Name)
-                        .FirstOrDefault(),
-                    itp.Price,
-                    itp.CreatedAtUtc,
-                    itp.UpdatedAtUtc))
-            .OrderBy(x => x.ProcedureCode)
+        List<InsuranceTypeProcedureDto> items = await (
+            from itp in dbContext.InsuranceTypeProcedures.AsNoTracking()
+            where itp.InsuranceTypeId == query.InsuranceTypeId
+            join pc in dbContext.ProcedureCodes on itp.ProcedureCodeId equals pc.Id
+            join cat in dbContext.ProcedureCategories on pc.ProcedureCategoryId equals cat.Id into catJoin
+            from cat in catJoin.DefaultIfEmpty()
+            orderby pc.Code
+            select new InsuranceTypeProcedureDto(
+                itp.Id,
+                itp.InsuranceTypeId,
+                itp.ProcedureCodeId,
+                pc.Code,
+                pc.Name,
+                cat != null ? cat.Name : null,
+                itp.Price,
+                itp.CreatedAtUtc,
+                itp.UpdatedAtUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

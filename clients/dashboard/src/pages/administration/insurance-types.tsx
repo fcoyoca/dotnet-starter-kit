@@ -299,8 +299,8 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
         for (const a of data) seed[a.procedureCodeId] = a.price;
         setSelections(seed);
       })
-      .catch(() => {
-        if (!cancelled) toast.error("Could not load associated procedure codes");
+      .catch((err) => {
+        if (!cancelled) toast.error("Could not load associated procedure codes", { description: describe(err) });
       })
       .finally(() => {
         if (!cancelled) setLoadingExisting(false);
