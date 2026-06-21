@@ -20,6 +20,7 @@ public sealed class AdministrationDbContext : BaseDbContext
         IHostEnvironment environment) : base(multiTenantContextAccessor, options, settings, environment) { }
 
     public DbSet<Clinic> Clinics => Set<Clinic>();
+    public DbSet<Department> Departments => Set<Department>();
     public DbSet<Race> Races => Set<Race>();
     public DbSet<Ethnicity> Ethnicities => Set<Ethnicity>();
     public DbSet<Language> Languages => Set<Language>();

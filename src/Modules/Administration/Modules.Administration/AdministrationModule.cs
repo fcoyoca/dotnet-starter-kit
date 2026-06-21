@@ -9,6 +9,11 @@ using FSH.Modules.Administration.Features.v1.Clinics.DeleteClinic;
 using FSH.Modules.Administration.Features.v1.Clinics.GetClinicById;
 using FSH.Modules.Administration.Features.v1.Clinics.ListClinics;
 using FSH.Modules.Administration.Features.v1.Clinics.UpdateClinic;
+using FSH.Modules.Administration.Features.v1.Departments.CreateDepartment;
+using FSH.Modules.Administration.Features.v1.Departments.DeleteDepartment;
+using FSH.Modules.Administration.Features.v1.Departments.GetDepartmentById;
+using FSH.Modules.Administration.Features.v1.Departments.ListDepartments;
+using FSH.Modules.Administration.Features.v1.Departments.UpdateDepartment;
 using FSH.Modules.Administration.Features.v1.Ethnicities.CreateEthnicity;
 using FSH.Modules.Administration.Features.v1.Ethnicities.DeleteEthnicity;
 using FSH.Modules.Administration.Features.v1.Ethnicities.GetEthnicityById;
@@ -89,6 +94,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetClinicByIdEndpoint();
         group.MapUpdateClinicEndpoint();
         group.MapDeleteClinicEndpoint();
+
+        group.MapCreateDepartmentEndpoint();
+        group.MapListDepartmentsEndpoint();
+        group.MapGetDepartmentByIdEndpoint();
+        group.MapUpdateDepartmentEndpoint();
+        group.MapDeleteDepartmentEndpoint();
 
         group.MapCreateRaceEndpoint();
         group.MapListRacesEndpoint();
