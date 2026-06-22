@@ -30,14 +30,28 @@ public sealed class ListMacrosQueryHandler(AdministrationDbContext dbContext)
             q = q.Where(c => c.IsActive == query.IsActive.Value);
         }
 
+        // Scope to a report field, or to the "All (General)" (unassigned) bucket.
+        if (query.General == true)
+        {
+            q = q.Where(c => c.ReportFieldId == null);
+        }
+        else if (query.ReportFieldId.HasValue)
+        {
+            q = q.Where(c => c.ReportFieldId == query.ReportFieldId.Value);
+        }
+
         bool desc = string.Equals(query.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
         q = desc ? q.OrderByDescending(c => c.Name) : q.OrderBy(c => c.Name);
 
         long total = await q.LongCountAsync(cancellationToken).ConfigureAwait(false);
-        List<MacroDto> items = await q
-            .Skip((page - 1) * size)
-            .Take(size)
-            .Select(c => new MacroDto(c.Id, c.Name, c.Text, c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc))
+        List<MacroDto> items = await (
+            from c in q.Skip((page - 1) * size).Take(size)
+            join f in dbContext.ReportFields on c.ReportFieldId equals f.Id into fieldJoin
+            from f in fieldJoin.DefaultIfEmpty()
+            select new MacroDto(
+                c.Id, c.Name, c.Text,
+                c.ReportFieldId, f != null ? f.Name : null, f != null ? f.Category : null,
+                c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

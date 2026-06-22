@@ -7,6 +7,8 @@ namespace FSH.Modules.Administration.Contracts.v1.Macros;
 public sealed record ListMacrosQuery(
     string? Search = null,
     bool? IsActive = null,
+    int? ReportFieldId = null,
+    bool? General = null,
     int PageNumber = 1,
     int PageSize = 20,
     string? SortBy = null,

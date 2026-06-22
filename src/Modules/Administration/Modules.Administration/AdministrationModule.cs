@@ -68,6 +68,8 @@ using FSH.Modules.Administration.Features.v1.Macros.ListMacros;
 using FSH.Modules.Administration.Features.v1.Macros.UpdateMacro;
 using FSH.Modules.Administration.Features.v1.EmailSettings.GetEmailSettings;
 using FSH.Modules.Administration.Features.v1.EmailSettings.UpdateEmailSettings;
+using FSH.Modules.Administration.Features.v1.ReportTemplates.ListReportTypes;
+using FSH.Modules.Administration.Features.v1.ReportTemplates.ListReportFields;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.CreateInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.DeleteInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.GetInsuranceCompanyById;
@@ -226,6 +228,9 @@ public sealed class AdministrationModule : IModule
 
         group.MapGetEmailSettingsEndpoint();
         group.MapUpdateEmailSettingsEndpoint();
+
+        group.MapListReportTypesEndpoint();
+        group.MapListReportFieldsEndpoint();
 
         group.MapListProcedureCodesEndpoint();
         group.MapGetProcedureCodeByIdEndpoint();

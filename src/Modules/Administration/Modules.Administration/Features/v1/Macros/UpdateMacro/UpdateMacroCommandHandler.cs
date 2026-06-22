@@ -18,7 +18,18 @@ public sealed class UpdateMacroCommandHandler(AdministrationDbContext dbContext)
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"Macro {command.Id} not found.");
 
-        entity.Update(command.Name, command.Text, command.IsActive);
+        if (command.ReportFieldId is { } reportFieldId)
+        {
+            bool fieldExists = await dbContext.ReportFields
+                .AnyAsync(f => f.Id == reportFieldId, cancellationToken)
+                .ConfigureAwait(false);
+            if (!fieldExists)
+            {
+                throw new NotFoundException($"Report field {reportFieldId} not found.");
+            }
+        }
+
+        entity.Update(command.Name, command.Text, command.ReportFieldId, command.IsActive);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Unit.Value;
     }

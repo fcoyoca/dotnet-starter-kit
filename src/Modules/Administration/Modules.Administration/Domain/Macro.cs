@@ -4,8 +4,9 @@ namespace FSH.Modules.Administration.Domain;
 
 /// <summary>
 /// A reusable named snippet of report/note text (legacy <c>ReportFieldMacros</c> — <c>rfmName</c>/<c>rfmData</c>/
-/// <c>rfmActive</c>). The legacy per-user owner (<c>rfmUserID</c>) and report-field association
-/// (<c>rfmReportFieldID</c>) are not migrated — macros are tenant-wide here.
+/// <c>rfmActive</c>/<c>rfmReportFieldID</c>). Associated to a <see cref="ReportField"/> via
+/// <see cref="ReportFieldId"/> (null = "All (General)", legacy <c>rfmReportFieldID</c> NULL/-101). The legacy
+/// per-user owner (<c>rfmUserID</c>) is not migrated — macros are tenant-wide here.
 /// Tenant-scoped — not <see cref="IGlobalEntity"/>, so <c>BaseDbContext</c> applies the per-tenant filter.
 /// </summary>
 public sealed class Macro : AggregateRoot<Guid>, ISoftDeletable
@@ -14,6 +15,9 @@ public sealed class Macro : AggregateRoot<Guid>, ISoftDeletable
 
     /// <summary>The macro body — the text inserted when the macro is applied.</summary>
     public string? Text { get; private set; }
+
+    /// <summary>The report field this macro is for; null = "All (General)".</summary>
+    public int? ReportFieldId { get; private set; }
 
     public bool IsActive { get; private set; }
 
@@ -29,7 +33,7 @@ public sealed class Macro : AggregateRoot<Guid>, ISoftDeletable
 
     private Macro() { }
 
-    public static Macro Create(string name, string? text, int? legacyId = null)
+    public static Macro Create(string name, string? text, int? reportFieldId, int? legacyId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return new Macro
@@ -37,17 +41,19 @@ public sealed class Macro : AggregateRoot<Guid>, ISoftDeletable
             Id = Guid.CreateVersion7(),
             Name = name.Trim(),
             Text = string.IsNullOrWhiteSpace(text) ? null : text,
+            ReportFieldId = reportFieldId,
             IsActive = true,
             LegacyId = legacyId,
             CreatedAtUtc = DateTime.UtcNow
         };
     }
 
-    public void Update(string name, string? text, bool isActive)
+    public void Update(string name, string? text, int? reportFieldId, bool isActive)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         Name = name.Trim();
         Text = string.IsNullOrWhiteSpace(text) ? null : text;
+        ReportFieldId = reportFieldId;
         IsActive = isActive;
         UpdatedAtUtc = DateTime.UtcNow;
     }

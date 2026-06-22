@@ -6,4 +6,5 @@ public sealed record UpdateMacroCommand(
     Guid Id,
     string Name,
     string? Text,
+    int? ReportFieldId,
     bool IsActive) : ICommand<Unit>;

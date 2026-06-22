@@ -4,6 +4,9 @@ public sealed record MacroDto(
     Guid Id,
     string Name,
     string? Text,
+    int? ReportFieldId,
+    string? ReportFieldName,
+    string? ReportCategory,
     bool IsActive,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);

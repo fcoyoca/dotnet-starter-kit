@@ -16,6 +16,8 @@ public static class ListMacrosEndpoint
                 async (
                     string? search,
                     bool? isActive,
+                    int? reportFieldId,
+                    bool? general,
                     int? pageNumber,
                     int? pageSize,
                     string? sortBy,
@@ -23,7 +25,7 @@ public static class ListMacrosEndpoint
                     IMediator mediator,
                     CancellationToken ct) =>
                     Results.Ok(await mediator.Send(
-                        new ListMacrosQuery(search, isActive, pageNumber ?? 1, pageSize ?? 20, sortBy, sortDir), ct)))
+                        new ListMacrosQuery(search, isActive, reportFieldId, general, pageNumber ?? 1, pageSize ?? 20, sortBy, sortDir), ct)))
             .WithName("ListMacros")
             .WithSummary("Search and list macros")
             .RequirePermission(AdministrationPermissions.Macros.View);

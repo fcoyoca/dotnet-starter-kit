@@ -33,6 +33,9 @@ public sealed class AdministrationDbContext : BaseDbContext
     public DbSet<IncidentType> IncidentTypes => Set<IncidentType>();
     public DbSet<PatientDocumentType> PatientDocumentTypes => Set<PatientDocumentType>();
     public DbSet<Macro> Macros => Set<Macro>();
+    public DbSet<ReportType> ReportTypes => Set<ReportType>();
+    public DbSet<ReportField> ReportFields => Set<ReportField>();
+    public DbSet<ReportTypeField> ReportTypeFields => Set<ReportTypeField>();
     public DbSet<TenantEmailSettings> TenantEmailSettings => Set<TenantEmailSettings>();
     public DbSet<Race> Races => Set<Race>();
     public DbSet<Ethnicity> Ethnicities => Set<Ethnicity>();

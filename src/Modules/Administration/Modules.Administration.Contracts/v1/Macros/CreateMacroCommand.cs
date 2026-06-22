@@ -2,4 +2,4 @@ using Mediator;
 
 namespace FSH.Modules.Administration.Contracts.v1.Macros;
 
-public sealed record CreateMacroCommand(string Name, string? Text = null) : ICommand<Guid>;
+public sealed record CreateMacroCommand(string Name, string? Text = null, int? ReportFieldId = null) : ICommand<Guid>;
