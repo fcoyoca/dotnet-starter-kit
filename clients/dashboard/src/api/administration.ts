@@ -808,6 +808,45 @@ export async function deleteMacro(id: string): Promise<void> {
   });
 }
 
+// ─── Email Settings (tenant-scoped singleton) ──────────────────────────
+
+export type EmailSettingsDto = {
+  useCustomSmtp: boolean;
+  host?: string | null;
+  port?: number | null;
+  useSsl: boolean;
+  username?: string | null;
+  hasPassword: boolean;
+  fromAddress?: string | null;
+  fromName?: string | null;
+  replyTo?: string | null;
+  updatedAtUtc?: string | null;
+};
+
+export type UpdateEmailSettingsInput = {
+  useCustomSmtp: boolean;
+  host?: string | null;
+  port?: number | null;
+  useSsl: boolean;
+  username?: string | null;
+  /** Pass null to keep the stored password unchanged; a value replaces it. */
+  password?: string | null;
+  fromAddress?: string | null;
+  fromName?: string | null;
+  replyTo?: string | null;
+};
+
+export function getEmailSettings(): Promise<EmailSettingsDto> {
+  return apiFetch<EmailSettingsDto>("/api/v1/administration/email-settings");
+}
+
+export async function updateEmailSettings(input: UpdateEmailSettingsInput): Promise<void> {
+  await apiFetch<void>("/api/v1/administration/email-settings", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
 // ─── Custom Diagnostics (tenant-scoped CRUD) ───────────────────────────
 
 export type CustomDiagnosticDto = {

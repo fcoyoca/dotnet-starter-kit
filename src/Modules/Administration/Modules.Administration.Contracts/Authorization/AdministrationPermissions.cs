@@ -121,6 +121,13 @@ public static class AdministrationPermissions
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
+    public static class EmailSettings
+    {
+        public const string Resource = "Administration.EmailSettings";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Update = $"Permissions.{Resource}.Update";
+    }
+
     public static class Races
     {
         public const string Resource = "Administration.Races";
@@ -241,6 +248,9 @@ public static class AdministrationPermissions
         new("Create Macros", ActionConstants.Create, Macros.Resource),
         new("Update Macros", ActionConstants.Update, Macros.Resource),
         new("Delete Macros", ActionConstants.Delete, Macros.Resource),
+
+        new("View Email Settings",   ActionConstants.View,   EmailSettings.Resource, IsBasic: true),
+        new("Update Email Settings", ActionConstants.Update, EmailSettings.Resource),
 
         new("View Races",   ActionConstants.View,   Races.Resource, IsBasic: true),
         new("Create Races", ActionConstants.Create, Races.Resource),
