@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   Building,
   Building2,
   ClipboardPlus,
@@ -162,6 +163,12 @@ export const sections: NavSection[] = [
         label: "Code Sources",
         icon: Tags,
         perm: "Permissions.Administration.CodeSources.View",
+      },
+      {
+        to: "/administration/incident-types",
+        label: "Incident Types",
+        icon: AlertTriangle,
+        perm: "Permissions.Administration.IncidentTypes.View",
       },
     ],
   },

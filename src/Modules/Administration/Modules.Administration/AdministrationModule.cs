@@ -51,6 +51,11 @@ using FSH.Modules.Administration.Features.v1.CodeSources.DeleteCodeSource;
 using FSH.Modules.Administration.Features.v1.CodeSources.GetCodeSourceById;
 using FSH.Modules.Administration.Features.v1.CodeSources.ListCodeSources;
 using FSH.Modules.Administration.Features.v1.CodeSources.UpdateCodeSource;
+using FSH.Modules.Administration.Features.v1.IncidentTypes.CreateIncidentType;
+using FSH.Modules.Administration.Features.v1.IncidentTypes.DeleteIncidentType;
+using FSH.Modules.Administration.Features.v1.IncidentTypes.GetIncidentTypeById;
+using FSH.Modules.Administration.Features.v1.IncidentTypes.ListIncidentTypes;
+using FSH.Modules.Administration.Features.v1.IncidentTypes.UpdateIncidentType;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.CreateInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.DeleteInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.GetInsuranceCompanyById;
@@ -188,6 +193,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetCodeSourceByIdEndpoint();
         group.MapUpdateCodeSourceEndpoint();
         group.MapDeleteCodeSourceEndpoint();
+
+        group.MapCreateIncidentTypeEndpoint();
+        group.MapListIncidentTypesEndpoint();
+        group.MapGetIncidentTypeByIdEndpoint();
+        group.MapUpdateIncidentTypeEndpoint();
+        group.MapDeleteIncidentTypeEndpoint();
 
         group.MapListProcedureCodesEndpoint();
         group.MapGetProcedureCodeByIdEndpoint();

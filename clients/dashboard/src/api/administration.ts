@@ -635,6 +635,64 @@ export async function deleteDiagnosticCategory(id: string): Promise<void> {
   });
 }
 
+// ─── Incident Types (tenant-scoped CRUD) ───────────────────────────────
+
+export type IncidentTypeDto = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListIncidentTypesParams = {
+  search?: string;
+  isActive?: boolean | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type CreateIncidentTypeInput = { name: string };
+export type UpdateIncidentTypeInput = { typeId: string; name: string; isActive: boolean };
+
+export function listIncidentTypes(
+  params: ListIncidentTypesParams = {},
+): Promise<PagedResponse<IncidentTypeDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<IncidentTypeDto>>(
+    `/api/v1/administration/incident-types?${query.toString()}`,
+  );
+}
+
+export async function createIncidentType(input: CreateIncidentTypeInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/incident-types", {
+    method: "POST",
+    body: JSON.stringify({ name: input.name }),
+  });
+}
+
+export async function updateIncidentType(input: UpdateIncidentTypeInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/incident-types/${encodeURIComponent(input.typeId)}`, {
+    method: "PUT",
+    body: JSON.stringify({ id: input.typeId, name: input.name, isActive: input.isActive }),
+  });
+}
+
+export async function deleteIncidentType(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/incident-types/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 // ─── Custom Diagnostics (tenant-scoped CRUD) ───────────────────────────
 
 export type CustomDiagnosticDto = {
