@@ -12,8 +12,15 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { EntityPageHeader, Field } from "@/components/list";
 import { describe } from "@/lib/list-helpers";
+import { cn } from "@/lib/utils";
 
 const QUERY_KEY = ["administration", "email-settings"] as const;
+
+const textareaClass = cn(
+  "flex min-h-[140px] w-full rounded-lg border border-[var(--color-input)] bg-transparent px-3 py-2 font-mono text-[12px] shadow-xs",
+  "placeholder:text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.6)]",
+  "focus-visible:border-[var(--color-ring)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[oklch(from_var(--color-ring)_l_c_h_/_0.5)]",
+);
 
 type FormState = {
   useCustomSmtp: boolean;
@@ -25,6 +32,7 @@ type FormState = {
   fromAddress: string;
   fromName: string;
   replyTo: string;
+  footerHtml: string;
 };
 
 function toForm(dto: EmailSettingsDto): FormState {
@@ -38,6 +46,7 @@ function toForm(dto: EmailSettingsDto): FormState {
     fromAddress: dto.fromAddress ?? "",
     fromName: dto.fromName ?? "",
     replyTo: dto.replyTo ?? "",
+    footerHtml: dto.footerHtml ?? "",
   };
 }
 
@@ -73,6 +82,7 @@ export function EmailSettingsPage() {
         fromAddress: form.fromAddress.trim() || null,
         fromName: form.fromName.trim() || null,
         replyTo: form.replyTo.trim() || null,
+        footerHtml: form.footerHtml.trim() || null,
       });
     },
     onSuccess: () => {
@@ -220,6 +230,41 @@ export function EmailSettingsPage() {
                   maxLength={256}
                 />
               </Field>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-[var(--color-border)] p-4 sm:p-5">
+            <h2 className="text-[14px] font-semibold text-[var(--color-foreground)]">Email footer</h2>
+            <p className="mt-0.5 text-[12px] text-[var(--color-muted-foreground)]">
+              HTML appended to the bottom of outbound emails. Use inline styles for the best rendering across mail
+              clients.
+            </p>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div>
+                <p className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                  HTML
+                </p>
+                <textarea
+                  id="footer-html"
+                  value={form.footerHtml}
+                  onChange={(e) => set("footerHtml", e.target.value)}
+                  placeholder={'<p style="color:#64748b">Your Clinic · 123 Main St · (555) 123-4567</p>'}
+                  maxLength={16000}
+                  className={textareaClass}
+                  spellCheck={false}
+                />
+              </div>
+              <div>
+                <p className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                  Preview
+                </p>
+                <iframe
+                  title="Email footer preview"
+                  sandbox=""
+                  srcDoc={form.footerHtml}
+                  className="min-h-[140px] w-full rounded-lg border border-[var(--color-border)] bg-white"
+                />
+              </div>
             </div>
           </section>
 

@@ -31,7 +31,8 @@ public sealed class UpdateEmailSettingsCommandHandler(AdministrationDbContext db
             command.Username,
             command.FromAddress,
             command.FromName,
-            command.ReplyTo);
+            command.ReplyTo,
+            command.FooterHtml);
         entity.SetPassword(command.Password);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

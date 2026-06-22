@@ -820,6 +820,7 @@ export type EmailSettingsDto = {
   fromAddress?: string | null;
   fromName?: string | null;
   replyTo?: string | null;
+  footerHtml?: string | null;
   updatedAtUtc?: string | null;
 };
 
@@ -834,6 +835,7 @@ export type UpdateEmailSettingsInput = {
   fromAddress?: string | null;
   fromName?: string | null;
   replyTo?: string | null;
+  footerHtml?: string | null;
 };
 
 export function getEmailSettings(): Promise<EmailSettingsDto> {

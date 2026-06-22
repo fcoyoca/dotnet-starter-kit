@@ -18,6 +18,7 @@ public sealed class TenantEmailSettingsConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.FromAddress).HasMaxLength(256);
         builder.Property(x => x.FromName).HasMaxLength(256);
         builder.Property(x => x.ReplyTo).HasMaxLength(256);
+        builder.Property(x => x.FooterHtml).HasMaxLength(16000);
 
         builder.Ignore(x => x.DomainEvents);
     }

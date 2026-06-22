@@ -23,7 +23,7 @@ public sealed class GetEmailSettingsQueryHandler(AdministrationDbContext dbConte
             return new EmailSettingsDto(
                 UseCustomSmtp: false,
                 Host: null, Port: null, UseSsl: false, Username: null, HasPassword: false,
-                FromAddress: null, FromName: null, ReplyTo: null, UpdatedAtUtc: null);
+                FromAddress: null, FromName: null, ReplyTo: null, FooterHtml: null, UpdatedAtUtc: null);
         }
 
         return new EmailSettingsDto(
@@ -36,6 +36,7 @@ public sealed class GetEmailSettingsQueryHandler(AdministrationDbContext dbConte
             entity.FromAddress,
             entity.FromName,
             entity.ReplyTo,
+            entity.FooterHtml,
             entity.UpdatedAtUtc);
     }
 }

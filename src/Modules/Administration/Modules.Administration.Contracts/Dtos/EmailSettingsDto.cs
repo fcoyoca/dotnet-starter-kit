@@ -14,4 +14,5 @@ public sealed record EmailSettingsDto(
     string? FromAddress,
     string? FromName,
     string? ReplyTo,
+    string? FooterHtml,
     DateTime? UpdatedAtUtc);

@@ -29,7 +29,8 @@ public sealed class TenantEmailSettingsTests
             username: "  mailer  ",
             fromAddress: "  clinic@example.com  ",
             fromName: "  Clinic  ",
-            replyTo: "  reply@example.com  ");
+            replyTo: "  reply@example.com  ",
+            footerHtml: "<p>Sent by the clinic</p>");
 
         settings.UseCustomSmtp.ShouldBeTrue();
         settings.Host.ShouldBe("smtp.example.com");
@@ -39,6 +40,7 @@ public sealed class TenantEmailSettingsTests
         settings.FromAddress.ShouldBe("clinic@example.com");
         settings.FromName.ShouldBe("Clinic");
         settings.ReplyTo.ShouldBe("reply@example.com");
+        settings.FooterHtml.ShouldBe("<p>Sent by the clinic</p>");
         settings.UpdatedAtUtc.ShouldNotBeNull();
     }
 

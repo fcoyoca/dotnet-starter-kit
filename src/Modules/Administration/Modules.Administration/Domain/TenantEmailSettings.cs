@@ -24,6 +24,9 @@ public sealed class TenantEmailSettings : AggregateRoot<Guid>
     public string? FromName { get; private set; }
     public string? ReplyTo { get; private set; }
 
+    /// <summary>HTML footer appended to outbound email (legacy <c>EMAIL_FOOTER</c>).</summary>
+    public string? FooterHtml { get; private set; }
+
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime? UpdatedAtUtc { get; private set; }
 
@@ -47,7 +50,8 @@ public sealed class TenantEmailSettings : AggregateRoot<Guid>
         string? username,
         string? fromAddress,
         string? fromName,
-        string? replyTo)
+        string? replyTo,
+        string? footerHtml)
     {
         UseCustomSmtp = useCustomSmtp;
         Host = Trim(host);
@@ -57,6 +61,7 @@ public sealed class TenantEmailSettings : AggregateRoot<Guid>
         FromAddress = Trim(fromAddress);
         FromName = Trim(fromName);
         ReplyTo = Trim(replyTo);
+        FooterHtml = string.IsNullOrWhiteSpace(footerHtml) ? null : footerHtml;
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
