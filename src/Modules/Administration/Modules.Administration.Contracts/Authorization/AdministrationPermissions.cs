@@ -103,6 +103,15 @@ public static class AdministrationPermissions
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
+    public static class PatientDocumentTypes
+    {
+        public const string Resource = "Administration.PatientDocumentTypes";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
     public static class Races
     {
         public const string Resource = "Administration.Races";
@@ -213,6 +222,11 @@ public static class AdministrationPermissions
         new("Create Incident Types", ActionConstants.Create, IncidentTypes.Resource),
         new("Update Incident Types", ActionConstants.Update, IncidentTypes.Resource),
         new("Delete Incident Types", ActionConstants.Delete, IncidentTypes.Resource),
+
+        new("View Patient Document Types",   ActionConstants.View,   PatientDocumentTypes.Resource, IsBasic: true),
+        new("Create Patient Document Types", ActionConstants.Create, PatientDocumentTypes.Resource),
+        new("Update Patient Document Types", ActionConstants.Update, PatientDocumentTypes.Resource),
+        new("Delete Patient Document Types", ActionConstants.Delete, PatientDocumentTypes.Resource),
 
         new("View Races",   ActionConstants.View,   Races.Resource, IsBasic: true),
         new("Create Races", ActionConstants.Create, Races.Resource),

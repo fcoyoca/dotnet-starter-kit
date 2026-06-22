@@ -56,6 +56,11 @@ using FSH.Modules.Administration.Features.v1.IncidentTypes.DeleteIncidentType;
 using FSH.Modules.Administration.Features.v1.IncidentTypes.GetIncidentTypeById;
 using FSH.Modules.Administration.Features.v1.IncidentTypes.ListIncidentTypes;
 using FSH.Modules.Administration.Features.v1.IncidentTypes.UpdateIncidentType;
+using FSH.Modules.Administration.Features.v1.PatientDocumentTypes.CreatePatientDocumentType;
+using FSH.Modules.Administration.Features.v1.PatientDocumentTypes.DeletePatientDocumentType;
+using FSH.Modules.Administration.Features.v1.PatientDocumentTypes.GetPatientDocumentTypeById;
+using FSH.Modules.Administration.Features.v1.PatientDocumentTypes.ListPatientDocumentTypes;
+using FSH.Modules.Administration.Features.v1.PatientDocumentTypes.UpdatePatientDocumentType;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.CreateInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.DeleteInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.GetInsuranceCompanyById;
@@ -199,6 +204,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetIncidentTypeByIdEndpoint();
         group.MapUpdateIncidentTypeEndpoint();
         group.MapDeleteIncidentTypeEndpoint();
+
+        group.MapCreatePatientDocumentTypeEndpoint();
+        group.MapListPatientDocumentTypesEndpoint();
+        group.MapGetPatientDocumentTypeByIdEndpoint();
+        group.MapUpdatePatientDocumentTypeEndpoint();
+        group.MapDeletePatientDocumentTypeEndpoint();
 
         group.MapListProcedureCodesEndpoint();
         group.MapGetProcedureCodeByIdEndpoint();

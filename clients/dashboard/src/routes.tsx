@@ -137,6 +137,10 @@ const IncidentTypesPage = lazyNamed(
   () => import("@/pages/administration/incident-types"),
   "IncidentTypesPage",
 );
+const PatientDocumentTypesPage = lazyNamed(
+  () => import("@/pages/administration/patient-document-types"),
+  "PatientDocumentTypesPage",
+);
 const CustomDiagnosticsPage = lazyNamed(
   () => import("@/pages/administration/custom-diagnostics"),
   "CustomDiagnosticsPage",
@@ -270,6 +274,7 @@ export const router = createBrowserRouter([
           { path: "administration/procedure-codes", element: withSuspense(<ProcedureCodesPage />) },
           { path: "administration/code-sources", element: withSuspense(<CodeSourcesPage />) },
           { path: "administration/incident-types", element: withSuspense(<IncidentTypesPage />) },
+          { path: "administration/patient-document-types", element: withSuspense(<PatientDocumentTypesPage />) },
           { path: "identity", element: <Navigate to="/identity/users" replace /> },
           { path: "identity/users", element: withSuspense(<UsersPage />) },
           { path: "identity/users/:userId", element: withSuspense(<UserDetailPage />) },

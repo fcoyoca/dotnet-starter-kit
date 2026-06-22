@@ -31,6 +31,7 @@ public sealed class AdministrationDbContext : BaseDbContext
     public DbSet<InsuranceTypeProcedure> InsuranceTypeProcedures => Set<InsuranceTypeProcedure>();
     public DbSet<CodeSource> CodeSources => Set<CodeSource>();
     public DbSet<IncidentType> IncidentTypes => Set<IncidentType>();
+    public DbSet<PatientDocumentType> PatientDocumentTypes => Set<PatientDocumentType>();
     public DbSet<Race> Races => Set<Race>();
     public DbSet<Ethnicity> Ethnicities => Set<Ethnicity>();
     public DbSet<Language> Languages => Set<Language>();
