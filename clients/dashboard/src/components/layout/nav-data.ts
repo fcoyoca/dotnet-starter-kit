@@ -177,6 +177,12 @@ export const sections: NavSection[] = [
         icon: FileText,
         perm: "Permissions.Administration.PatientDocumentTypes.View",
       },
+      {
+        to: "/administration/macros",
+        label: "Macros",
+        icon: ScrollText,
+        perm: "Permissions.Administration.Macros.View",
+      },
     ],
   },
   {

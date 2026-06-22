@@ -61,6 +61,11 @@ using FSH.Modules.Administration.Features.v1.PatientDocumentTypes.DeletePatientD
 using FSH.Modules.Administration.Features.v1.PatientDocumentTypes.GetPatientDocumentTypeById;
 using FSH.Modules.Administration.Features.v1.PatientDocumentTypes.ListPatientDocumentTypes;
 using FSH.Modules.Administration.Features.v1.PatientDocumentTypes.UpdatePatientDocumentType;
+using FSH.Modules.Administration.Features.v1.Macros.CreateMacro;
+using FSH.Modules.Administration.Features.v1.Macros.DeleteMacro;
+using FSH.Modules.Administration.Features.v1.Macros.GetMacroById;
+using FSH.Modules.Administration.Features.v1.Macros.ListMacros;
+using FSH.Modules.Administration.Features.v1.Macros.UpdateMacro;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.CreateInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.DeleteInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.GetInsuranceCompanyById;
@@ -210,6 +215,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetPatientDocumentTypeByIdEndpoint();
         group.MapUpdatePatientDocumentTypeEndpoint();
         group.MapDeletePatientDocumentTypeEndpoint();
+
+        group.MapCreateMacroEndpoint();
+        group.MapListMacrosEndpoint();
+        group.MapGetMacroByIdEndpoint();
+        group.MapUpdateMacroEndpoint();
+        group.MapDeleteMacroEndpoint();
 
         group.MapListProcedureCodesEndpoint();
         group.MapGetProcedureCodeByIdEndpoint();

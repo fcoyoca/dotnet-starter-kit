@@ -112,6 +112,15 @@ public static class AdministrationPermissions
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
+    public static class Macros
+    {
+        public const string Resource = "Administration.Macros";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
     public static class Races
     {
         public const string Resource = "Administration.Races";
@@ -227,6 +236,11 @@ public static class AdministrationPermissions
         new("Create Patient Document Types", ActionConstants.Create, PatientDocumentTypes.Resource),
         new("Update Patient Document Types", ActionConstants.Update, PatientDocumentTypes.Resource),
         new("Delete Patient Document Types", ActionConstants.Delete, PatientDocumentTypes.Resource),
+
+        new("View Macros",   ActionConstants.View,   Macros.Resource, IsBasic: true),
+        new("Create Macros", ActionConstants.Create, Macros.Resource),
+        new("Update Macros", ActionConstants.Update, Macros.Resource),
+        new("Delete Macros", ActionConstants.Delete, Macros.Resource),
 
         new("View Races",   ActionConstants.View,   Races.Resource, IsBasic: true),
         new("Create Races", ActionConstants.Create, Races.Resource),
