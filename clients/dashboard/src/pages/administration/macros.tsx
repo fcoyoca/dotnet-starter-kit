@@ -44,7 +44,7 @@ import {
   Field,
 } from "@/components/list";
 import { describe, formatDate } from "@/lib/list-helpers";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
 
 const PAGE_SIZE = 20;
 

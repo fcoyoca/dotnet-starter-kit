@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { EntityPageHeader, Field } from "@/components/list";
 import { describe } from "@/lib/list-helpers";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
 
 const QUERY_KEY = ["administration", "email-settings"] as const;
 
