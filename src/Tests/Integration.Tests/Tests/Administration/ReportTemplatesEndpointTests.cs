@@ -112,6 +112,35 @@ public sealed class ReportTemplatesEndpointTests
         (await ListTypesAsync(client)).ShouldNotContain(t => t.Id == id);
     }
 
+    [Fact]
+    public async Task ReportField_Crud_RoundTrip_And_InactiveFiltering()
+    {
+        using var client = await _auth.CreateRootAdminClientAsync();
+        var types = await ListTypesAsync(client);
+        var typeId = types.Single(t => t.Name == "Initial Evaluation").Id;
+        var name = $"Custom Field {Guid.NewGuid():N}";
+
+        var id = await (await client.PostAsJsonAsync($"{BasePath}/report-fields",
+                new { reportTypeId = typeId, name, category = "Custom", displayOrder = 3 }))
+            .DeserializeAsync<int>();
+
+        (await ListFieldsAsync(client, typeId)).ShouldContain(f => f.Id == id && f.Name == name);
+
+        // Deactivate -> drops out of the active list, but appears with includeInactive.
+        (await client.PutAsJsonAsync($"{BasePath}/report-fields/{id}",
+            new { id, name, category = "Custom", displayOrder = 3, isActive = false }))
+            .EnsureSuccessStatusCode();
+        (await ListFieldsAsync(client, typeId)).ShouldNotContain(f => f.Id == id);
+        var withInactive = await (await client.GetAsync($"{BasePath}/report-fields?reportTypeId={typeId}&includeInactive=true"))
+            .DeserializeAsync<List<ReportFieldRow>>();
+        withInactive.ShouldContain(f => f.Id == id);
+
+        (await client.DeleteAsync($"{BasePath}/report-fields/{id}")).EnsureSuccessStatusCode();
+        var afterDelete = await (await client.GetAsync($"{BasePath}/report-fields?reportTypeId={typeId}&includeInactive=true"))
+            .DeserializeAsync<List<ReportFieldRow>>();
+        afterDelete.ShouldNotContain(f => f.Id == id);
+    }
+
     private static async Task<List<ReportTypeRow>> ListTypesAsync(HttpClient client) =>
         await (await client.GetAsync($"{BasePath}/report-types")).DeserializeAsync<List<ReportTypeRow>>();
 

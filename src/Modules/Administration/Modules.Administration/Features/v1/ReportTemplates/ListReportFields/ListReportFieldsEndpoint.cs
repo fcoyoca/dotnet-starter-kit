@@ -13,10 +13,10 @@ public static class ListReportFieldsEndpoint
     internal static RouteHandlerBuilder MapListReportFieldsEndpoint(this IEndpointRouteBuilder endpoints)
     {
         return endpoints.MapGet("/report-fields",
-                (int reportTypeId, IMediator mediator, CancellationToken ct) =>
-                    mediator.Send(new ListReportFieldsQuery(reportTypeId), ct))
+                (int reportTypeId, bool? includeInactive, IMediator mediator, CancellationToken ct) =>
+                    mediator.Send(new ListReportFieldsQuery(reportTypeId, includeInactive ?? false), ct))
             .WithName("ListReportFields")
-            .WithSummary("List active report fields for a report type (for the Macros admin)")
+            .WithSummary("List report fields for a report type")
             .RequirePermission(AdministrationPermissions.ReportTemplates.View);
     }
 }
