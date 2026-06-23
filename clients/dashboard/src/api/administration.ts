@@ -751,12 +751,30 @@ export async function deletePatientDocumentType(id: string): Promise<void> {
   });
 }
 
-// ─── Macros (tenant-scoped CRUD) ───────────────────────────────────────
+// ─── Report templates (global reference; drives the Macros admin) ──────
+
+export type ReportTypeDto = { id: number; name: string };
+export type ReportFieldDto = { id: number; name: string; category?: string | null };
+
+export function listReportTypes(): Promise<ReportTypeDto[]> {
+  return apiFetch<ReportTypeDto[]>("/api/v1/administration/report-types");
+}
+
+export function listReportFields(reportTypeId: number): Promise<ReportFieldDto[]> {
+  return apiFetch<ReportFieldDto[]>(
+    `/api/v1/administration/report-fields?reportTypeId=${reportTypeId}`,
+  );
+}
+
+// ─── Macros (tenant-scoped CRUD, scoped to a report field) ─────────────
 
 export type MacroDto = {
   id: string;
   name: string;
   text?: string | null;
+  reportFieldId?: number | null;
+  reportFieldName?: string | null;
+  reportCategory?: string | null;
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc?: string | null;
@@ -765,20 +783,32 @@ export type MacroDto = {
 export type ListMacrosParams = {
   search?: string;
   isActive?: boolean | null;
+  /** Filter to a specific report field. */
+  reportFieldId?: number | null;
+  /** Filter to the "All (General)" (unassigned) bucket. */
+  general?: boolean;
   pageNumber?: number;
   pageSize?: number;
   sortBy?: string;
   sortDir?: "asc" | "desc";
 };
 
-export type CreateMacroInput = { name: string; text?: string | null };
-export type UpdateMacroInput = { macroId: string; name: string; text?: string | null; isActive: boolean };
+export type CreateMacroInput = { name: string; text?: string | null; reportFieldId?: number | null };
+export type UpdateMacroInput = {
+  macroId: string;
+  name: string;
+  text?: string | null;
+  reportFieldId?: number | null;
+  isActive: boolean;
+};
 
 export function listMacros(params: ListMacrosParams = {}): Promise<PagedResponse<MacroDto>> {
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
   if (params.isActive !== undefined && params.isActive !== null)
     query.set("isActive", String(params.isActive));
+  if (params.general) query.set("general", "true");
+  else if (params.reportFieldId != null) query.set("reportFieldId", String(params.reportFieldId));
   query.set("pageNumber", String(params.pageNumber ?? 1));
   query.set("pageSize", String(params.pageSize ?? 20));
   if (params.sortBy) query.set("sortBy", params.sortBy);
@@ -791,14 +821,20 @@ export function listMacros(params: ListMacrosParams = {}): Promise<PagedResponse
 export async function createMacro(input: CreateMacroInput): Promise<string> {
   return apiFetch<string>("/api/v1/administration/macros", {
     method: "POST",
-    body: JSON.stringify({ name: input.name, text: input.text ?? null }),
+    body: JSON.stringify({ name: input.name, text: input.text ?? null, reportFieldId: input.reportFieldId ?? null }),
   });
 }
 
 export async function updateMacro(input: UpdateMacroInput): Promise<void> {
   await apiFetch<void>(`/api/v1/administration/macros/${encodeURIComponent(input.macroId)}`, {
     method: "PUT",
-    body: JSON.stringify({ id: input.macroId, name: input.name, text: input.text ?? null, isActive: input.isActive }),
+    body: JSON.stringify({
+      id: input.macroId,
+      name: input.name,
+      text: input.text ?? null,
+      reportFieldId: input.reportFieldId ?? null,
+      isActive: input.isActive,
+    }),
   });
 }
 

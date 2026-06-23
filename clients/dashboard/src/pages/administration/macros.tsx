@@ -5,12 +5,14 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { ChevronRight, Pencil, Plus, ScrollText, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Layers, Pencil, Plus, ScrollText, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   createMacro,
   deleteMacro,
   listMacros,
+  listReportFields,
+  listReportTypes,
   updateMacro,
   type MacroDto,
   type CreateMacroInput,
@@ -54,6 +56,11 @@ const textareaClass = cn(
   "focus-visible:border-[var(--color-ring)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[oklch(from_var(--color-ring)_l_c_h_/_0.5)]",
 );
 
+/** The "All (General)" pseudo-field: macros not tied to a specific report field. */
+const GENERAL = { id: null as number | null, name: "All (General)" };
+
+type SelectedField = { id: number | null; name: string };
+
 type EditorState =
   | { mode: "closed" }
   | { mode: "create" }
@@ -61,8 +68,12 @@ type EditorState =
   | { mode: "delete"; macro: MacroDto };
 
 export function MacrosPage() {
+  const [reportTypeId, setReportTypeId] = useState(1);
+  const [field, setField] = useState<SelectedField>(GENERAL);
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
   const [editor, setEditor] = useState<EditorState>({ mode: "closed" });
 
@@ -74,113 +85,287 @@ export function MacrosPage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const query = useQuery({
-    queryKey: ["administration", "macros", { search: debouncedSearch, pageNumber, pageSize: PAGE_SIZE }],
-    queryFn: () => listMacros({ search: debouncedSearch || undefined, pageNumber, pageSize: PAGE_SIZE }),
+  const typesQuery = useQuery({
+    queryKey: ["administration", "report-types"],
+    queryFn: listReportTypes,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const fieldsQuery = useQuery({
+    queryKey: ["administration", "report-fields", reportTypeId],
+    queryFn: () => listReportFields(reportTypeId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const macrosQuery = useQuery({
+    queryKey: [
+      "administration",
+      "macros",
+      { fieldId: field.id, search: debouncedSearch, showInactive, pageNumber },
+    ],
+    queryFn: () =>
+      listMacros({
+        search: debouncedSearch || undefined,
+        reportFieldId: field.id ?? undefined,
+        general: field.id === null,
+        isActive: showInactive ? undefined : true,
+        pageNumber,
+        pageSize: PAGE_SIZE,
+      }),
     placeholderData: keepPreviousData,
   });
 
-  const data = query.data;
+  const onSelectType = (id: number) => {
+    setReportTypeId(id);
+    setField(GENERAL);
+    setPageNumber(1);
+  };
+
+  const onSelectField = (f: SelectedField) => {
+    setField(f);
+    setPageNumber(1);
+  };
+
+  const data = macrosQuery.data;
   const items = data?.items ?? [];
   const searchActive = debouncedSearch.length > 0;
+  const fields = fieldsQuery.data ?? [];
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <EntityPageHeader
         icon={ScrollText}
         title="Macros"
-        total={data?.totalCount ?? null}
-        unit="macro"
-        description="Reusable text snippets inserted into notes and reports."
-      >
-        <Button
-          onClick={() => setEditor({ mode: "create" })}
-          className="h-9 flex-1 gap-1.5 rounded-lg px-4 text-[13px] font-semibold sm:flex-none"
+        description="Reusable text snippets, organized by report type and field. Fields shared across report types share their macros."
+      />
+
+      {/* Report type → field master selectors */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SelectorCard title="Report type" hint="Choose a report type.">
+          {typesQuery.isLoading ? (
+            <SelectorSkeleton />
+          ) : (
+            (typesQuery.data ?? []).map((t) => (
+              <SelectorRow
+                key={t.id}
+                label={t.name}
+                selected={t.id === reportTypeId}
+                onClick={() => onSelectType(t.id)}
+              />
+            ))
+          )}
+        </SelectorCard>
+
+        <SelectorCard
+          title="Fields"
+          hint="Click a field to view its macros, or use “All (General)”."
         >
-          <Plus className="size-4" />
-          New macro
-        </Button>
-      </EntityPageHeader>
+          <SelectorRow
+            label={GENERAL.name}
+            icon={Layers}
+            selected={field.id === null}
+            onClick={() => onSelectField(GENERAL)}
+          />
+          {fieldsQuery.isLoading ? (
+            <SelectorSkeleton />
+          ) : (
+            fields.map((f) => (
+              <SelectorRow
+                key={f.id}
+                label={f.name}
+                sub={f.category && f.category !== f.name ? f.category : undefined}
+                selected={field.id === f.id}
+                onClick={() => onSelectField({ id: f.id, name: f.name })}
+              />
+            ))
+          )}
+        </SelectorCard>
+      </div>
 
-      <EntitySearch value={search} onChange={setSearch} placeholder="Search by name…" />
-
-      {query.isLoading && items.length === 0 ? (
-        <EntityListLoading desktopColumns="grid-cols-[1fr_90px_24px]" />
-      ) : items.length === 0 ? (
-        <EntityEmpty
-          icon={searchActive ? Search : ScrollText}
-          title={searchActive ? "No macros found" : "No macros yet"}
-          body={
-            searchActive
-              ? `Nothing matches "${debouncedSearch}". Try a different term or clear the search.`
-              : "Add your first macro to reuse boilerplate text across notes and reports."
-          }
-          action={
-            searchActive ? (
-              <Button variant="outline" onClick={() => setSearch("")} className="h-9 rounded-lg px-4 text-[13px]">
-                Clear search
-              </Button>
-            ) : (
-              <Button onClick={() => setEditor({ mode: "create" })} className="h-9 rounded-lg px-4 text-[13px]">
-                <Plus className="mr-1.5 size-4" />
-                Add macro
-              </Button>
-            )
-          }
-        />
-      ) : (
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-[12px] font-medium text-[var(--color-muted-foreground)]">
-              {data?.totalCount ?? 0} macro{(data?.totalCount ?? 0) !== 1 ? "s" : ""} found
+      {/* Macros for the selected field */}
+      <div className="rounded-xl border border-[var(--color-border)] p-4 sm:p-5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-[14px] font-semibold text-[var(--color-foreground)]">
+              Macros for {field.name}
+            </h2>
+            <p className="text-[12px] text-[var(--color-muted-foreground)]">
+              {data?.totalCount ?? 0} macro{(data?.totalCount ?? 0) !== 1 ? "s" : ""}
             </p>
           </div>
-
-          <div className="space-y-2 md:hidden">
-            {items.map((m) => (
-              <MobileCard key={m.id} macro={m} onEdit={() => setEditor({ mode: "edit", macro: m })} />
-            ))}
-          </div>
-
-          <EntityListCard className="hidden md:block">
-            <EntityListHeader className="grid-cols-[1fr_90px_24px]">
-              <span>Macro</span>
-              <span>Status</span>
-              <span />
-            </EntityListHeader>
-            {items.map((m, i) => (
-              <DesktopRow
-                key={m.id}
-                macro={m}
-                isLast={i === items.length - 1}
-                onEdit={() => setEditor({ mode: "edit", macro: m })}
-                onDelete={() => setEditor({ mode: "delete", macro: m })}
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="show-inactive"
+              className="flex cursor-pointer items-center gap-2 text-[12px] text-[var(--color-muted-foreground)]"
+            >
+              <Switch
+                id="show-inactive"
+                checked={showInactive}
+                onCheckedChange={(v) => {
+                  setShowInactive(v);
+                  setPageNumber(1);
+                }}
+                aria-label="Show inactive macros"
               />
-            ))}
-          </EntityListCard>
-
-          <EntityPager
-            page={data?.pageNumber ?? 1}
-            totalPages={data?.totalPages ?? 1}
-            hasPrev={!!data?.hasPrevious}
-            hasNext={!!data?.hasNext}
-            onPrev={() => setPageNumber((p) => Math.max(1, p - 1))}
-            onNext={() => setPageNumber((p) => p + 1)}
-          />
+              Show inactive
+            </label>
+            <Button
+              onClick={() => setEditor({ mode: "create" })}
+              className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
+            >
+              <Plus className="size-4" />
+              New macro
+            </Button>
+          </div>
         </div>
-      )}
 
-      {query.isError && (
-        <div
-          role="alert"
-          className="rounded-lg border border-[oklch(from_var(--color-destructive)_l_c_h_/_0.30)] bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.06)] px-3 py-2 text-sm text-[var(--color-destructive)]"
-        >
-          {describe(query.error)}
+        <EntitySearch value={search} onChange={setSearch} placeholder="Search by name…" />
+
+        <div className="mt-4">
+          {macrosQuery.isLoading && items.length === 0 ? (
+            <EntityListLoading desktopColumns="grid-cols-[1fr_90px_24px]" />
+          ) : items.length === 0 ? (
+            <EntityEmpty
+              icon={searchActive ? Search : ScrollText}
+              title={searchActive ? "No macros found" : "No macros here yet"}
+              body={
+                searchActive
+                  ? `Nothing matches "${debouncedSearch}".`
+                  : `Add a macro for ${field.name} to reuse boilerplate text.`
+              }
+              action={
+                searchActive ? (
+                  <Button variant="outline" onClick={() => setSearch("")} className="h-9 rounded-lg px-4 text-[13px]">
+                    Clear search
+                  </Button>
+                ) : (
+                  <Button onClick={() => setEditor({ mode: "create" })} className="h-9 rounded-lg px-4 text-[13px]">
+                    <Plus className="mr-1.5 size-4" />
+                    Add macro
+                  </Button>
+                )
+              }
+            />
+          ) : (
+            <>
+              <div className="space-y-2 md:hidden">
+                {items.map((m) => (
+                  <MobileCard key={m.id} macro={m} onEdit={() => setEditor({ mode: "edit", macro: m })} />
+                ))}
+              </div>
+
+              <EntityListCard className="hidden md:block">
+                <EntityListHeader className="grid-cols-[1fr_90px_24px]">
+                  <span>Macro</span>
+                  <span>Status</span>
+                  <span />
+                </EntityListHeader>
+                {items.map((m, i) => (
+                  <DesktopRow
+                    key={m.id}
+                    macro={m}
+                    isLast={i === items.length - 1}
+                    onEdit={() => setEditor({ mode: "edit", macro: m })}
+                    onDelete={() => setEditor({ mode: "delete", macro: m })}
+                  />
+                ))}
+              </EntityListCard>
+
+              <EntityPager
+                page={data?.pageNumber ?? 1}
+                totalPages={data?.totalPages ?? 1}
+                hasPrev={!!data?.hasPrevious}
+                hasNext={!!data?.hasNext}
+                onPrev={() => setPageNumber((p) => Math.max(1, p - 1))}
+                onNext={() => setPageNumber((p) => p + 1)}
+              />
+            </>
+          )}
+
+          {macrosQuery.isError && (
+            <div
+              role="alert"
+              className="mt-3 rounded-lg border border-[oklch(from_var(--color-destructive)_l_c_h_/_0.30)] bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.06)] px-3 py-2 text-sm text-[var(--color-destructive)]"
+            >
+              {describe(macrosQuery.error)}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      <MacroEditorDialog state={editor} onClose={() => setEditor({ mode: "closed" })} />
+      <MacroEditorDialog state={editor} field={field} onClose={() => setEditor({ mode: "closed" })} />
       <DeleteMacroDialog state={editor} onClose={() => setEditor({ mode: "closed" })} />
+    </div>
+  );
+}
+
+function SelectorCard({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-[var(--color-border)] p-3 sm:p-4">
+      <h2 className="text-[14px] font-semibold text-[var(--color-foreground)]">{title}</h2>
+      <p className="mb-2 text-[12px] text-[var(--color-muted-foreground)]">{hint}</p>
+      <div className="max-h-[260px] space-y-1 overflow-y-auto pr-1">{children}</div>
+    </div>
+  );
+}
+
+function SelectorRow({
+  label,
+  sub,
+  icon: Icon,
+  selected,
+  onClick,
+}: {
+  label: string;
+  sub?: string;
+  icon?: typeof Layers;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] transition-colors",
+        selected
+          ? "bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
+          : "text-[var(--color-foreground)] hover:bg-[var(--color-muted)]",
+      )}
+    >
+      {Icon ? <Icon className="size-3.5 shrink-0 opacity-80" /> : null}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">{label}</span>
+        {sub ? (
+          <span
+            className={cn(
+              "block truncate text-[11px]",
+              selected ? "opacity-80" : "text-[var(--color-muted-foreground)]",
+            )}
+          >
+            {sub}
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
+function SelectorSkeleton() {
+  return (
+    <div className="space-y-1.5 py-1">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="h-8 animate-pulse rounded-lg bg-[var(--color-muted)]" />
+      ))}
     </div>
   );
 }
@@ -260,7 +445,15 @@ function DesktopRow({
   );
 }
 
-function MacroEditorDialog({ state, onClose }: { state: EditorState; onClose: () => void }) {
+function MacroEditorDialog({
+  state,
+  field,
+  onClose,
+}: {
+  state: EditorState;
+  field: SelectedField;
+  onClose: () => void;
+}) {
   const isOpen = state.mode === "create" || state.mode === "edit";
   const macro = state.mode === "edit" ? state.macro : undefined;
   const queryClient = useQueryClient();
@@ -300,14 +493,25 @@ function MacroEditorDialog({ state, onClose }: { state: EditorState; onClose: ()
   const isPending = createMutation.isPending || updateMutation.isPending;
   const trimmedName = form.name.trim();
 
+  // Where a new macro lands: the currently selected field (null = General).
+  const targetFieldName = macro
+    ? (macro.reportFieldName ?? "All (General)")
+    : field.name;
+
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!trimmedName) return;
     const text = form.text.trim() || null;
     if (state.mode === "edit" && macro) {
-      updateMutation.mutate({ macroId: macro.id, name: trimmedName, text, isActive: form.isActive });
+      updateMutation.mutate({
+        macroId: macro.id,
+        name: trimmedName,
+        text,
+        reportFieldId: macro.reportFieldId ?? null,
+        isActive: form.isActive,
+      });
     } else {
-      createMutation.mutate({ name: trimmedName, text });
+      createMutation.mutate({ name: trimmedName, text, reportFieldId: field.id ?? null });
     }
   };
 
@@ -318,11 +522,19 @@ function MacroEditorDialog({ state, onClose }: { state: EditorState; onClose: ()
           <DialogHeader>
             <DialogTitle>{macro ? "Edit macro" : "Add a macro"}</DialogTitle>
             <DialogDescription>
-              {macro ? `Update details for ${macro.name}.` : "Add a reusable text snippet."}
+              {macro
+                ? `Update details for ${macro.name}.`
+                : `Add a reusable text snippet for ${targetFieldName}.`}
             </DialogDescription>
           </DialogHeader>
 
           <DialogBody className="space-y-5">
+            <div className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-muted)] px-3 py-2 text-[12px]">
+              <Layers className="size-3.5 text-[var(--color-muted-foreground)]" />
+              <span className="text-[var(--color-muted-foreground)]">Field:</span>
+              <span className="font-medium text-[var(--color-foreground)]">{targetFieldName}</span>
+            </div>
+
             <Field id="macro-name" label="Name" required>
               <Input
                 id="macro-name"
