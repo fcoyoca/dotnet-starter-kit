@@ -13,10 +13,10 @@ public static class ListReportTypesEndpoint
     internal static RouteHandlerBuilder MapListReportTypesEndpoint(this IEndpointRouteBuilder endpoints)
     {
         return endpoints.MapGet("/report-types",
-                (IMediator mediator, CancellationToken ct) =>
-                    mediator.Send(new ListReportTypesQuery(), ct))
+                (bool? isActive, IMediator mediator, CancellationToken ct) =>
+                    mediator.Send(new ListReportTypesQuery(isActive), ct))
             .WithName("ListReportTypes")
-            .WithSummary("List report template types (for the Macros admin)")
-            .RequirePermission(AdministrationPermissions.Macros.View);
+            .WithSummary("List report template types")
+            .RequirePermission(AdministrationPermissions.ReportTemplates.View);
     }
 }

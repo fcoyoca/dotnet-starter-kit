@@ -12,10 +12,15 @@ public sealed class ListReportTypesQueryHandler(AdministrationDbContext dbContex
     public async ValueTask<IReadOnlyList<ReportTypeDto>> Handle(ListReportTypesQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
-        return await dbContext.ReportTypes
-            .AsNoTracking()
-            .OrderBy(t => t.Id)
-            .Select(t => new ReportTypeDto(t.Id, t.Name))
+        IQueryable<Domain.ReportType> q = dbContext.ReportTypes.AsNoTracking();
+        if (query.IsActive.HasValue)
+        {
+            q = q.Where(t => t.IsActive == query.IsActive.Value);
+        }
+
+        return await q
+            .OrderBy(t => t.DisplayOrder).ThenBy(t => t.Name)
+            .Select(t => new ReportTypeDto(t.Id, t.Name, t.DisplayOrder, t.IsActive))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

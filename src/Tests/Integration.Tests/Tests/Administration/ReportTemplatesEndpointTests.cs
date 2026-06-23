@@ -91,6 +91,27 @@ public sealed class ReportTemplatesEndpointTests
         row.ReportFieldName.ShouldBeNull();
     }
 
+    [Fact]
+    public async Task ReportType_Crud_RoundTrip()
+    {
+        using var client = await _auth.CreateRootAdminClientAsync();
+        var name = $"Custom Type {Guid.NewGuid():N}";
+
+        var id = await (await client.PostAsJsonAsync($"{BasePath}/report-types", new { name, displayOrder = 9 }))
+            .DeserializeAsync<int>();
+
+        (await ListTypesAsync(client)).ShouldContain(t => t.Id == id && t.Name == name);
+
+        var renamed = name + " (edited)";
+        (await client.PutAsJsonAsync($"{BasePath}/report-types/{id}",
+            new { id, name = renamed, displayOrder = 9, isActive = true }))
+            .EnsureSuccessStatusCode();
+        (await ListTypesAsync(client)).ShouldContain(t => t.Id == id && t.Name == renamed);
+
+        (await client.DeleteAsync($"{BasePath}/report-types/{id}")).EnsureSuccessStatusCode();
+        (await ListTypesAsync(client)).ShouldNotContain(t => t.Id == id);
+    }
+
     private static async Task<List<ReportTypeRow>> ListTypesAsync(HttpClient client) =>
         await (await client.GetAsync($"{BasePath}/report-types")).DeserializeAsync<List<ReportTypeRow>>();
 

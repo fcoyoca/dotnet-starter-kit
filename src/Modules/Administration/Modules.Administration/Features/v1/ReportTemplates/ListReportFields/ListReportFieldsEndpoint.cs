@@ -17,6 +17,6 @@ public static class ListReportFieldsEndpoint
                     mediator.Send(new ListReportFieldsQuery(reportTypeId), ct))
             .WithName("ListReportFields")
             .WithSummary("List active report fields for a report type (for the Macros admin)")
-            .RequirePermission(AdministrationPermissions.Macros.View);
+            .RequirePermission(AdministrationPermissions.ReportTemplates.View);
     }
 }

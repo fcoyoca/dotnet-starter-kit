@@ -3,4 +3,4 @@ using Mediator;
 
 namespace FSH.Modules.Administration.Contracts.v1.ReportTemplates;
 
-public sealed record ListReportTypesQuery : IQuery<IReadOnlyList<ReportTypeDto>>;
+public sealed record ListReportTypesQuery(bool? IsActive = null) : IQuery<IReadOnlyList<ReportTypeDto>>;

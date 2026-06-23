@@ -128,6 +128,16 @@ public static class AdministrationPermissions
         public const string Update = $"Permissions.{Resource}.Update";
     }
 
+    /// <summary>Report types and fields (the catalog behind the Macros admin).</summary>
+    public static class ReportTemplates
+    {
+        public const string Resource = "Administration.ReportTemplates";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
     public static class Races
     {
         public const string Resource = "Administration.Races";
@@ -251,6 +261,11 @@ public static class AdministrationPermissions
 
         new("View Email Settings",   ActionConstants.View,   EmailSettings.Resource, IsBasic: true),
         new("Update Email Settings", ActionConstants.Update, EmailSettings.Resource),
+
+        new("View Report Templates",   ActionConstants.View,   ReportTemplates.Resource, IsBasic: true),
+        new("Create Report Templates", ActionConstants.Create, ReportTemplates.Resource),
+        new("Update Report Templates", ActionConstants.Update, ReportTemplates.Resource),
+        new("Delete Report Templates", ActionConstants.Delete, ReportTemplates.Resource),
 
         new("View Races",   ActionConstants.View,   Races.Resource, IsBasic: true),
         new("Create Races", ActionConstants.Create, Races.Resource),
