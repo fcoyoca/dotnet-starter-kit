@@ -138,6 +138,23 @@ public static class AdministrationPermissions
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
+    public static class AppointmentTypes
+    {
+        public const string Resource = "Administration.AppointmentTypes";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
+    /// <summary>Per-clinic schedule units (time interval + day start/end).</summary>
+    public static class ScheduleConfig
+    {
+        public const string Resource = "Administration.ScheduleConfig";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Update = $"Permissions.{Resource}.Update";
+    }
+
     public static class Races
     {
         public const string Resource = "Administration.Races";
@@ -266,6 +283,14 @@ public static class AdministrationPermissions
         new("Create Report Templates", ActionConstants.Create, ReportTemplates.Resource),
         new("Update Report Templates", ActionConstants.Update, ReportTemplates.Resource),
         new("Delete Report Templates", ActionConstants.Delete, ReportTemplates.Resource),
+
+        new("View Appointment Types",   ActionConstants.View,   AppointmentTypes.Resource, IsBasic: true),
+        new("Create Appointment Types", ActionConstants.Create, AppointmentTypes.Resource),
+        new("Update Appointment Types", ActionConstants.Update, AppointmentTypes.Resource),
+        new("Delete Appointment Types", ActionConstants.Delete, AppointmentTypes.Resource),
+
+        new("View Schedule Config",   ActionConstants.View,   ScheduleConfig.Resource, IsBasic: true),
+        new("Update Schedule Config", ActionConstants.Update, ScheduleConfig.Resource),
 
         new("View Races",   ActionConstants.View,   Races.Resource, IsBasic: true),
         new("Create Races", ActionConstants.Create, Races.Resource),

@@ -76,6 +76,10 @@ using FSH.Modules.Administration.Features.v1.ReportTemplates.DeleteReportType;
 using FSH.Modules.Administration.Features.v1.ReportTemplates.CreateReportField;
 using FSH.Modules.Administration.Features.v1.ReportTemplates.UpdateReportField;
 using FSH.Modules.Administration.Features.v1.ReportTemplates.DeleteReportField;
+using FSH.Modules.Administration.Features.v1.AppointmentTypes.ListAppointmentTypes;
+using FSH.Modules.Administration.Features.v1.AppointmentTypes.CreateAppointmentType;
+using FSH.Modules.Administration.Features.v1.AppointmentTypes.UpdateAppointmentType;
+using FSH.Modules.Administration.Features.v1.AppointmentTypes.DeleteAppointmentType;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.CreateInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.DeleteInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.GetInsuranceCompanyById;
@@ -243,6 +247,11 @@ public sealed class AdministrationModule : IModule
         group.MapCreateReportFieldEndpoint();
         group.MapUpdateReportFieldEndpoint();
         group.MapDeleteReportFieldEndpoint();
+
+        group.MapListAppointmentTypesEndpoint();
+        group.MapCreateAppointmentTypeEndpoint();
+        group.MapUpdateAppointmentTypeEndpoint();
+        group.MapDeleteAppointmentTypeEndpoint();
 
         group.MapListProcedureCodesEndpoint();
         group.MapGetProcedureCodeByIdEndpoint();
