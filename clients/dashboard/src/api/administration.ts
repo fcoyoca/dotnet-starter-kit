@@ -751,19 +751,85 @@ export async function deletePatientDocumentType(id: string): Promise<void> {
   });
 }
 
-// ─── Report templates (global reference; drives the Macros admin) ──────
+// ─── Report templates (tenant-scoped catalog; drives the Macros admin) ──
 
-export type ReportTypeDto = { id: number; name: string };
-export type ReportFieldDto = { id: number; name: string; category?: string | null };
+export type ReportTypeDto = { id: number; name: string; displayOrder: number; isActive: boolean };
+export type ReportFieldDto = {
+  id: number;
+  reportTypeId: number;
+  name: string;
+  category?: string | null;
+  displayOrder: number;
+  isActive: boolean;
+};
 
-export function listReportTypes(): Promise<ReportTypeDto[]> {
-  return apiFetch<ReportTypeDto[]>("/api/v1/administration/report-types");
+export function listReportTypes(isActive?: boolean): Promise<ReportTypeDto[]> {
+  const q = isActive === undefined ? "" : `?isActive=${isActive}`;
+  return apiFetch<ReportTypeDto[]>(`/api/v1/administration/report-types${q}`);
 }
 
-export function listReportFields(reportTypeId: number): Promise<ReportFieldDto[]> {
-  return apiFetch<ReportFieldDto[]>(
-    `/api/v1/administration/report-fields?reportTypeId=${reportTypeId}`,
-  );
+export function listReportFields(reportTypeId: number, includeInactive = false): Promise<ReportFieldDto[]> {
+  const q = new URLSearchParams({ reportTypeId: String(reportTypeId) });
+  if (includeInactive) q.set("includeInactive", "true");
+  return apiFetch<ReportFieldDto[]>(`/api/v1/administration/report-fields?${q.toString()}`);
+}
+
+export type CreateReportTypeInput = { name: string; displayOrder?: number };
+export type UpdateReportTypeInput = { id: number; name: string; displayOrder: number; isActive: boolean };
+
+export function createReportType(input: CreateReportTypeInput): Promise<number> {
+  return apiFetch<number>("/api/v1/administration/report-types", {
+    method: "POST",
+    body: JSON.stringify({ name: input.name, displayOrder: input.displayOrder ?? 0 }),
+  });
+}
+
+export async function updateReportType(input: UpdateReportTypeInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/report-types/${input.id}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteReportType(id: number): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/report-types/${id}`, { method: "DELETE" });
+}
+
+export type CreateReportFieldInput = {
+  reportTypeId: number;
+  name: string;
+  category?: string | null;
+  displayOrder?: number;
+};
+export type UpdateReportFieldInput = {
+  id: number;
+  name: string;
+  category?: string | null;
+  displayOrder: number;
+  isActive: boolean;
+};
+
+export function createReportField(input: CreateReportFieldInput): Promise<number> {
+  return apiFetch<number>("/api/v1/administration/report-fields", {
+    method: "POST",
+    body: JSON.stringify({
+      reportTypeId: input.reportTypeId,
+      name: input.name,
+      category: input.category ?? null,
+      displayOrder: input.displayOrder ?? 0,
+    }),
+  });
+}
+
+export async function updateReportField(input: UpdateReportFieldInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/report-fields/${input.id}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...input, category: input.category ?? null }),
+  });
+}
+
+export async function deleteReportField(id: number): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/report-fields/${id}`, { method: "DELETE" });
 }
 
 // ─── Macros (tenant-scoped CRUD, scoped to a report field) ─────────────
@@ -775,6 +841,7 @@ export type MacroDto = {
   reportFieldId?: number | null;
   reportFieldName?: string | null;
   reportCategory?: string | null;
+  useableByUserId?: string | null;
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc?: string | null;
@@ -787,18 +854,26 @@ export type ListMacrosParams = {
   reportFieldId?: number | null;
   /** Filter to the "All (General)" (unassigned) bucket. */
   general?: boolean;
+  /** Filter to macros owned by a specific tenant user. */
+  useableByUserId?: string | null;
   pageNumber?: number;
   pageSize?: number;
   sortBy?: string;
   sortDir?: "asc" | "desc";
 };
 
-export type CreateMacroInput = { name: string; text?: string | null; reportFieldId?: number | null };
+export type CreateMacroInput = {
+  name: string;
+  text?: string | null;
+  reportFieldId?: number | null;
+  useableByUserId?: string | null;
+};
 export type UpdateMacroInput = {
   macroId: string;
   name: string;
   text?: string | null;
   reportFieldId?: number | null;
+  useableByUserId?: string | null;
   isActive: boolean;
 };
 
@@ -809,6 +884,7 @@ export function listMacros(params: ListMacrosParams = {}): Promise<PagedResponse
     query.set("isActive", String(params.isActive));
   if (params.general) query.set("general", "true");
   else if (params.reportFieldId != null) query.set("reportFieldId", String(params.reportFieldId));
+  if (params.useableByUserId) query.set("useableByUserId", params.useableByUserId);
   query.set("pageNumber", String(params.pageNumber ?? 1));
   query.set("pageSize", String(params.pageSize ?? 20));
   if (params.sortBy) query.set("sortBy", params.sortBy);
@@ -821,7 +897,12 @@ export function listMacros(params: ListMacrosParams = {}): Promise<PagedResponse
 export async function createMacro(input: CreateMacroInput): Promise<string> {
   return apiFetch<string>("/api/v1/administration/macros", {
     method: "POST",
-    body: JSON.stringify({ name: input.name, text: input.text ?? null, reportFieldId: input.reportFieldId ?? null }),
+    body: JSON.stringify({
+      name: input.name,
+      text: input.text ?? null,
+      reportFieldId: input.reportFieldId ?? null,
+      useableByUserId: input.useableByUserId ?? null,
+    }),
   });
 }
 
@@ -833,6 +914,7 @@ export async function updateMacro(input: UpdateMacroInput): Promise<void> {
       name: input.name,
       text: input.text ?? null,
       reportFieldId: input.reportFieldId ?? null,
+      useableByUserId: input.useableByUserId ?? null,
       isActive: input.isActive,
     }),
   });
