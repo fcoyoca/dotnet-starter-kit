@@ -15,4 +15,7 @@ public sealed record EmailSettingsDto(
     string? FromName,
     string? ReplyTo,
     string? FooterHtml,
+    string? PasswordResetSubject,
+    string? PasswordResetBody,
+    string? PasswordResetFooter,
     DateTime? UpdatedAtUtc);

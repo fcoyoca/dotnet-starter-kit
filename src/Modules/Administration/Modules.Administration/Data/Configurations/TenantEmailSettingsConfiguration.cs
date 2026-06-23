@@ -19,6 +19,9 @@ public sealed class TenantEmailSettingsConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.FromName).HasMaxLength(256);
         builder.Property(x => x.ReplyTo).HasMaxLength(256);
         builder.Property(x => x.FooterHtml).HasMaxLength(16000);
+        builder.Property(x => x.PasswordResetSubject).HasMaxLength(256);
+        builder.Property(x => x.PasswordResetBody).HasMaxLength(16000);
+        builder.Property(x => x.PasswordResetFooter).HasMaxLength(16000);
 
         builder.Ignore(x => x.DomainEvents);
     }

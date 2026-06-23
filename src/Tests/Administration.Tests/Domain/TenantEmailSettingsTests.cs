@@ -30,7 +30,10 @@ public sealed class TenantEmailSettingsTests
             fromAddress: "  clinic@example.com  ",
             fromName: "  Clinic  ",
             replyTo: "  reply@example.com  ",
-            footerHtml: "<p>Sent by the clinic</p>");
+            footerHtml: "<p>Sent by the clinic</p>",
+            passwordResetSubject: "  Reset your password  ",
+            passwordResetBody: "<p>Click to reset</p>",
+            passwordResetFooter: "<p>Ignore if not you</p>");
 
         settings.UseCustomSmtp.ShouldBeTrue();
         settings.Host.ShouldBe("smtp.example.com");
@@ -41,6 +44,9 @@ public sealed class TenantEmailSettingsTests
         settings.FromName.ShouldBe("Clinic");
         settings.ReplyTo.ShouldBe("reply@example.com");
         settings.FooterHtml.ShouldBe("<p>Sent by the clinic</p>");
+        settings.PasswordResetSubject.ShouldBe("Reset your password");
+        settings.PasswordResetBody.ShouldBe("<p>Click to reset</p>");
+        settings.PasswordResetFooter.ShouldBe("<p>Ignore if not you</p>");
         settings.UpdatedAtUtc.ShouldNotBeNull();
     }
 

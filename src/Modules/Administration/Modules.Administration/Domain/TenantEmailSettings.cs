@@ -27,6 +27,15 @@ public sealed class TenantEmailSettings : AggregateRoot<Guid>
     /// <summary>HTML footer appended to outbound email (legacy <c>EMAIL_FOOTER</c>).</summary>
     public string? FooterHtml { get; private set; }
 
+    /// <summary>Subject line of the BackChart password-reset email (legacy <c>BC_EMAIL_RESETPASS_TITLE</c>).</summary>
+    public string? PasswordResetSubject { get; private set; }
+
+    /// <summary>HTML body of the BackChart password-reset email (legacy <c>BC_EMAIL_RESETPASS_BODY</c>).</summary>
+    public string? PasswordResetBody { get; private set; }
+
+    /// <summary>HTML footer of the BackChart password-reset email (legacy <c>BC_EMAIL_RESETPASS_FOOTER</c>).</summary>
+    public string? PasswordResetFooter { get; private set; }
+
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime? UpdatedAtUtc { get; private set; }
 
@@ -51,7 +60,10 @@ public sealed class TenantEmailSettings : AggregateRoot<Guid>
         string? fromAddress,
         string? fromName,
         string? replyTo,
-        string? footerHtml)
+        string? footerHtml,
+        string? passwordResetSubject,
+        string? passwordResetBody,
+        string? passwordResetFooter)
     {
         UseCustomSmtp = useCustomSmtp;
         Host = Trim(host);
@@ -61,7 +73,10 @@ public sealed class TenantEmailSettings : AggregateRoot<Guid>
         FromAddress = Trim(fromAddress);
         FromName = Trim(fromName);
         ReplyTo = Trim(replyTo);
-        FooterHtml = string.IsNullOrWhiteSpace(footerHtml) ? null : footerHtml;
+        FooterHtml = Blank(footerHtml);
+        PasswordResetSubject = Trim(passwordResetSubject);
+        PasswordResetBody = Blank(passwordResetBody);
+        PasswordResetFooter = Blank(passwordResetFooter);
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
@@ -78,4 +93,7 @@ public sealed class TenantEmailSettings : AggregateRoot<Guid>
     }
 
     private static string? Trim(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    /// <summary>Nulls blank HTML but preserves internal/leading whitespace and markup.</summary>
+    private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 }

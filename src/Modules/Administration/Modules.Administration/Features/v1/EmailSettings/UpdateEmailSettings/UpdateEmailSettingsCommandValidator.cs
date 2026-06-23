@@ -14,6 +14,9 @@ public sealed class UpdateEmailSettingsCommandValidator : AbstractValidator<Upda
         RuleFor(x => x.FromName).MaximumLength(256);
         RuleFor(x => x.ReplyTo).MaximumLength(256).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.ReplyTo));
         RuleFor(x => x.FooterHtml).MaximumLength(16000);
+        RuleFor(x => x.PasswordResetSubject).MaximumLength(256);
+        RuleFor(x => x.PasswordResetBody).MaximumLength(16000);
+        RuleFor(x => x.PasswordResetFooter).MaximumLength(16000);
 
         // When the tenant opts into a custom SMTP server, the host and port are required.
         When(x => x.UseCustomSmtp, () =>

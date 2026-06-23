@@ -16,4 +16,7 @@ public sealed record UpdateEmailSettingsCommand(
     string? FromAddress = null,
     string? FromName = null,
     string? ReplyTo = null,
-    string? FooterHtml = null) : ICommand<Unit>;
+    string? FooterHtml = null,
+    string? PasswordResetSubject = null,
+    string? PasswordResetBody = null,
+    string? PasswordResetFooter = null) : ICommand<Unit>;
