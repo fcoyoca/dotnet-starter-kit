@@ -13,13 +13,11 @@ public sealed class ListReportFieldsQueryHandler(AdministrationDbContext dbConte
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        return await (
-            from tf in dbContext.ReportTypeFields.AsNoTracking()
-            where tf.ReportTypeId == query.ReportTypeId
-            join f in dbContext.ReportFields on tf.ReportFieldId equals f.Id
-            where f.IsActive
-            orderby f.Category, f.DisplayOrder, f.Name
-            select new ReportFieldDto(f.Id, f.Name, f.Category))
+        return await dbContext.ReportFields
+            .AsNoTracking()
+            .Where(f => f.ReportTypeId == query.ReportTypeId && f.IsActive)
+            .OrderBy(f => f.Category).ThenBy(f => f.DisplayOrder).ThenBy(f => f.Name)
+            .Select(f => new ReportFieldDto(f.Id, f.Name, f.Category))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }

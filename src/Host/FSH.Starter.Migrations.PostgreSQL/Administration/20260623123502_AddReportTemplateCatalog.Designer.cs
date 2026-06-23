@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FSH.Starter.Migrations.PostgreSQL.Administration
 {
     [DbContext(typeof(AdministrationDbContext))]
-    [Migration("20260622135934_AddReportTemplateCatalogAndMacroField")]
-    partial class AddReportTemplateCatalogAndMacroField
+    [Migration("20260623123502_AddReportTemplateCatalog")]
+    partial class AddReportTemplateCatalog
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1371,11 +1371,21 @@ namespace FSH.Starter.Migrations.PostgreSQL.Administration
             modelBuilder.Entity("FSH.Modules.Administration.Domain.ReportField", b =>
                 {
                     b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Category")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("DeletedOnUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("integer");
@@ -1383,239 +1393,67 @@ namespace FSH.Starter.Migrations.PostgreSQL.Administration
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("LegacyId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<int>("ReportTypeId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("IsActive");
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("LegacyId");
+
+                    b.HasIndex("ReportTypeId");
+
+                    b.HasIndex("ReportTypeId", "Name", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ReportFields_ReportTypeId_Name")
+                        .HasFilter("\"IsDeleted\" = FALSE");
 
                     b.ToTable("ReportFields", "administration");
 
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Category = "Chief Complaint",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Chief Complaint"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Category = "Present Problem",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Present Problem"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Category = "Medical History",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Medical History"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Category = "Personal / Social History",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Personal / Social History"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Category = "Allergies",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Allergies"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Category = "Medications",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Medications"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Category = "Systems Review",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Systems Review"
-                        },
-                        new
-                        {
-                            Id = 13,
-                            Category = "Clinical Exam",
-                            DisplayOrder = 7,
-                            IsActive = true,
-                            Name = "Comments"
-                        },
-                        new
-                        {
-                            Id = 14,
-                            Category = "Diagnostic Imaging",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Diagnostic Imaging"
-                        },
-                        new
-                        {
-                            Id = 15,
-                            Category = "Clinical Impression",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Clinical Impression"
-                        },
-                        new
-                        {
-                            Id = 16,
-                            Category = "Therapeutic Care",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Therapeutic Care"
-                        },
-                        new
-                        {
-                            Id = 17,
-                            Category = "Subjective",
-                            DisplayOrder = 1,
-                            IsActive = false,
-                            Name = "ADL"
-                        },
-                        new
-                        {
-                            Id = 18,
-                            Category = "Subjective",
-                            DisplayOrder = 2,
-                            IsActive = false,
-                            Name = "Pain"
-                        },
-                        new
-                        {
-                            Id = 19,
-                            Category = "Subjective",
-                            DisplayOrder = 3,
-                            IsActive = true,
-                            Name = "Subjective"
-                        },
-                        new
-                        {
-                            Id = 20,
-                            Category = "Objective",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Objective"
-                        },
-                        new
-                        {
-                            Id = 21,
-                            Category = "Assessment",
-                            DisplayOrder = 1,
-                            IsActive = false,
-                            Name = "Assessment"
-                        },
-                        new
-                        {
-                            Id = 22,
-                            Category = "Assessment",
-                            DisplayOrder = 2,
-                            IsActive = true,
-                            Name = "Assessment"
-                        },
-                        new
-                        {
-                            Id = 24,
-                            Category = "Plan",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Plan"
-                        },
-                        new
-                        {
-                            Id = 27,
-                            Category = "Goals",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Short Term Goals"
-                        },
-                        new
-                        {
-                            Id = 28,
-                            Category = "Goals",
-                            DisplayOrder = 2,
-                            IsActive = true,
-                            Name = "Long Term Goals"
-                        },
-                        new
-                        {
-                            Id = 29,
-                            Category = "Work Status or Restrictions",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Work Status or Restrictions"
-                        },
-                        new
-                        {
-                            Id = 30,
-                            Category = "Family History",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Family History"
-                        },
-                        new
-                        {
-                            Id = 31,
-                            Category = "Assessment",
-                            DisplayOrder = 3,
-                            IsActive = false,
-                            Name = "Niall Radio Group"
-                        },
-                        new
-                        {
-                            Id = 33,
-                            Category = "Assessment",
-                            DisplayOrder = 5,
-                            IsActive = false,
-                            Name = "Niall's yes/no"
-                        },
-                        new
-                        {
-                            Id = 34,
-                            Category = "Assessment",
-                            DisplayOrder = 6,
-                            IsActive = false,
-                            Name = "Niall's drop down"
-                        },
-                        new
-                        {
-                            Id = 38,
-                            Category = "Comments",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Comments"
-                        },
-                        new
-                        {
-                            Id = 39,
-                            Category = "Documentation",
-                            DisplayOrder = 1,
-                            IsActive = true,
-                            Name = "Documentation"
-                        });
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
             modelBuilder.Entity("FSH.Modules.Administration.Domain.ReportType", b =>
                 {
                     b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DeletedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("DeletedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("LegacyId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Name")
@@ -1623,406 +1461,24 @@ namespace FSH.Starter.Migrations.PostgreSQL.Administration
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("LegacyId");
+
+                    b.HasIndex("Name", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ReportTypes_Name")
+                        .HasFilter("\"IsDeleted\" = FALSE");
 
                     b.ToTable("ReportTypes", "administration");
 
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Name = "Initial Evaluation"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Name = "Progress Report"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Name = "Discharge Report"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Name = "Daily Visit"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Name = "No Show"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Name = "NoFieldReport"
-                        });
-                });
-
-            modelBuilder.Entity("FSH.Modules.Administration.Domain.ReportTypeField", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ReportFieldId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ReportTypeId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReportTypeId");
-
-                    b.HasIndex("ReportTypeId", "ReportFieldId")
-                        .IsUnique();
-
-                    b.ToTable("ReportTypeFields", "administration");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            ReportFieldId = 1,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 2,
-                            ReportFieldId = 2,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 3,
-                            ReportFieldId = 3,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 4,
-                            ReportFieldId = 4,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 5,
-                            ReportFieldId = 5,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 6,
-                            ReportFieldId = 6,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 7,
-                            ReportFieldId = 7,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 8,
-                            ReportFieldId = 14,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 9,
-                            ReportFieldId = 15,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 10,
-                            ReportFieldId = 24,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 11,
-                            ReportFieldId = 27,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 12,
-                            ReportFieldId = 29,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 13,
-                            ReportFieldId = 30,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 14,
-                            ReportFieldId = 28,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 15,
-                            ReportFieldId = 13,
-                            ReportTypeId = 1
-                        },
-                        new
-                        {
-                            Id = 16,
-                            ReportFieldId = 1,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 17,
-                            ReportFieldId = 2,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 18,
-                            ReportFieldId = 3,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 19,
-                            ReportFieldId = 4,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 20,
-                            ReportFieldId = 5,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 21,
-                            ReportFieldId = 6,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 22,
-                            ReportFieldId = 7,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 23,
-                            ReportFieldId = 14,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 24,
-                            ReportFieldId = 15,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 25,
-                            ReportFieldId = 24,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 26,
-                            ReportFieldId = 27,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 27,
-                            ReportFieldId = 29,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 28,
-                            ReportFieldId = 30,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 29,
-                            ReportFieldId = 28,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 30,
-                            ReportFieldId = 13,
-                            ReportTypeId = 2
-                        },
-                        new
-                        {
-                            Id = 31,
-                            ReportFieldId = 1,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 32,
-                            ReportFieldId = 2,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 33,
-                            ReportFieldId = 3,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 34,
-                            ReportFieldId = 4,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 35,
-                            ReportFieldId = 5,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 36,
-                            ReportFieldId = 6,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 37,
-                            ReportFieldId = 7,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 38,
-                            ReportFieldId = 14,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 39,
-                            ReportFieldId = 15,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 40,
-                            ReportFieldId = 24,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 41,
-                            ReportFieldId = 27,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 42,
-                            ReportFieldId = 29,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 43,
-                            ReportFieldId = 30,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 44,
-                            ReportFieldId = 28,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 45,
-                            ReportFieldId = 13,
-                            ReportTypeId = 3
-                        },
-                        new
-                        {
-                            Id = 46,
-                            ReportFieldId = 17,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 47,
-                            ReportFieldId = 20,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 48,
-                            ReportFieldId = 21,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 49,
-                            ReportFieldId = 24,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 50,
-                            ReportFieldId = 18,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 51,
-                            ReportFieldId = 22,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 52,
-                            ReportFieldId = 19,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 53,
-                            ReportFieldId = 31,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 54,
-                            ReportFieldId = 33,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 55,
-                            ReportFieldId = 34,
-                            ReportTypeId = 4
-                        },
-                        new
-                        {
-                            Id = 56,
-                            ReportFieldId = 38,
-                            ReportTypeId = 5
-                        },
-                        new
-                        {
-                            Id = 57,
-                            ReportFieldId = 39,
-                            ReportTypeId = 6
-                        });
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
             modelBuilder.Entity("FSH.Modules.Administration.Domain.SmokingStatus", b =>
@@ -2243,6 +1699,15 @@ namespace FSH.Starter.Migrations.PostgreSQL.Administration
                         .WithMany()
                         .HasForeignKey("PrimaryClinicId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("FSH.Modules.Administration.Domain.ReportField", b =>
+                {
+                    b.HasOne("FSH.Modules.Administration.Domain.ReportType", null)
+                        .WithMany()
+                        .HasForeignKey("ReportTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

@@ -11,16 +11,16 @@ public sealed class ReportTypeConfiguration : IEntityTypeConfiguration<ReportTyp
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("ReportTypes");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.Id).UseIdentityByDefaultColumn();
         builder.Property(x => x.Name).IsRequired().HasMaxLength(128);
-        builder.Ignore(x => x.DomainEvents);
+        builder.Property(x => x.IsActive).IsRequired();
+        builder.Property(x => x.DeletedBy).HasMaxLength(64);
+        builder.Property(x => x.LegacyId);
 
-        builder.HasData(
-            new { Id = 1, Name = "Initial Evaluation" },
-            new { Id = 2, Name = "Progress Report" },
-            new { Id = 3, Name = "Discharge Report" },
-            new { Id = 4, Name = "Daily Visit" },
-            new { Id = 5, Name = "No Show" },
-            new { Id = 6, Name = "NoFieldReport" });
+        builder.HasIndex(x => x.LegacyId);
+        builder.HasIndex(x => x.IsDeleted);
+        builder.HasIndex(x => x.Name).IsUnique().HasFilter("\"IsDeleted\" = FALSE");
+
+        builder.Ignore(x => x.DomainEvents);
     }
 }

@@ -20,23 +20,28 @@ public sealed class ReportTemplatesEndpointTests
     {
         using var client = await _auth.CreateRootAdminClientAsync();
 
-        var types = await (await client.GetAsync($"{BasePath}/report-types")).DeserializeAsync<List<ReportTypeRow>>();
+        var types = await ListTypesAsync(client);
 
         types.Count.ShouldBe(6);
-        types.ShouldContain(t => t.Id == 1 && t.Name == "Initial Evaluation");
+        types.ShouldContain(t => t.Name == "Initial Evaluation");
+        types.ShouldContain(t => t.Name == "Daily Visit");
     }
 
     [Fact]
-    public async Task ListReportFields_Should_Return_FieldsForType()
+    public async Task ListReportFields_Should_Return_ActiveFieldsForType()
     {
         using var client = await _auth.CreateRootAdminClientAsync();
+        var types = await ListTypesAsync(client);
 
-        var fields = await (await client.GetAsync($"{BasePath}/report-fields?reportTypeId=1"))
-            .DeserializeAsync<List<ReportFieldRow>>();
+        var eval = types.Single(t => t.Name == "Initial Evaluation");
+        var evalFields = await ListFieldsAsync(client, eval.Id);
+        evalFields.ShouldContain(f => f.Name == "Chief Complaint");
 
-        fields.ShouldContain(f => f.Id == 1 && f.Name == "Chief Complaint");
-        // Inactive fields are excluded.
-        fields.ShouldNotContain(f => f.Id == 21);
+        // Daily Visit has inactive fields (e.g. ADL) which must be excluded.
+        var daily = types.Single(t => t.Name == "Daily Visit");
+        var dailyFields = await ListFieldsAsync(client, daily.Id);
+        dailyFields.ShouldContain(f => f.Name == "Objective");
+        dailyFields.ShouldNotContain(f => f.Name == "ADL");
     }
 
     [Fact]
@@ -45,18 +50,22 @@ public sealed class ReportTemplatesEndpointTests
         using var client = await _auth.CreateRootAdminClientAsync();
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
+        var types = await ListTypesAsync(client);
+        var eval = types.Single(t => t.Name == "Initial Evaluation");
+        var field = (await ListFieldsAsync(client, eval.Id)).Single(f => f.Name == "Chief Complaint");
+
         var macroId = await (await client.PostAsJsonAsync($"{BasePath}/macros", new
         {
             name = $"Macro-{suffix}",
             text = "Body",
-            reportFieldId = (int?)1,
+            reportFieldId = (int?)field.Id,
         })).DeserializeAsync<Guid>();
 
-        var page = await (await client.GetAsync($"{BasePath}/macros?reportFieldId=1&pageSize=200"))
+        var page = await (await client.GetAsync($"{BasePath}/macros?reportFieldId={field.Id}&pageSize=200"))
             .DeserializeAsync<PagedResult<MacroRow>>();
 
         var row = page.Items.Single(m => m.Id == macroId);
-        row.ReportFieldId.ShouldBe(1);
+        row.ReportFieldId.ShouldBe(field.Id);
         row.ReportFieldName.ShouldBe("Chief Complaint");
         row.ReportCategory.ShouldBe("Chief Complaint");
     }
@@ -81,6 +90,13 @@ public sealed class ReportTemplatesEndpointTests
         row.ReportFieldId.ShouldBeNull();
         row.ReportFieldName.ShouldBeNull();
     }
+
+    private static async Task<List<ReportTypeRow>> ListTypesAsync(HttpClient client) =>
+        await (await client.GetAsync($"{BasePath}/report-types")).DeserializeAsync<List<ReportTypeRow>>();
+
+    private static async Task<List<ReportFieldRow>> ListFieldsAsync(HttpClient client, int typeId) =>
+        await (await client.GetAsync($"{BasePath}/report-fields?reportTypeId={typeId}"))
+            .DeserializeAsync<List<ReportFieldRow>>();
 
     private sealed record ReportTypeRow(int Id, string Name);
 
