@@ -939,6 +939,9 @@ export type EmailSettingsDto = {
   fromName?: string | null;
   replyTo?: string | null;
   footerHtml?: string | null;
+  passwordResetSubject?: string | null;
+  passwordResetBody?: string | null;
+  passwordResetFooter?: string | null;
   updatedAtUtc?: string | null;
 };
 
@@ -954,6 +957,9 @@ export type UpdateEmailSettingsInput = {
   fromName?: string | null;
   replyTo?: string | null;
   footerHtml?: string | null;
+  passwordResetSubject?: string | null;
+  passwordResetBody?: string | null;
+  passwordResetFooter?: string | null;
 };
 
 export function getEmailSettings(): Promise<EmailSettingsDto> {

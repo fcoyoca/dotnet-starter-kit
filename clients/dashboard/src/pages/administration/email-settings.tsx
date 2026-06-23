@@ -11,16 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { EntityPageHeader, Field } from "@/components/list";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { describe } from "@/lib/list-helpers";
-import { cn } from "@/lib/cn";
 
 const QUERY_KEY = ["administration", "email-settings"] as const;
 
-const textareaClass = cn(
-  "flex min-h-[140px] w-full rounded-lg border border-[var(--color-input)] bg-transparent px-3 py-2 font-mono text-[12px] shadow-xs",
-  "placeholder:text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.6)]",
-  "focus-visible:border-[var(--color-ring)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[oklch(from_var(--color-ring)_l_c_h_/_0.5)]",
-);
+/** Tiptap emits "<p></p>" for empty content — treat that (and blank) as null. */
+function htmlOrNull(html: string): string | null {
+  const stripped = html.replace(/<p><\/p>/g, "").replace(/<br\s*\/?>/g, "").trim();
+  return stripped ? html : null;
+}
 
 type FormState = {
   useCustomSmtp: boolean;
@@ -33,6 +33,9 @@ type FormState = {
   fromName: string;
   replyTo: string;
   footerHtml: string;
+  passwordResetSubject: string;
+  passwordResetBody: string;
+  passwordResetFooter: string;
 };
 
 function toForm(dto: EmailSettingsDto): FormState {
@@ -47,6 +50,9 @@ function toForm(dto: EmailSettingsDto): FormState {
     fromName: dto.fromName ?? "",
     replyTo: dto.replyTo ?? "",
     footerHtml: dto.footerHtml ?? "",
+    passwordResetSubject: dto.passwordResetSubject ?? "",
+    passwordResetBody: dto.passwordResetBody ?? "",
+    passwordResetFooter: dto.passwordResetFooter ?? "",
   };
 }
 
@@ -82,7 +88,10 @@ export function EmailSettingsPage() {
         fromAddress: form.fromAddress.trim() || null,
         fromName: form.fromName.trim() || null,
         replyTo: form.replyTo.trim() || null,
-        footerHtml: form.footerHtml.trim() || null,
+        footerHtml: htmlOrNull(form.footerHtml),
+        passwordResetSubject: form.passwordResetSubject.trim() || null,
+        passwordResetBody: htmlOrNull(form.passwordResetBody),
+        passwordResetFooter: htmlOrNull(form.passwordResetFooter),
       });
     },
     onSuccess: () => {
@@ -236,33 +245,52 @@ export function EmailSettingsPage() {
           <section className="rounded-xl border border-[var(--color-border)] p-4 sm:p-5">
             <h2 className="text-[14px] font-semibold text-[var(--color-foreground)]">Email footer</h2>
             <p className="mt-0.5 text-[12px] text-[var(--color-muted-foreground)]">
-              HTML appended to the bottom of outbound emails. Use inline styles for the best rendering across mail
-              clients.
+              Appended to the bottom of all outbound emails.
             </p>
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="mt-4">
+              <RichTextEditor
+                value={form.footerHtml}
+                onChange={(html) => set("footerHtml", html)}
+                ariaLabel="Email footer"
+                placeholder="Your Clinic · 123 Main St · (555) 123-4567"
+              />
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-[var(--color-border)] p-4 sm:p-5">
+            <h2 className="text-[14px] font-semibold text-[var(--color-foreground)]">Password reset email</h2>
+            <p className="mt-0.5 text-[12px] text-[var(--color-muted-foreground)]">
+              The message sent when a user resets their password.
+            </p>
+            <div className="mt-5 space-y-5">
+              <Field id="pwreset-subject" label="Subject" hint="Appears on the subject line of the reset email.">
+                <Input
+                  id="pwreset-subject"
+                  value={form.passwordResetSubject}
+                  onChange={(e) => set("passwordResetSubject", e.target.value)}
+                  placeholder="Reset your password"
+                  maxLength={256}
+                />
+              </Field>
               <div>
-                <p className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
-                  HTML
-                </p>
-                <textarea
-                  id="footer-html"
-                  value={form.footerHtml}
-                  onChange={(e) => set("footerHtml", e.target.value)}
-                  placeholder={'<p style="color:#64748b">Your Clinic · 123 Main St · (555) 123-4567</p>'}
-                  maxLength={16000}
-                  className={textareaClass}
-                  spellCheck={false}
+                <p className="mb-1.5 text-[13px] font-medium text-[var(--color-foreground)]">Body</p>
+                <RichTextEditor
+                  value={form.passwordResetBody}
+                  onChange={(html) => set("passwordResetBody", html)}
+                  ariaLabel="Password reset body"
+                  placeholder="Click the link below to reset your password…"
                 />
               </div>
               <div>
-                <p className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
-                  Preview
+                <p className="mb-1.5 text-[13px] font-medium text-[var(--color-foreground)]">Footer</p>
+                <p className="mb-1.5 text-[12px] text-[var(--color-muted-foreground)]">
+                  Shown after the body — e.g. to confirm a new password was set.
                 </p>
-                <iframe
-                  title="Email footer preview"
-                  sandbox=""
-                  srcDoc={form.footerHtml}
-                  className="min-h-[140px] w-full rounded-lg border border-[var(--color-border)] bg-white"
+                <RichTextEditor
+                  value={form.passwordResetFooter}
+                  onChange={(html) => set("passwordResetFooter", html)}
+                  ariaLabel="Password reset footer"
+                  placeholder="If you didn't request this, you can ignore this email."
                 />
               </div>
             </div>
