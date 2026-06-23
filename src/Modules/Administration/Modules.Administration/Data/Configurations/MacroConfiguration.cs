@@ -14,6 +14,7 @@ public sealed class MacroConfiguration : IEntityTypeConfiguration<Macro>
         builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
         builder.Property(x => x.Text).HasMaxLength(8000);
         builder.Property(x => x.ReportFieldId);
+        builder.Property(x => x.UseableByUserId);
         builder.Property(x => x.IsActive).IsRequired();
         builder.Property(x => x.DeletedBy).HasMaxLength(64);
         builder.Property(x => x.LegacyId);
@@ -29,6 +30,7 @@ public sealed class MacroConfiguration : IEntityTypeConfiguration<Macro>
         builder.HasIndex(x => x.IsDeleted);
         builder.HasIndex(x => x.IsActive);
         builder.HasIndex(x => x.ReportFieldId);
+        builder.HasIndex(x => x.UseableByUserId);
         // Macro names are unique within a field (legacy allows the same name under different fields).
         builder.HasIndex(x => new { x.ReportFieldId, x.Name }).IsUnique().HasFilter("\"IsDeleted\" = FALSE");
 

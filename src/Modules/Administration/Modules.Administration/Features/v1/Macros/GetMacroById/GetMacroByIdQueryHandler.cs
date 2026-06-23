@@ -20,7 +20,7 @@ public sealed class GetMacroByIdQueryHandler(AdministrationDbContext dbContext)
             select new MacroDto(
                 c.Id, c.Name, c.Text,
                 c.ReportFieldId, f != null ? f.Name : null, f != null ? f.Category : null,
-                c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc))
+                c.UseableByUserId, c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         return dto ?? throw new NotFoundException($"Macro {query.Id} not found.");

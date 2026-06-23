@@ -19,6 +19,9 @@ public sealed class Macro : AggregateRoot<Guid>, ISoftDeletable
     /// <summary>The report field this macro is for; null = "All (General)".</summary>
     public int? ReportFieldId { get; private set; }
 
+    /// <summary>The tenant user this macro belongs to (legacy <c>rfmUserID</c>); null = usable by everyone.</summary>
+    public Guid? UseableByUserId { get; private set; }
+
     public bool IsActive { get; private set; }
 
     /// <summary>Legacy <c>rfmID</c> of the source record; null for native records.</summary>
@@ -33,7 +36,7 @@ public sealed class Macro : AggregateRoot<Guid>, ISoftDeletable
 
     private Macro() { }
 
-    public static Macro Create(string name, string? text, int? reportFieldId, int? legacyId = null)
+    public static Macro Create(string name, string? text, int? reportFieldId, Guid? useableByUserId, int? legacyId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return new Macro
@@ -42,18 +45,20 @@ public sealed class Macro : AggregateRoot<Guid>, ISoftDeletable
             Name = name.Trim(),
             Text = string.IsNullOrWhiteSpace(text) ? null : text,
             ReportFieldId = reportFieldId,
+            UseableByUserId = useableByUserId,
             IsActive = true,
             LegacyId = legacyId,
             CreatedAtUtc = DateTime.UtcNow
         };
     }
 
-    public void Update(string name, string? text, int? reportFieldId, bool isActive)
+    public void Update(string name, string? text, int? reportFieldId, Guid? useableByUserId, bool isActive)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         Name = name.Trim();
         Text = string.IsNullOrWhiteSpace(text) ? null : text;
         ReportFieldId = reportFieldId;
+        UseableByUserId = useableByUserId;
         IsActive = isActive;
         UpdatedAtUtc = DateTime.UtcNow;
     }

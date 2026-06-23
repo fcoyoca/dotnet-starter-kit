@@ -9,6 +9,7 @@ public sealed record ListMacrosQuery(
     bool? IsActive = null,
     int? ReportFieldId = null,
     bool? General = null,
+    Guid? UseableByUserId = null,
     int PageNumber = 1,
     int PageSize = 20,
     string? SortBy = null,

@@ -29,7 +29,7 @@ public sealed class UpdateMacroCommandHandler(AdministrationDbContext dbContext)
             }
         }
 
-        entity.Update(command.Name, command.Text, command.ReportFieldId, command.IsActive);
+        entity.Update(command.Name, command.Text, command.ReportFieldId, command.UseableByUserId, command.IsActive);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Unit.Value;
     }

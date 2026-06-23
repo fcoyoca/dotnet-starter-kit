@@ -25,7 +25,7 @@ public sealed class CreateMacroCommandHandler(AdministrationDbContext dbContext)
             }
         }
 
-        Macro entity = Macro.Create(command.Name, command.Text, command.ReportFieldId);
+        Macro entity = Macro.Create(command.Name, command.Text, command.ReportFieldId, command.UseableByUserId);
         dbContext.Macros.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return entity.Id;

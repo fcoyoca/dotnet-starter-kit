@@ -92,6 +92,27 @@ public sealed class ReportTemplatesEndpointTests
     }
 
     [Fact]
+    public async Task ListMacros_Should_RoundTrip_And_FilterBy_UseableByUser()
+    {
+        using var client = await _auth.CreateRootAdminClientAsync();
+        var owner = Guid.NewGuid();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+
+        var ownedId = await (await client.PostAsJsonAsync($"{BasePath}/macros", new
+        {
+            name = $"Owned-{suffix}",
+            reportFieldId = (int?)null,
+            useableByUserId = owner,
+        })).DeserializeAsync<Guid>();
+
+        // Filtering by the owner returns the owned macro carrying its UseableByUserId.
+        var owned = await (await client.GetAsync($"{BasePath}/macros?useableByUserId={owner}&pageSize=200"))
+            .DeserializeAsync<PagedResult<MacroRow>>();
+        owned.Items.ShouldContain(m => m.Id == ownedId && m.UseableByUserId == owner);
+        owned.Items.ShouldAllBe(m => m.UseableByUserId == owner);
+    }
+
+    [Fact]
     public async Task ReportType_Crud_RoundTrip()
     {
         using var client = await _auth.CreateRootAdminClientAsync();
@@ -159,5 +180,6 @@ public sealed class ReportTemplatesEndpointTests
         int? ReportFieldId,
         string? ReportFieldName,
         string? ReportCategory,
+        Guid? UseableByUserId,
         bool IsActive);
 }

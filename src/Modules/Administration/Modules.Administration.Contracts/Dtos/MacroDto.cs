@@ -7,6 +7,7 @@ public sealed record MacroDto(
     int? ReportFieldId,
     string? ReportFieldName,
     string? ReportCategory,
+    Guid? UseableByUserId,
     bool IsActive,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);

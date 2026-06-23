@@ -40,6 +40,11 @@ public sealed class ListMacrosQueryHandler(AdministrationDbContext dbContext)
             q = q.Where(c => c.ReportFieldId == query.ReportFieldId.Value);
         }
 
+        if (query.UseableByUserId.HasValue)
+        {
+            q = q.Where(c => c.UseableByUserId == query.UseableByUserId.Value);
+        }
+
         bool desc = string.Equals(query.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
         q = desc ? q.OrderByDescending(c => c.Name) : q.OrderBy(c => c.Name);
 
@@ -51,7 +56,7 @@ public sealed class ListMacrosQueryHandler(AdministrationDbContext dbContext)
             select new MacroDto(
                 c.Id, c.Name, c.Text,
                 c.ReportFieldId, f != null ? f.Name : null, f != null ? f.Category : null,
-                c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc))
+                c.UseableByUserId, c.IsActive, c.CreatedAtUtc, c.UpdatedAtUtc))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

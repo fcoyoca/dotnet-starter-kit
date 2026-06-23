@@ -7,4 +7,5 @@ public sealed record UpdateMacroCommand(
     string Name,
     string? Text,
     int? ReportFieldId,
+    Guid? UseableByUserId,
     bool IsActive) : ICommand<Unit>;
