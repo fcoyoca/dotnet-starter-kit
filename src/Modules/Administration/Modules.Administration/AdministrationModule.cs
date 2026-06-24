@@ -80,6 +80,8 @@ using FSH.Modules.Administration.Features.v1.AppointmentTypes.ListAppointmentTyp
 using FSH.Modules.Administration.Features.v1.AppointmentTypes.CreateAppointmentType;
 using FSH.Modules.Administration.Features.v1.AppointmentTypes.UpdateAppointmentType;
 using FSH.Modules.Administration.Features.v1.AppointmentTypes.DeleteAppointmentType;
+using FSH.Modules.Administration.Features.v1.ScheduleConfig.GetScheduleConfig;
+using FSH.Modules.Administration.Features.v1.ScheduleConfig.UpsertScheduleConfig;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.CreateInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.DeleteInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.GetInsuranceCompanyById;
@@ -252,6 +254,9 @@ public sealed class AdministrationModule : IModule
         group.MapCreateAppointmentTypeEndpoint();
         group.MapUpdateAppointmentTypeEndpoint();
         group.MapDeleteAppointmentTypeEndpoint();
+
+        group.MapGetScheduleConfigEndpoint();
+        group.MapUpsertScheduleConfigEndpoint();
 
         group.MapListProcedureCodesEndpoint();
         group.MapGetProcedureCodeByIdEndpoint();
