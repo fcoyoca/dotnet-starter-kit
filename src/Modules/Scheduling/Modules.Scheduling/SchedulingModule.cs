@@ -1,6 +1,8 @@
 using Asp.Versioning;
 using FSH.Framework.Persistence;
+using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
+using FSH.Modules.Scheduling.Contracts.Authorization;
 using FSH.Modules.Scheduling.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -19,7 +21,7 @@ public sealed class SchedulingModule : IModule
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        // PermissionConstants.Register(SchedulingPermissions.All); // enabled in a later task
+        PermissionConstants.Register(SchedulingPermissions.All);
 
         builder.Services.AddHeroDbContext<SchedulingDbContext>();
         builder.Services.AddScoped<IDbInitializer, SchedulingDbInitializer>();
