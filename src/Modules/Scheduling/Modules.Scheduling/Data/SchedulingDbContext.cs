@@ -2,6 +2,7 @@ using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Persistence.Context;
 using FSH.Framework.Shared.Multitenancy;
 using FSH.Framework.Shared.Persistence;
+using FSH.Modules.Scheduling.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,8 @@ public sealed class SchedulingDbContext : BaseDbContext
         DbContextOptions<SchedulingDbContext> options,
         IOptions<DatabaseOptions> settings,
         IHostEnvironment environment) : base(multiTenantContextAccessor, options, settings, environment) { }
+
+    public DbSet<Appointment> Appointments => Set<Appointment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
