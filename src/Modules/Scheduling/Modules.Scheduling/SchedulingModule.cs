@@ -4,6 +4,11 @@ using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Scheduling.Contracts.Authorization;
 using FSH.Modules.Scheduling.Data;
+using FSH.Modules.Scheduling.Features.v1.Appointments.CreateAppointment;
+using FSH.Modules.Scheduling.Features.v1.Appointments.DeleteAppointment;
+using FSH.Modules.Scheduling.Features.v1.Appointments.GetAppointmentById;
+using FSH.Modules.Scheduling.Features.v1.Appointments.ListAppointments;
+using FSH.Modules.Scheduling.Features.v1.Appointments.UpdateAppointment;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -43,10 +48,16 @@ public sealed class SchedulingModule : IModule
             .ReportApiVersions()
             .Build();
 
-        endpoints
+        var group = endpoints
             .MapGroup("api/v{version:apiVersion}/scheduling")
             .WithTags("Scheduling")
             .WithApiVersionSet(versionSet)
             .RequireAuthorization();
+
+        group.MapListAppointmentsEndpoint();
+        group.MapGetAppointmentByIdEndpoint();
+        group.MapCreateAppointmentEndpoint();
+        group.MapUpdateAppointmentEndpoint();
+        group.MapDeleteAppointmentEndpoint();
     }
 }
