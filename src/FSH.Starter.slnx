@@ -85,6 +85,7 @@
     <Project Path="Tests/Catalog.Tests/Catalog.Tests.csproj" />
     <Project Path="Tests/Patient.Tests/Patient.Tests.csproj" />
     <Project Path="Tests/Chat.Tests/Chat.Tests.csproj" />
+    <Project Path="Tests/Scheduling.Tests/Scheduling.Tests.csproj" />
     <Project Path="Tests/Webhooks.Tests/Webhooks.Tests.csproj" />
     <Project Path="Tests/Files.Tests/Files.Tests.csproj" />
     <Project Path="Tests/Framework.Tests/Framework.Tests.csproj" />
