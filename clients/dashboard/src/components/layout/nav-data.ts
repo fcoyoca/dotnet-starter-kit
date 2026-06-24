@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Building,
   Building2,
+  CalendarClock,
   ClipboardPlus,
   CreditCard,
   FileText,
@@ -183,6 +184,12 @@ export const sections: NavSection[] = [
         label: "Macros",
         icon: ScrollText,
         perm: "Permissions.Administration.Macros.View",
+      },
+      {
+        to: "/administration/schedule",
+        label: "Schedule",
+        icon: CalendarClock,
+        perm: "Permissions.Administration.ScheduleConfig.View",
       },
       {
         to: "/administration/email-settings",

@@ -149,6 +149,10 @@ const EmailSettingsPage = lazyNamed(
   () => import("@/pages/administration/email-settings"),
   "EmailSettingsPage",
 );
+const SchedulePage = lazyNamed(
+  () => import("@/pages/administration/schedule"),
+  "SchedulePage",
+);
 const CustomDiagnosticsPage = lazyNamed(
   () => import("@/pages/administration/custom-diagnostics"),
   "CustomDiagnosticsPage",
@@ -284,6 +288,7 @@ export const router = createBrowserRouter([
           { path: "administration/incident-types", element: withSuspense(<IncidentTypesPage />) },
           { path: "administration/patient-document-types", element: withSuspense(<PatientDocumentTypesPage />) },
           { path: "administration/macros", element: withSuspense(<MacrosPage />) },
+          { path: "administration/schedule", element: withSuspense(<SchedulePage />) },
           { path: "administration/email-settings", element: withSuspense(<EmailSettingsPage />) },
           { path: "identity", element: <Navigate to="/identity/users" replace /> },
           { path: "identity/users", element: withSuspense(<UsersPage />) },

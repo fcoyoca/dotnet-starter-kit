@@ -926,6 +926,107 @@ export async function deleteMacro(id: string): Promise<void> {
   });
 }
 
+// ─── Appointment Types (tenant-scoped CRUD; Schedule) ──────────────────
+
+export type AppointmentTypeDto = {
+  id: string;
+  name: string;
+  color?: string | null;
+  defaultDurationMinutes: number;
+  displayOrder: number;
+  isActive: boolean;
+};
+
+export function listAppointmentTypes(isActive?: boolean): Promise<AppointmentTypeDto[]> {
+  const q = isActive === undefined ? "" : `?isActive=${isActive}`;
+  return apiFetch<AppointmentTypeDto[]>(`/api/v1/administration/appointment-types${q}`);
+}
+
+export type CreateAppointmentTypeInput = {
+  name: string;
+  defaultDurationMinutes: number;
+  color?: string | null;
+  displayOrder?: number;
+};
+export type UpdateAppointmentTypeInput = {
+  id: string;
+  name: string;
+  defaultDurationMinutes: number;
+  color?: string | null;
+  displayOrder: number;
+  isActive: boolean;
+};
+
+export function createAppointmentType(input: CreateAppointmentTypeInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/appointment-types", {
+    method: "POST",
+    body: JSON.stringify({
+      name: input.name,
+      defaultDurationMinutes: input.defaultDurationMinutes,
+      color: input.color ?? null,
+      displayOrder: input.displayOrder ?? 0,
+    }),
+  });
+}
+
+export async function updateAppointmentType(input: UpdateAppointmentTypeInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/appointment-types/${encodeURIComponent(input.id)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      id: input.id,
+      name: input.name,
+      defaultDurationMinutes: input.defaultDurationMinutes,
+      color: input.color ?? null,
+      displayOrder: input.displayOrder,
+      isActive: input.isActive,
+    }),
+  });
+}
+
+export async function deleteAppointmentType(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/appointment-types/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+// ─── Schedule Config (per-clinic schedule units; Schedule) ─────────────
+
+/** Times are "HH:mm" (the API accepts and returns ISO time; we keep the minute precision the form uses). */
+export type ScheduleConfigDto = {
+  clinicId: string;
+  startTime: string;
+  endTime: string;
+  intervalMinutes: number;
+};
+
+export type UpsertScheduleConfigInput = {
+  clinicId: string;
+  startTime: string;
+  endTime: string;
+  intervalMinutes: number;
+};
+
+export function getScheduleConfig(clinicId: string): Promise<ScheduleConfigDto> {
+  return apiFetch<ScheduleConfigDto>(
+    `/api/v1/administration/schedule-config/${encodeURIComponent(clinicId)}`,
+  );
+}
+
+export async function upsertScheduleConfig(input: UpsertScheduleConfigInput): Promise<ScheduleConfigDto> {
+  return apiFetch<ScheduleConfigDto>(
+    `/api/v1/administration/schedule-config/${encodeURIComponent(input.clinicId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        clinicId: input.clinicId,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        intervalMinutes: input.intervalMinutes,
+      }),
+    },
+  );
+}
+
 // ─── Email Settings (tenant-scoped singleton) ──────────────────────────
 
 export type EmailSettingsDto = {
