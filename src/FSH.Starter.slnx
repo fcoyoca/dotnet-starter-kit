@@ -45,6 +45,10 @@
     <Project Path="Modules/Notifications/Modules.Notifications.Contracts/Modules.Notifications.Contracts.csproj" />
     <Project Path="Modules/Notifications/Modules.Notifications/Modules.Notifications.csproj" />
   </Folder>
+  <Folder Name="/Modules/Scheduling/">
+    <Project Path="Modules/Scheduling/Modules.Scheduling.Contracts/Modules.Scheduling.Contracts.csproj" />
+    <Project Path="Modules/Scheduling/Modules.Scheduling/Modules.Scheduling.csproj" />
+  </Folder>
   <Folder Name="/Modules/Tickets/">
     <Project Path="Modules/Tickets/Modules.Tickets.Contracts/Modules.Tickets.Contracts.csproj" />
     <Project Path="Modules/Tickets/Modules.Tickets/Modules.Tickets.csproj" />

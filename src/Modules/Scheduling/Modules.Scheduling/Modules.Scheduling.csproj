@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>FSH.Modules.Scheduling</RootNamespace>
+		<AssemblyName>FSH.Modules.Scheduling</AssemblyName>
+		<NoWarn>$(NoWarn);CA1031;CA1812;CA1859;S3267</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Persistence.csproj" />
+		<ProjectReference Include="..\..\..\BuildingBlocks\Web\Web.csproj" />
+		<ProjectReference Include="..\Modules.Scheduling.Contracts\Modules.Scheduling.Contracts.csproj" />
+		<ProjectReference Include="..\..\Administration\Modules.Administration.Contracts\Modules.Administration.Contracts.csproj" />
+		<ProjectReference Include="..\..\Patient\Modules.Patient.Contracts\Modules.Patient.Contracts.csproj" />
+	</ItemGroup>
+
+</Project>
