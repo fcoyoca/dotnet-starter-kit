@@ -94,4 +94,22 @@ public sealed class ClinicTests
 
         clinic.LegacyId.ShouldBe(42);
     }
+
+    [Fact]
+    public void Create_Should_DefaultTimeZone_To_Utc_When_Blank()
+    {
+        var clinic = Clinic.Create("C-1", "Main", "1 St", null, "City", "ST", "00000", null, timeZoneId: null);
+
+        clinic.TimeZoneId.ShouldBe("UTC");
+    }
+
+    [Fact]
+    public void Create_And_Update_Should_SetTimeZone()
+    {
+        var clinic = Clinic.Create("C-1", "Main", "1 St", null, "City", "ST", "00000", null, timeZoneId: "Asia/Manila");
+        clinic.TimeZoneId.ShouldBe("Asia/Manila");
+
+        clinic.Update("C-1", "Main", "1 St", null, "City", "ST", "00000", null, isActive: true, timeZoneId: "America/New_York");
+        clinic.TimeZoneId.ShouldBe("America/New_York");
+    }
 }

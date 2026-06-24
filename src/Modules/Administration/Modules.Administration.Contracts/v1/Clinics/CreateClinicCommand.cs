@@ -10,4 +10,5 @@ public sealed record CreateClinicCommand(
     string City,
     string State,
     string Zip,
-    string? Phone) : ICommand<Guid>;
+    string? Phone,
+    string? TimeZoneId = null) : ICommand<Guid>;

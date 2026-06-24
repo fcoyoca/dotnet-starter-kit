@@ -15,5 +15,6 @@ public sealed class CreateClinicCommandValidator : AbstractValidator<CreateClini
         RuleFor(x => x.State).NotEmpty().MaximumLength(50);
         RuleFor(x => x.Zip).NotEmpty().MaximumLength(10);
         RuleFor(x => x.Phone).MaximumLength(20);
+        RuleFor(x => x.TimeZoneId).MaximumLength(64);
     }
 }

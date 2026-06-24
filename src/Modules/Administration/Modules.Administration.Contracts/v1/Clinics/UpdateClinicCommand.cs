@@ -12,4 +12,5 @@ public sealed record UpdateClinicCommand(
     string State,
     string Zip,
     string? Phone,
-    bool IsActive) : ICommand<Unit>;
+    bool IsActive,
+    string? TimeZoneId = null) : ICommand<Unit>;

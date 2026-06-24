@@ -25,7 +25,8 @@ public sealed class UpdateClinicCommandHandler(AdministrationDbContext dbContext
             command.State,
             command.Zip,
             command.Phone,
-            command.IsActive);
+            command.IsActive,
+            command.TimeZoneId);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Unit.Value;
     }

@@ -349,6 +349,7 @@ function ClinicEditorDialog({ state, onClose }: { state: EditorState; onClose: (
       state: clinic?.state ?? "",
       zip: clinic?.zip ?? "",
       phone: clinic?.phone ?? "",
+      timeZoneId: clinic?.timeZoneId ?? "UTC",
       isActive: clinic?.isActive ?? true,
     }),
     [clinic],
@@ -407,6 +408,7 @@ function ClinicEditorDialog({ state, onClose }: { state: EditorState; onClose: (
       state: form.state.trim(),
       zip: form.zip.trim(),
       phone: form.phone.trim() || null,
+      timeZoneId: form.timeZoneId,
     };
     if (state.mode === "edit" && clinic) {
       updateMutation.mutate({ clinicId: clinic.id, isActive: form.isActive, ...payload });
@@ -516,6 +518,35 @@ function ClinicEditorDialog({ state, onClose }: { state: EditorState; onClose: (
                 maxLength={20}
                 type="tel"
               />
+            </Field>
+
+            <Field
+              id="clinic-timezone"
+              label="Time zone"
+              hint="Used to render the scheduler day and appointment times in this clinic's local time."
+            >
+              <select
+                id="clinic-timezone"
+                value={form.timeZoneId}
+                onChange={(e) => set("timeZoneId", e.target.value)}
+                className="h-9 w-full rounded-lg border border-[var(--color-input)] bg-transparent px-2 text-[13px] shadow-xs focus-visible:border-[var(--color-ring)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[oklch(from_var(--color-ring)_l_c_h_/_0.5)]"
+              >
+                {[
+                  "UTC",
+                  "America/New_York",
+                  "America/Chicago",
+                  "America/Denver",
+                  "America/Phoenix",
+                  "America/Los_Angeles",
+                  "America/Anchorage",
+                  "Pacific/Honolulu",
+                  "Asia/Manila",
+                ].map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
             </Field>
 
             {clinic && (

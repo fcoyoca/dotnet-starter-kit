@@ -20,6 +20,12 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
     public bool IsActive { get; private set; }
 
     /// <summary>
+    /// IANA timezone of this clinic (e.g. <c>America/New_York</c>), used to render the scheduler day and
+    /// appointment times in the clinic's local wall-clock. Defaults to <c>UTC</c>.
+    /// </summary>
+    public string TimeZoneId { get; private set; } = "UTC";
+
+    /// <summary>
     /// Surrogate key (<c>cID</c>) of the source record in the legacy BackChart/Bronston database.
     /// Null for clinics created natively. Preserved so a later data-migration import can key
     /// related records back to the original clinic.
@@ -44,7 +50,8 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
         string state,
         string zip,
         string? phone,
-        int? legacyId = null)
+        int? legacyId = null,
+        string? timeZoneId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -66,6 +73,7 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
             Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim(),
             IsActive = true,
             LegacyId = legacyId,
+            TimeZoneId = string.IsNullOrWhiteSpace(timeZoneId) ? "UTC" : timeZoneId.Trim(),
             CreatedAtUtc = DateTime.UtcNow
         };
     }
@@ -79,7 +87,8 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
         string state,
         string zip,
         string? phone,
-        bool isActive)
+        bool isActive,
+        string? timeZoneId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -97,6 +106,7 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
         Zip = zip.Trim();
         Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
         IsActive = isActive;
+        TimeZoneId = string.IsNullOrWhiteSpace(timeZoneId) ? "UTC" : timeZoneId.Trim();
         UpdatedAtUtc = DateTime.UtcNow;
     }
 

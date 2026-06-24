@@ -10,6 +10,7 @@ public sealed record ClinicDto(
     string State,
     string Zip,
     string? Phone,
+    string TimeZoneId,
     bool IsActive,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);

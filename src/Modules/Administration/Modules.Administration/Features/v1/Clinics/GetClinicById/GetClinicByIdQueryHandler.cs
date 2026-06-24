@@ -28,6 +28,7 @@ public sealed class GetClinicByIdQueryHandler(AdministrationDbContext dbContext)
             entity.State,
             entity.Zip,
             entity.Phone,
+            entity.TimeZoneId,
             entity.IsActive,
             entity.CreatedAtUtc,
             entity.UpdatedAtUtc);

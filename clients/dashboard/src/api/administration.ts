@@ -120,6 +120,7 @@ export type ClinicDto = {
   state: string;
   zip: string;
   phone?: string | null;
+  timeZoneId: string;
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc?: string | null;
@@ -143,6 +144,7 @@ export type ClinicInput = {
   state: string;
   zip: string;
   phone?: string | null;
+  timeZoneId?: string | null;
 };
 
 export type CreateClinicInput = ClinicInput;
@@ -176,6 +178,7 @@ export async function createClinic(input: CreateClinicInput): Promise<string> {
       state: input.state,
       zip: input.zip,
       phone: input.phone ?? null,
+      timeZoneId: input.timeZoneId ?? null,
     }),
   });
 }
@@ -193,6 +196,7 @@ export async function updateClinic(input: UpdateClinicInput): Promise<void> {
       state: input.state,
       zip: input.zip,
       phone: input.phone ?? null,
+      timeZoneId: input.timeZoneId ?? null,
       isActive: input.isActive,
     }),
   });
