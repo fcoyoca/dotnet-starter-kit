@@ -16,6 +16,8 @@ export type AppointmentDto = {
   status: AppointmentStatus;
   cancelled: boolean;
   noShow: boolean;
+  isReservation: boolean;
+  reservationTitle?: string | null;
 };
 
 export type ListAppointmentsParams = {
@@ -48,6 +50,8 @@ export type AppointmentInput = {
   startUtc: string;
   endUtc: string;
   notes?: string | null;
+  isReservation?: boolean;
+  reservationTitle?: string | null;
 };
 
 export function createAppointment(input: AppointmentInput): Promise<string> {
