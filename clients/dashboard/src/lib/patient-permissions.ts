@@ -17,3 +17,13 @@ export type PatientPermissionKey = keyof typeof PATIENT_PERMISSIONS;
 
 /** Flat list of every Patient permission. */
 export const ALL_PATIENT_PERMISSIONS: readonly string[] = Object.values(PATIENT_PERMISSIONS);
+
+export const INCIDENT_PERMISSIONS = {
+  view:   "Permissions.Patient.Incidents.View",
+  create: "Permissions.Patient.Incidents.Create",
+  update: "Permissions.Patient.Incidents.Update",
+  close:  "Permissions.Patient.Incidents.Close",
+  delete: "Permissions.Patient.Incidents.Delete",
+} as const;
+
+export type IncidentPermissionKey = keyof typeof INCIDENT_PERMISSIONS;

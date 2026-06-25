@@ -278,6 +278,15 @@ export async function deleteDepartment(id: string): Promise<void> {
   });
 }
 
+export function useDepartmentOptions(): ComboboxOption[] | undefined {
+  const { data } = useQuery({
+    queryKey: ["administration.departmentOptions"],
+    queryFn: () => listDepartments({ isActive: true, pageSize: 200, sortBy: "name", sortDir: "asc" }),
+    staleTime: 10 * 60 * 1000,
+  });
+  return data ? data.items.map((d) => ({ value: d.id, label: d.name })) : undefined;
+}
+
 // ─── Providers (tenant-scoped CRUD) ────────────────────────────────────
 
 export type ProviderDto = {
@@ -695,6 +704,15 @@ export async function deleteIncidentType(id: string): Promise<void> {
   await apiFetch<void>(`/api/v1/administration/incident-types/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+}
+
+export function useIncidentTypeOptions(): ComboboxOption[] | undefined {
+  const { data } = useQuery({
+    queryKey: ["administration.incidentTypeOptions"],
+    queryFn: () => listIncidentTypes({ isActive: true, pageSize: 200, sortBy: "name", sortDir: "asc" }),
+    staleTime: 10 * 60 * 1000,
+  });
+  return data ? data.items.map((t) => ({ value: t.id, label: t.name })) : undefined;
 }
 
 // ─── Patient Document Types (tenant-scoped CRUD) ───────────────────────

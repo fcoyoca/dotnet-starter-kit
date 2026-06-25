@@ -4,6 +4,7 @@ import {
   Building,
   Building2,
   CalendarClock,
+  ClipboardList,
   ClipboardPlus,
   CreditCard,
   FileText,
@@ -31,7 +32,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { ALL_TRASH_PERMISSIONS } from "@/lib/trash-permissions";
-import { PATIENT_PERMISSIONS } from "@/lib/patient-permissions";
+import { INCIDENT_PERMISSIONS, PATIENT_PERMISSIONS } from "@/lib/patient-permissions";
 
 export type NavSpec = {
   to: string;
@@ -85,6 +86,7 @@ export const sections: NavSection[] = [
     icon: Stethoscope,
     items: [
       { to: "/patients", label: "Patients", icon: Stethoscope, perm: PATIENT_PERMISSIONS.view },
+      { to: "/patient-charts", label: "Patient Chart", icon: ClipboardList, perm: INCIDENT_PERMISSIONS.view },
     ],
   },
   {
