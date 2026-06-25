@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Calendar, dateFnsLocalizer, type View } from "react-big-calendar";
+import { format } from "date-fns/format";
+import { parse } from "date-fns/parse";
+import { startOfWeek } from "date-fns/startOfWeek";
+import { startOfMonth } from "date-fns/startOfMonth";
+import { endOfMonth } from "date-fns/endOfMonth";
+import { endOfWeek } from "date-fns/endOfWeek";
+import { getDay } from "date-fns/getDay";
+import { enUS } from "date-fns/locale/en-US";
+import { CalendarClock } from "lucide-react";
 import { toast } from "sonner";
+import "react-big-calendar/lib/css/react-big-calendar.css";
 import {
   cancelAppointment,
   checkInAppointment,
@@ -11,11 +21,20 @@ import {
   noShowAppointment,
   listAppointments,
   updateAppointment,
+  type AppointmentChangedEvent,
   type AppointmentDto,
 } from "@/api/scheduling";
-import type { AppointmentChangedEvent } from "@/api/scheduling";
-import { listClinics, listProviders, type ClinicDto, type ProviderDto } from "@/api/administration";
+import {
+  getScheduleConfig,
+  listAppointmentTypes,
+  listClinics,
+  listProviders,
+  type AppointmentTypeDto,
+  type ClinicDto,
+  type ProviderDto,
+} from "@/api/administration";
 import { useRealtimeEvent } from "@/realtime/realtime-context";
+import { PatientPicker, patientLabel } from "@/components/scheduling/patient-picker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,10 +47,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { EntityPageHeader, Field } from "@/components/list";
+import { cn } from "@/lib/cn";
 import { describe } from "@/lib/list-helpers";
 
-// ─── timezone helpers (Intl-only; no extra deps) ───────────────────────
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales: { "en-US": enUS },
+});
+
+// ─── timezone helpers (Intl-only) ───────────────────────────────────────
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
 
 /** Offset (localWall − UTC) in ms for `instant` in `timeZone`. */
 function tzOffsetMs(instant: Date, timeZone: string): number {
@@ -45,9 +78,9 @@ function tzOffsetMs(instant: Date, timeZone: string): number {
     minute: "2-digit",
     second: "2-digit",
   });
-  const map: Record<string, string> = {};
-  for (const p of dtf.formatToParts(instant)) map[p.type] = p.value;
-  const asUtc = Date.UTC(+map.year, +map.month - 1, +map.day, +map.hour, +map.minute, +map.second);
+  const m: Record<string, string> = {};
+  for (const p of dtf.formatToParts(instant)) m[p.type] = p.value;
+  const asUtc = Date.UTC(+m.year, +m.month - 1, +m.day, +m.hour, +m.minute, +m.second);
   return asUtc - instant.getTime();
 }
 
@@ -60,72 +93,82 @@ function zonedWallToUtc(ymd: string, hhmm: string, timeZone: string): Date {
   return new Date(guess - offset);
 }
 
-function addDaysYmd(ymd: string, days: number): string {
-  const [y, mo, d] = ymd.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, mo - 1, d));
-  dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString().slice(0, 10);
+/** A UTC instant → a browser-local Date whose fields equal the clinic-local wall time (for RBC rendering). */
+function utcToClinicWallDate(iso: string, timeZone: string): Date {
+  const m: Record<string, string> = {};
+  for (const p of new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(new Date(iso))) {
+    m[p.type] = p.value;
+  }
+  return new Date(+m.year, +m.month - 1, +m.day, +m.hour, +m.minute);
 }
 
-/** Today's calendar date (YYYY-MM-DD) as seen in `timeZone`. */
-function todayYmdInTz(timeZone: string): string {
-  const map: Record<string, string> = {};
+function localYmd(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Clinic-local calendar date (YYYY-MM-DD) of an instant. */
+function ymdInTz(iso: string, timeZone: string): string {
+  const m: Record<string, string> = {};
   for (const p of new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(new Date())) {
-    map[p.type] = p.value;
+  }).formatToParts(new Date(iso))) {
+    m[p.type] = p.value;
   }
-  return `${map.year}-${map.month}-${map.day}`;
+  return `${m.year}-${m.month}-${m.day}`;
 }
 
-function fmtTime(iso: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
-
-/** Clinic-local HH:mm (24h) for an instant — used to seed <input type="time">. */
-function fmtTimeValue(iso: string, timeZone: string): string {
-  const map: Record<string, string> = {};
+/** Clinic-local HH:mm (24h) of an instant — seeds <input type="time">. */
+function timeValueInTz(iso: string, timeZone: string): string {
+  const m: Record<string, string> = {};
   for (const p of new Intl.DateTimeFormat("en-US", {
     timeZone,
     hourCycle: "h23",
     hour: "2-digit",
     minute: "2-digit",
   }).formatToParts(new Date(iso))) {
-    map[p.type] = p.value;
+    m[p.type] = p.value;
   }
-  return `${map.hour}:${map.minute}`;
+  return `${m.hour}:${m.minute}`;
 }
 
-function fmtDayLabel(ymd: string): string {
-  const [y, mo, d] = ymd.split("-").map(Number);
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(Date.UTC(y, mo - 1, d, 12)));
+function addMinutesToHhmm(hhmm: string, minutes: number): string {
+  const [h, mi] = hhmm.split(":").map(Number);
+  const total = (h * 60 + mi + minutes + 1440) % 1440;
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
 }
 
-// ─── grid constants ─────────────────────────────────────────────────────
+// ─── colors ─────────────────────────────────────────────────────────────
 
-const START_HOUR = 7;
-const END_HOUR = 19;
-const HOUR_PX = 56;
-const PX_PER_MIN = HOUR_PX / 60;
-const GRID_HEIGHT = (END_HOUR - START_HOUR) * HOUR_PX;
+function eventColor(a: AppointmentDto, typeColor: string | null | undefined): string {
+  if (a.isReservation) return "#8E8A7F"; // taupe
+  if (a.cancelled) return "#ffa41b"; // orange
+  if (a.noShow) return "#dd2c00"; // red
+  if (a.status === "CheckedIn") return "#21bf73"; // green
+  if (a.status === "CheckedOut") return "#929aab"; // gray
+  return typeColor || "#7045af"; // type color or default purple
+}
 
-const STATUS_STYLES: Record<string, string> = {
-  Scheduled: "border-l-[var(--brand-500)]",
-  CheckedIn: "border-l-[var(--color-saffron-500,#eab308)]",
-  CheckedOut: "border-l-[var(--color-emerald-500,#10b981)]",
+type CalEvent = {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  resourceId: string;
+  appt: AppointmentDto;
 };
+
+// ─── page ───────────────────────────────────────────────────────────────
 
 export function AppointmentsPage() {
   const queryClient = useQueryClient();
@@ -140,19 +183,14 @@ export function AppointmentsPage() {
   const [clinicId, setClinicId] = useState<string>("");
   const clinic = clinics.find((c) => c.id === clinicId) ?? clinics[0];
   const timeZone = clinic?.timeZoneId ?? "UTC";
+  const effectiveClinicId = clinic?.id ?? "";
 
-  // Default the clinic selection once clinics load.
   useEffect(() => {
     if (!clinicId && clinics.length > 0) setClinicId(clinics[0].id);
   }, [clinicId, clinics]);
 
-  const [date, setDate] = useState<string>("");
-  // Seed the date to "today" in the clinic's timezone the first time we know the zone.
-  useEffect(() => {
-    if (!date && clinic) setDate(todayYmdInTz(timeZone));
-  }, [date, clinic, timeZone]);
-
-  const effectiveClinicId = clinic?.id ?? "";
+  const [view, setView] = useState<View>("day");
+  const [date, setDate] = useState<Date>(() => new Date());
 
   const { data: providersPage } = useQuery({
     queryKey: ["scheduling.providers", effectiveClinicId],
@@ -163,52 +201,62 @@ export function AppointmentsPage() {
   });
   const providers: ProviderDto[] = useMemo(() => providersPage?.items ?? [], [providersPage]);
 
-  const dayWindow = useMemo(() => {
-    if (!date || !clinic) return null;
-    const fromUtc = zonedWallToUtc(date, "00:00", timeZone);
-    const toUtc = zonedWallToUtc(addDaysYmd(date, 1), "00:00", timeZone);
-    return { fromUtc: fromUtc.toISOString(), toUtc: toUtc.toISOString(), fromMs: fromUtc.getTime() };
-  }, [date, clinic, timeZone]);
+  const { data: types } = useQuery({
+    queryKey: ["scheduling.appointmentTypes"],
+    queryFn: () => listAppointmentTypes(true),
+    staleTime: 5 * 60 * 1000,
+  });
+  const typesById = useMemo(() => {
+    const map = new Map<string, AppointmentTypeDto>();
+    for (const t of types ?? []) map.set(t.id, t);
+    return map;
+  }, [types]);
+
+  const { data: config } = useQuery({
+    queryKey: ["scheduling.config", effectiveClinicId],
+    queryFn: () => getScheduleConfig(effectiveClinicId),
+    enabled: Boolean(effectiveClinicId),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  // Provider filter — empty set means "all".
+  const [selectedProviders, setSelectedProviders] = useState<Set<string>>(new Set());
+  const activeProviderIds = useMemo(
+    () => (selectedProviders.size === 0 ? providers.map((p) => p.id) : [...selectedProviders]),
+    [selectedProviders, providers],
+  );
+
+  // Visible window (clinic-local) → UTC range for the query.
+  const window = useMemo(() => {
+    if (!clinic) return null;
+    let fromYmd: string;
+    let toYmd: string;
+    if (view === "month") {
+      fromYmd = localYmd(startOfWeek(startOfMonth(date)));
+      toYmd = localYmd(endOfWeek(endOfMonth(date)));
+    } else {
+      fromYmd = localYmd(date);
+      toYmd = fromYmd;
+    }
+    const fromUtc = zonedWallToUtc(fromYmd, "00:00", timeZone).toISOString();
+    // exclusive upper bound = day after the last visible day
+    const [y, mo, d] = toYmd.split("-").map(Number);
+    const next = new Date(Date.UTC(y, mo - 1, d));
+    next.setUTCDate(next.getUTCDate() + 1);
+    const toUtc = zonedWallToUtc(next.toISOString().slice(0, 10), "00:00", timeZone).toISOString();
+    return { fromUtc, toUtc };
+  }, [clinic, view, date, timeZone]);
 
   const { data: appointments } = useQuery({
-    queryKey: ["scheduling.appointments", effectiveClinicId, dayWindow?.fromUtc, dayWindow?.toUtc],
-    queryFn: () =>
-      listAppointments({ clinicId: effectiveClinicId, fromUtc: dayWindow!.fromUtc, toUtc: dayWindow!.toUtc }),
-    enabled: Boolean(effectiveClinicId && dayWindow),
+    queryKey: ["scheduling.appointments", effectiveClinicId, window?.fromUtc, window?.toUtc],
+    queryFn: () => listAppointments({ clinicId: effectiveClinicId, fromUtc: window!.fromUtc, toUtc: window!.toUtc }),
+    enabled: Boolean(effectiveClinicId && window),
     placeholderData: keepPreviousData,
   });
 
-  const providerName = (id: string) => {
-    const p = providers.find((x) => x.id === id);
-    return p ? `${p.lastName}, ${p.firstName}` : "Unknown provider";
-  };
-
-  // Columns: clinic providers, plus any provider that has an appointment today.
-  const columnIds = useMemo(() => {
-    const ids = new Set(providers.map((p) => p.id));
-    for (const a of appointments ?? []) ids.add(a.providerId);
-    return [...ids];
-  }, [providers, appointments]);
-
-  const byProvider = useMemo(() => {
-    const map = new Map<string, AppointmentDto[]>();
-    for (const a of appointments ?? []) {
-      const list = map.get(a.providerId) ?? [];
-      list.push(a);
-      map.set(a.providerId, list);
-    }
-    return map;
-  }, [appointments]);
-
-  const [dialog, setDialog] = useState<
-    { mode: "create"; providerId: string } | { mode: "edit"; appointment: AppointmentDto } | null
-  >(null);
-
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["scheduling.appointments"] });
 
-  // Live updates: a write anywhere in the tenant broadcasts AppointmentChanged.
-  // Refresh only when the change touches the clinic we're currently viewing —
-  // this replaces the legacy 60-second polling timer.
   useRealtimeEvent<AppointmentChangedEvent>(
     "AppointmentChanged",
     (payload) => {
@@ -217,19 +265,81 @@ export function AppointmentsPage() {
     [effectiveClinicId],
   );
 
+  const providerName = (id: string) => {
+    const p = providers.find((x) => x.id === id);
+    return p ? `${p.lastName}, ${p.firstName}` : "Unknown";
+  };
+
+  const events: CalEvent[] = useMemo(() => {
+    const active = new Set(activeProviderIds);
+    return (appointments ?? [])
+      .filter((a) => active.has(a.providerId))
+      .map((a) => {
+        const type = a.appointmentTypeId ? typesById.get(a.appointmentTypeId) : undefined;
+        const title = a.isReservation
+          ? a.reservationTitle || "Reserved"
+          : a.notes || type?.name || "Appointment";
+        return {
+          id: a.id,
+          title,
+          start: utcToClinicWallDate(a.startUtc, timeZone),
+          end: utcToClinicWallDate(a.endUtc, timeZone),
+          resourceId: a.providerId,
+          appt: a,
+        };
+      });
+  }, [appointments, activeProviderIds, typesById, timeZone]);
+
+  const resources = useMemo(
+    () => providers.filter((p) => activeProviderIds.includes(p.id)).map((p) => ({ id: p.id, title: providerName(p.id) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [providers, activeProviderIds],
+  );
+
+  // Business hours from ScheduleConfig (fallback 7a–7p).
+  const { min, max } = useMemo(() => {
+    const start = config?.startTime?.slice(0, 5) ?? "07:00";
+    const end = config?.endTime?.slice(0, 5) ?? "19:00";
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    return { min: new Date(1970, 0, 1, sh, sm), max: new Date(1970, 0, 1, eh, em) };
+  }, [config]);
+  const step = config?.intervalMinutes ?? 30;
+
+  const [dialog, setDialog] = useState<
+    | { mode: "create"; providerId: string; ymd: string; startTime: string; endTime: string }
+    | { mode: "edit"; appointment: AppointmentDto }
+    | null
+  >(null);
+
+  const toggleProvider = (id: string) =>
+    setSelectedProviders((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   return (
     <div className="space-y-4">
       <EntityPageHeader
         icon={CalendarClock}
         title="Appointments"
-        description="Day-view scheduler across providers, in each clinic's local time."
+        description="Schedule patients and reserve time across providers, in each clinic's local time."
       >
         <Button
           size="sm"
-          disabled={columnIds.length === 0}
-          onClick={() => setDialog({ mode: "create", providerId: columnIds[0] ?? "" })}
+          disabled={providers.length === 0}
+          onClick={() =>
+            setDialog({
+              mode: "create",
+              providerId: activeProviderIds[0] ?? providers[0]?.id ?? "",
+              ymd: localYmd(date),
+              startTime: "09:00",
+              endTime: "09:30",
+            })
+          }
         >
-          <Plus className="size-4" />
           New appointment
         </Button>
       </EntityPageHeader>
@@ -248,103 +358,90 @@ export function AppointmentsPage() {
             </option>
           ))}
         </select>
+        <span className="text-[12px] text-[var(--color-muted-foreground)]">{timeZone}</span>
 
-        <div className="ml-auto flex items-center gap-1">
-          <Button variant="outline" size="icon-sm" aria-label="Previous day" onClick={() => setDate((d) => addDaysYmd(d, -1))}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setDate(todayYmdInTz(timeZone))}>
-            Today
-          </Button>
-          <Button variant="outline" size="icon-sm" aria-label="Next day" onClick={() => setDate((d) => addDaysYmd(d, 1))}>
-            <ChevronRight className="size-4" />
-          </Button>
-          <span className="ml-2 min-w-[12rem] text-[13px] font-medium text-[var(--color-foreground)]">
-            {date ? fmtDayLabel(date) : "—"}
-            <span className="ml-2 text-[12px] font-normal text-[var(--color-muted-foreground)]">{timeZone}</span>
-          </span>
-        </div>
+        {providers.length > 0 && (
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            {providers.map((p) => {
+              const on = selectedProviders.size === 0 || selectedProviders.has(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => toggleProvider(p.id)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[12px] transition-colors",
+                    on
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                      : "border-[var(--color-border)] text-[var(--color-muted-foreground)]",
+                  )}
+                >
+                  {p.lastName}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Grid */}
-      {columnIds.length === 0 ? (
+      {/* Calendar */}
+      {providers.length === 0 ? (
         <div className="rounded-lg border border-[var(--color-border)] p-8 text-center text-[13px] text-[var(--color-muted-foreground)]">
           No active providers for this clinic. Add a provider in Administration to start scheduling.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
-          <div className="flex min-w-fit">
-            {/* hour gutter */}
-            <div className="sticky left-0 z-10 w-14 shrink-0 border-r border-[var(--color-border)] bg-[var(--color-background)]">
-              <div className="h-9 border-b border-[var(--color-border)]" />
-              <div className="relative" style={{ height: GRID_HEIGHT }}>
-                {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
-                  <div
-                    key={i}
-                    className="absolute right-1 text-[11px] text-[var(--color-muted-foreground)]"
-                    style={{ top: i * HOUR_PX - 6 }}
-                  >
-                    {((START_HOUR + i + 11) % 12) + 1}
-                    {START_HOUR + i < 12 ? "a" : "p"}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* provider columns */}
-            {columnIds.map((pid) => (
-              <div key={pid} className="w-56 shrink-0 border-r border-[var(--color-border)] last:border-r-0">
-                <div className="flex h-9 items-center truncate border-b border-[var(--color-border)] px-2 text-[12px] font-medium text-[var(--color-foreground)]">
-                  {providerName(pid)}
-                </div>
-                <div
-                  className="relative"
-                  style={{ height: GRID_HEIGHT }}
-                  onDoubleClick={() => setDialog({ mode: "create", providerId: pid })}
-                >
-                  {/* hour lines */}
-                  {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
-                    <div
-                      key={i}
-                      className="absolute inset-x-0 border-t border-[var(--color-border)]/60"
-                      style={{ top: i * HOUR_PX }}
-                    />
-                  ))}
-                  {(byProvider.get(pid) ?? []).map((a) => {
-                    const startMin = (new Date(a.startUtc).getTime() - (dayWindow?.fromMs ?? 0)) / 60000;
-                    const endMin = (new Date(a.endUtc).getTime() - (dayWindow?.fromMs ?? 0)) / 60000;
-                    const top = Math.max(0, (startMin - START_HOUR * 60) * PX_PER_MIN);
-                    const height = Math.max(18, (endMin - startMin) * PX_PER_MIN);
-                    return (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => setDialog({ mode: "edit", appointment: a })}
-                        className={`absolute inset-x-1 overflow-hidden rounded-md border border-[var(--color-border)] border-l-2 bg-[var(--color-card)] px-1.5 py-1 text-left text-[11px] shadow-xs hover:ring-1 hover:ring-[var(--color-ring)] ${STATUS_STYLES[a.status] ?? ""} ${a.cancelled ? "opacity-50 line-through" : ""}`}
-                        style={{ top, height }}
-                      >
-                        <div className="font-medium text-[var(--color-foreground)]">{fmtTime(a.startUtc, timeZone)}</div>
-                        <div className="truncate text-[var(--color-muted-foreground)]">
-                          {a.noShow ? "No-show · " : ""}
-                          {a.notes || (a.patientId ? "Patient on file" : "(no notes)")}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2" style={{ height: 680 }}>
+          <Calendar<CalEvent, { id: string; title: string }>
+            localizer={localizer}
+            events={events}
+            startAccessor="start"
+            endAccessor="end"
+            views={["day", "month"]}
+            view={view}
+            onView={setView}
+            date={date}
+            onNavigate={setDate}
+            step={step}
+            timeslots={1}
+            min={min}
+            max={max}
+            selectable
+            popup
+            resources={view === "day" ? resources : undefined}
+            resourceIdAccessor="id"
+            resourceTitleAccessor="title"
+            eventPropGetter={(event) => ({
+              style: {
+                backgroundColor: eventColor(
+                  event.appt,
+                  event.appt.appointmentTypeId ? typesById.get(event.appt.appointmentTypeId)?.color : undefined,
+                ),
+                border: "none",
+              },
+            })}
+            onSelectSlot={(slot) => {
+              const start = slot.start as Date;
+              const end = slot.end as Date;
+              setDialog({
+                mode: "create",
+                providerId: (slot as { resourceId?: string }).resourceId ?? activeProviderIds[0] ?? "",
+                ymd: localYmd(start),
+                startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
+                endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+              });
+            }}
+            onSelectEvent={(event) => setDialog({ mode: "edit", appointment: event.appt })}
+          />
         </div>
       )}
 
-      {dialog && clinic && date && (
+      {dialog && clinic && (
         <AppointmentDialog
           state={dialog}
           clinicId={clinic.id}
-          date={date}
           timeZone={timeZone}
           providers={providers}
+          types={types ?? []}
           providerName={providerName}
           onClose={() => setDialog(null)}
           onChanged={invalidate}
@@ -357,35 +454,41 @@ export function AppointmentsPage() {
 // ─── create / edit dialog ───────────────────────────────────────────────
 
 type DialogState =
-  | { mode: "create"; providerId: string }
+  | { mode: "create"; providerId: string; ymd: string; startTime: string; endTime: string }
   | { mode: "edit"; appointment: AppointmentDto };
 
 function AppointmentDialog({
   state,
   clinicId,
-  date,
   timeZone,
   providers,
+  types,
   providerName,
   onClose,
   onChanged,
 }: {
   state: DialogState;
   clinicId: string;
-  date: string;
   timeZone: string;
   providers: ProviderDto[];
+  types: AppointmentTypeDto[];
   providerName: (id: string) => string;
   onClose: () => void;
   onChanged: () => void;
 }) {
   const editing = state.mode === "edit" ? state.appointment : null;
+  const creating = state.mode === "create" ? state : null;
+  const ymd = editing ? ymdInTz(editing.startUtc, timeZone) : creating!.ymd;
 
-  const [providerId, setProviderId] = useState(
-    editing ? editing.providerId : state.mode === "create" ? state.providerId : "",
+  const [providerId, setProviderId] = useState(editing ? editing.providerId : creating!.providerId);
+  const [isReservation, setIsReservation] = useState(editing?.isReservation ?? false);
+  const [reservationTitle, setReservationTitle] = useState(editing?.reservationTitle ?? "");
+  const [patientId, setPatientId] = useState<string | null>(editing?.patientId ?? null);
+  const [appointmentTypeId, setAppointmentTypeId] = useState<string>(editing?.appointmentTypeId ?? "");
+  const [startTime, setStartTime] = useState(
+    editing ? timeValueInTz(editing.startUtc, timeZone) : creating!.startTime,
   );
-  const [startTime, setStartTime] = useState(editing ? fmtTimeValue(editing.startUtc, timeZone) : "09:00");
-  const [endTime, setEndTime] = useState(editing ? fmtTimeValue(editing.endUtc, timeZone) : "09:30");
+  const [endTime, setEndTime] = useState(editing ? timeValueInTz(editing.endUtc, timeZone) : creating!.endTime);
   const [notes, setNotes] = useState(editing?.notes ?? "");
 
   const afterSuccess = (msg: string) => {
@@ -397,17 +500,17 @@ function AppointmentDialog({
 
   const createMutation = useMutation({
     mutationFn: createAppointment,
-    onSuccess: () => afterSuccess("Appointment created"),
+    onSuccess: () => afterSuccess(isReservation ? "Reservation created" : "Appointment created"),
     onError: onError("Create"),
   });
   const updateMutation = useMutation({
     mutationFn: updateAppointment,
-    onSuccess: () => afterSuccess("Appointment updated"),
+    onSuccess: () => afterSuccess("Saved"),
     onError: onError("Update"),
   });
   const deleteMutation = useMutation({
     mutationFn: deleteAppointment,
-    onSuccess: () => afterSuccess("Appointment deleted"),
+    onSuccess: () => afterSuccess("Deleted"),
     onError: onError("Delete"),
   });
   const lifecycleMutation = useMutation({
@@ -418,27 +521,39 @@ function AppointmentDialog({
 
   const isPending =
     createMutation.isPending || updateMutation.isPending || deleteMutation.isPending || lifecycleMutation.isPending;
-  const valid = Boolean(providerId) && Boolean(startTime) && Boolean(endTime) && endTime > startTime;
+  const valid =
+    Boolean(providerId) &&
+    Boolean(startTime) &&
+    Boolean(endTime) &&
+    endTime > startTime &&
+    (!isReservation || reservationTitle.trim().length > 0);
+
+  const onPickType = (id: string) => {
+    setAppointmentTypeId(id);
+    const t = types.find((x) => x.id === id);
+    if (t && t.defaultDurationMinutes > 0) {
+      setEndTime(addMinutesToHhmm(startTime, t.defaultDurationMinutes));
+    }
+  };
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!valid) return;
-    const startUtc = zonedWallToUtc(date, startTime, timeZone).toISOString();
-    const endUtc = zonedWallToUtc(date, endTime, timeZone).toISOString();
+    const startUtc = zonedWallToUtc(ymd, startTime, timeZone).toISOString();
+    const endUtc = zonedWallToUtc(ymd, endTime, timeZone).toISOString();
     const payload = {
       clinicId,
       providerId,
-      patientId: editing?.patientId ?? null,
-      appointmentTypeId: editing?.appointmentTypeId ?? null,
+      patientId: isReservation ? null : patientId,
+      appointmentTypeId: isReservation || !appointmentTypeId ? null : appointmentTypeId,
       startUtc,
       endUtc,
       notes: notes.trim() || null,
+      isReservation,
+      reservationTitle: isReservation ? reservationTitle.trim() : null,
     };
-    if (editing) {
-      updateMutation.mutate({ id: editing.id, ...payload });
-    } else {
-      createMutation.mutate(payload);
-    }
+    if (editing) updateMutation.mutate({ id: editing.id, ...payload });
+    else createMutation.mutate(payload);
   };
 
   const runLifecycle = (fn: (id: string) => Promise<void>, label: string) => {
@@ -452,13 +567,21 @@ function AppointmentDialog({
           <DialogHeader>
             <DialogTitle>{editing ? "Edit appointment" : "New appointment"}</DialogTitle>
             <DialogDescription>
-              {editing
-                ? `${providerName(editing.providerId)} · ${fmtTime(editing.startUtc, timeZone)}`
-                : "Book a slot on the selected day. Times are in the clinic's local zone."}
+              {providerName(providerId)} · times are in the clinic's local zone.
             </DialogDescription>
           </DialogHeader>
 
           <DialogBody className="space-y-3">
+            <div className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2.5">
+              <div>
+                <p className="text-[13px] font-medium text-[var(--color-foreground)]">Reserve time</p>
+                <p className="text-[12px] text-[var(--color-muted-foreground)]">
+                  Block the slot without a patient (e.g. lunch, admin).
+                </p>
+              </div>
+              <Switch checked={isReservation} onCheckedChange={setIsReservation} aria-label="Reserve time" />
+            </div>
+
             <Field id="appt-provider" label="Provider">
               <select
                 id="appt-provider"
@@ -466,7 +589,6 @@ function AppointmentDialog({
                 onChange={(e) => setProviderId(e.target.value)}
                 className="h-9 w-full rounded-lg border border-[var(--color-input)] bg-transparent px-2 text-[13px]"
               >
-                {providers.length === 0 && <option value="">No providers</option>}
                 {providers.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.lastName}, {p.firstName}
@@ -474,6 +596,47 @@ function AppointmentDialog({
                 ))}
               </select>
             </Field>
+
+            {isReservation ? (
+              <Field id="appt-title" label="Title">
+                <Input
+                  id="appt-title"
+                  value={reservationTitle}
+                  onChange={(e) => setReservationTitle(e.target.value)}
+                  placeholder="Lunch, meeting, admin…"
+                  maxLength={200}
+                />
+              </Field>
+            ) : (
+              <>
+                <Field id="appt-patient" label="Patient" hint="Optional — leave empty for a walk-in / hold.">
+                  <PatientPicker
+                    value={patientId}
+                    initialLabel={editing?.patientId ? "Selected patient" : null}
+                    onChange={(id, p) => {
+                      setPatientId(id);
+                      if (p && !notes) setNotes(patientLabel(p));
+                    }}
+                  />
+                </Field>
+
+                <Field id="appt-type" label="Appointment type">
+                  <select
+                    id="appt-type"
+                    value={appointmentTypeId}
+                    onChange={(e) => onPickType(e.target.value)}
+                    className="h-9 w-full rounded-lg border border-[var(--color-input)] bg-transparent px-2 text-[13px]"
+                  >
+                    <option value="">— none —</option>
+                    {types.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.defaultDurationMinutes}m)
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <Field id="appt-start" label="Start">
@@ -494,7 +657,7 @@ function AppointmentDialog({
               />
             </Field>
 
-            {editing && (
+            {editing && !editing.isReservation && (
               <div className="flex flex-wrap gap-1.5 border-t border-[var(--color-border)] pt-3">
                 <Button type="button" variant="outline" size="sm" onClick={() => runLifecycle(checkInAppointment, "Checked in")}>
                   Check in

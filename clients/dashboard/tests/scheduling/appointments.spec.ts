@@ -1,12 +1,7 @@
-// E2E coverage for the scheduling day-view calendar. All scheduling +
-// administration API calls are route-mocked; the authed session is seeded into
-// localStorage and the shell calls are stubbed by installShellMocks. The page
-// is auth-only (no per-route permission guard), so direct navigation renders
-// regardless of the (empty) mocked permission list.
-//
-// The list endpoint returns a RAW ARRAY (not a paged envelope). Times render in
-// the clinic's IANA timezone, so assertions key on tz-independent text (provider
-// name, notes) rather than wall-clock labels.
+// E2E coverage for the scheduling calendar (react-big-calendar). All scheduling +
+// administration + patient API calls are route-mocked; the authed session is seeded
+// and shell calls stubbed by installShellMocks. The appointment is dated "today" so
+// it lands in the default Day view. The list endpoint returns a RAW ARRAY.
 
 import { expect, test } from "@playwright/test";
 import { mockJsonResponse } from "../helpers/api-mocks";
@@ -48,18 +43,38 @@ const PROVIDER = {
   updatedAtUtc: null,
 };
 
+const TYPE = {
+  id: "00000000-0000-0000-0000-00000000f444",
+  name: "Consultation",
+  color: "#7045af",
+  defaultDurationMinutes: 30,
+  displayOrder: 0,
+  isActive: true,
+};
+
+const SCHEDULE_CONFIG = {
+  clinicId: CLINIC.id,
+  startTime: "08:00",
+  endTime: "18:00",
+  intervalMinutes: 30,
+};
+
+// Date the appointment "today" (UTC midday → safely on today's calendar in America/Chicago).
+const todayYmd = new Date().toISOString().slice(0, 10);
 const APPOINTMENT = {
   id: "00000000-0000-0000-0000-00000000e333",
   clinicId: CLINIC.id,
   providerId: PROVIDER.id,
   patientId: null,
   appointmentTypeId: null,
-  startUtc: "2026-06-25T16:00:00Z", // 11:00 in America/Chicago
-  endUtc: "2026-06-25T16:30:00Z",
+  startUtc: `${todayYmd}T15:00:00Z`,
+  endUtc: `${todayYmd}T15:30:00Z`,
   notes: "Annual checkup",
   status: "Scheduled",
   cancelled: false,
   noShow: false,
+  isReservation: false,
+  reservationTitle: null,
 };
 
 async function mockScheduling(
@@ -72,10 +87,11 @@ async function mockScheduling(
     "**/api/v1/administration/providers**",
     paged(opts.providers ?? [PROVIDER], { pageSize: 200 }),
   );
+  await mockJsonResponse(page, "**/api/v1/administration/appointment-types**", [TYPE]);
+  await mockJsonResponse(page, "**/api/v1/administration/schedule-config/**", SCHEDULE_CONFIG);
+  await mockJsonResponse(page, "**/api/v1/patient/patients**", paged([], { pageSize: 8 }));
   await mockJsonResponse(page, "**/api/v1/scheduling/appointments**", opts.appointments ?? [APPOINTMENT]);
 }
-
-// ─── Shared beforeEach ──────────────────────────────────────────────────
 
 test.beforeEach(async ({ page }) => {
   await seedAuthedSession(page, TEST_USER);
@@ -85,51 +101,69 @@ test.beforeEach(async ({ page }) => {
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 test.describe("scheduling/appointments", () => {
-  test("renders the calendar with a provider column and a mocked appointment", async ({ page }) => {
+  test("renders the calendar with provider column and a mocked appointment", async ({ page }) => {
     await mockScheduling(page);
-
     await page.goto("/scheduling/appointments");
 
     await expect(page.getByRole("heading", { name: /appointments/i })).toBeVisible();
-    // Clinic timezone surfaces in the toolbar.
     await expect(page.getByText("America/Chicago")).toBeVisible();
-    // Provider column header — "Last, First".
+    // RBC toolbar + day-view resource header (Last, First) + event title.
+    await expect(page.getByRole("button", { name: "Today" })).toBeVisible();
     await expect(page.getByText("Carter, Joel")).toBeVisible();
-    // The appointment card prints its notes.
     await expect(page.getByText("Annual checkup")).toBeVisible();
   });
 
-  test("shows the empty state when the clinic has no providers or appointments", async ({ page }) => {
-    await mockScheduling(page, { providers: [], appointments: [] });
-
+  test("switches to the Month view", async ({ page }) => {
+    await mockScheduling(page);
     await page.goto("/scheduling/appointments");
 
-    await expect(page.getByRole("heading", { name: /appointments/i })).toBeVisible();
+    await page.getByRole("button", { name: "Month" }).click();
+    // Month view renders the appointment in a day cell.
+    await expect(page.getByText("Annual checkup")).toBeVisible();
+  });
+
+  test("shows the empty state when the clinic has no providers", async ({ page }) => {
+    await mockScheduling(page, { providers: [], appointments: [] });
+    await page.goto("/scheduling/appointments");
+
     await expect(page.getByText(/no active providers for this clinic/i)).toBeVisible();
   });
 
-  test("opens the New appointment dialog with its form fields", async ({ page }) => {
+  test("New appointment dialog has patient, type, reserve toggle, and times", async ({ page }) => {
     await mockScheduling(page);
-
     await page.goto("/scheduling/appointments");
     await page.getByRole("button", { name: /new appointment/i }).click();
 
     const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("heading", { name: /new appointment/i })).toBeVisible();
+    await expect(dialog.getByRole("switch", { name: /reserve time/i })).toBeVisible();
     await expect(dialog.getByLabel(/provider/i)).toBeVisible();
+    await expect(dialog.getByLabel(/appointment type/i)).toBeVisible();
     await expect(dialog.getByLabel(/^start/i)).toBeVisible();
     await expect(dialog.getByLabel(/^end/i)).toBeVisible();
+    // Patient search input is present.
+    await expect(dialog.getByPlaceholder(/search by name or code/i)).toBeVisible();
   });
 
-  test("opens the edit dialog with lifecycle actions when a card is clicked", async ({ page }) => {
+  test("toggling Reserve swaps the patient/type fields for a Title field", async ({ page }) => {
     await mockScheduling(page);
-
     await page.goto("/scheduling/appointments");
+    await page.getByRole("button", { name: /new appointment/i }).click();
+
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("switch", { name: /reserve time/i }).click();
+
+    await expect(dialog.getByLabel(/title/i)).toBeVisible();
+    await expect(dialog.getByLabel(/appointment type/i)).toHaveCount(0);
+  });
+
+  test("clicking an appointment opens the edit dialog with lifecycle actions", async ({ page }) => {
+    await mockScheduling(page);
+    await page.goto("/scheduling/appointments");
+
     await page.getByText("Annual checkup").click();
 
     const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("heading", { name: /edit appointment/i })).toBeVisible();
     await expect(dialog.getByRole("button", { name: /check in/i })).toBeVisible();
     await expect(dialog.getByRole("button", { name: /no-show/i })).toBeVisible();
