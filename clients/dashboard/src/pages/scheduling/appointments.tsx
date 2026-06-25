@@ -13,7 +13,9 @@ import {
   updateAppointment,
   type AppointmentDto,
 } from "@/api/scheduling";
+import type { AppointmentChangedEvent } from "@/api/scheduling";
 import { listClinics, listProviders, type ClinicDto, type ProviderDto } from "@/api/administration";
+import { useRealtimeEvent } from "@/realtime/realtime-context";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -203,6 +205,17 @@ export function AppointmentsPage() {
   >(null);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["scheduling.appointments"] });
+
+  // Live updates: a write anywhere in the tenant broadcasts AppointmentChanged.
+  // Refresh only when the change touches the clinic we're currently viewing —
+  // this replaces the legacy 60-second polling timer.
+  useRealtimeEvent<AppointmentChangedEvent>(
+    "AppointmentChanged",
+    (payload) => {
+      if (payload.clinicId === effectiveClinicId) invalidate();
+    },
+    [effectiveClinicId],
+  );
 
   return (
     <div className="space-y-4">

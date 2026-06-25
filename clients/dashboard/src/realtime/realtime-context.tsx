@@ -151,6 +151,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         "ChatTypingStarted",
         "PresenceChanged",
         "NotificationCreated",
+        "AppointmentChanged",
       ]) {
         wire(event);
       }
