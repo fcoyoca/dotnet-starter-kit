@@ -5,7 +5,8 @@ using Mediator;
 
 namespace FSH.Modules.Scheduling.Features.v1.Appointments.CreateAppointment;
 
-public sealed class CreateAppointmentCommandHandler(SchedulingDbContext dbContext, IMediator mediator)
+public sealed class CreateAppointmentCommandHandler(
+    SchedulingDbContext dbContext, IMediator mediator, AppointmentRealtimeNotifier notifier)
     : ICommandHandler<CreateAppointmentCommand, Guid>
 {
     public async ValueTask<Guid> Handle(CreateAppointmentCommand command, CancellationToken cancellationToken)
@@ -21,6 +22,8 @@ public sealed class CreateAppointmentCommandHandler(SchedulingDbContext dbContex
             command.StartUtc, command.EndUtc, command.Notes);
         await dbContext.Appointments.AddAsync(entity, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await notifier.NotifyChangedAsync(entity.ClinicId, entity.ProviderId, entity.StartUtc, entity.EndUtc, "created", cancellationToken)
+            .ConfigureAwait(false);
         return entity.Id;
     }
 }

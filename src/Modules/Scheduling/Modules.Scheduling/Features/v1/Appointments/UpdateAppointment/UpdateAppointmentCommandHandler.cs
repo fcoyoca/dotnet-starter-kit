@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Scheduling.Features.v1.Appointments.UpdateAppointment;
 
-public sealed class UpdateAppointmentCommandHandler(SchedulingDbContext dbContext, IMediator mediator)
+public sealed class UpdateAppointmentCommandHandler(
+    SchedulingDbContext dbContext, IMediator mediator, AppointmentRealtimeNotifier notifier)
     : ICommandHandler<UpdateAppointmentCommand, Unit>
 {
     public async ValueTask<Unit> Handle(UpdateAppointmentCommand command, CancellationToken cancellationToken)
@@ -25,6 +26,8 @@ public sealed class UpdateAppointmentCommandHandler(SchedulingDbContext dbContex
         entity.Update(command.ClinicId, command.ProviderId, command.PatientId, command.AppointmentTypeId,
             command.StartUtc, command.EndUtc, command.Notes);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await notifier.NotifyChangedAsync(entity.ClinicId, entity.ProviderId, entity.StartUtc, entity.EndUtc, "updated", cancellationToken)
+            .ConfigureAwait(false);
         return Unit.Value;
     }
 }

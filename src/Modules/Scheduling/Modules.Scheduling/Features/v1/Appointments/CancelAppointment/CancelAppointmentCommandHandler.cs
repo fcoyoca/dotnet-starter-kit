@@ -5,12 +5,12 @@ using FSH.Modules.Scheduling.Features.v1.Appointments;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
-namespace FSH.Modules.Scheduling.Features.v1.Appointments.DeleteAppointment;
+namespace FSH.Modules.Scheduling.Features.v1.Appointments.CancelAppointment;
 
-public sealed class DeleteAppointmentCommandHandler(SchedulingDbContext dbContext, AppointmentRealtimeNotifier notifier)
-    : ICommandHandler<DeleteAppointmentCommand, Unit>
+public sealed class CancelAppointmentCommandHandler(SchedulingDbContext dbContext, AppointmentRealtimeNotifier notifier)
+    : ICommandHandler<CancelAppointmentCommand, Unit>
 {
-    public async ValueTask<Unit> Handle(DeleteAppointmentCommand command, CancellationToken cancellationToken)
+    public async ValueTask<Unit> Handle(CancelAppointmentCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
         Domain.Appointment entity = await dbContext.Appointments
@@ -18,9 +18,9 @@ public sealed class DeleteAppointmentCommandHandler(SchedulingDbContext dbContex
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"Appointment {command.Id} not found.");
 
-        entity.Delete(deletedBy: null);
+        entity.Cancel();
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await notifier.NotifyChangedAsync(entity.ClinicId, entity.ProviderId, entity.StartUtc, entity.EndUtc, "deleted", cancellationToken)
+        await notifier.NotifyChangedAsync(entity.ClinicId, entity.ProviderId, entity.StartUtc, entity.EndUtc, "cancelled", cancellationToken)
             .ConfigureAwait(false);
         return Unit.Value;
     }

@@ -4,10 +4,15 @@ using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Scheduling.Contracts.Authorization;
 using FSH.Modules.Scheduling.Data;
+using FSH.Modules.Scheduling.Features.v1.Appointments;
+using FSH.Modules.Scheduling.Features.v1.Appointments.CancelAppointment;
+using FSH.Modules.Scheduling.Features.v1.Appointments.CheckInAppointment;
+using FSH.Modules.Scheduling.Features.v1.Appointments.CheckOutAppointment;
 using FSH.Modules.Scheduling.Features.v1.Appointments.CreateAppointment;
 using FSH.Modules.Scheduling.Features.v1.Appointments.DeleteAppointment;
 using FSH.Modules.Scheduling.Features.v1.Appointments.GetAppointmentById;
 using FSH.Modules.Scheduling.Features.v1.Appointments.ListAppointments;
+using FSH.Modules.Scheduling.Features.v1.Appointments.NoShowAppointment;
 using FSH.Modules.Scheduling.Features.v1.Appointments.UpdateAppointment;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -30,6 +35,7 @@ public sealed class SchedulingModule : IModule
 
         builder.Services.AddHeroDbContext<SchedulingDbContext>();
         builder.Services.AddScoped<IDbInitializer, SchedulingDbInitializer>();
+        builder.Services.AddScoped<AppointmentRealtimeNotifier>();
 
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<SchedulingDbContext>(
@@ -59,5 +65,9 @@ public sealed class SchedulingModule : IModule
         group.MapCreateAppointmentEndpoint();
         group.MapUpdateAppointmentEndpoint();
         group.MapDeleteAppointmentEndpoint();
+        group.MapCheckInAppointmentEndpoint();
+        group.MapCheckOutAppointmentEndpoint();
+        group.MapCancelAppointmentEndpoint();
+        group.MapNoShowAppointmentEndpoint();
     }
 }
