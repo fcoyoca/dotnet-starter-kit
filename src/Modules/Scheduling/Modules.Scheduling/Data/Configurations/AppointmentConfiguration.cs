@@ -17,6 +17,8 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.Property(x => x.EndUtc).IsRequired();
         builder.Property(x => x.Notes).HasMaxLength(4000);
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.IsReservation).IsRequired();
+        builder.Property(x => x.ReservationTitle).HasMaxLength(200);
         builder.Property(x => x.DeletedBy).HasMaxLength(64);
         builder.Property(x => x.LegacyId);
 

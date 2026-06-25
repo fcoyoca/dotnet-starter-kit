@@ -11,4 +11,6 @@ public sealed record AppointmentDto(
     string? Notes,
     string Status,
     bool Cancelled,
-    bool NoShow);
+    bool NoShow,
+    bool IsReservation,
+    string? ReservationTitle);

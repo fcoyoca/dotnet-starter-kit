@@ -19,7 +19,8 @@ public sealed class CreateAppointmentCommandHandler(
 
         Domain.Appointment entity = Domain.Appointment.Create(
             command.ClinicId, command.ProviderId, command.PatientId, command.AppointmentTypeId,
-            command.StartUtc, command.EndUtc, command.Notes);
+            command.StartUtc, command.EndUtc, command.Notes,
+            isReservation: command.IsReservation, reservationTitle: command.ReservationTitle);
         await dbContext.Appointments.AddAsync(entity, cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await notifier.NotifyChangedAsync(entity.ClinicId, entity.ProviderId, entity.StartUtc, entity.EndUtc, "created", cancellationToken)

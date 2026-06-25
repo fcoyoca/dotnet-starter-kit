@@ -9,4 +9,6 @@ public sealed record CreateAppointmentCommand(
     Guid? AppointmentTypeId,
     DateTime StartUtc,
     DateTime EndUtc,
-    string? Notes) : ICommand<Guid>;
+    string? Notes,
+    bool IsReservation = false,
+    string? ReservationTitle = null) : ICommand<Guid>;

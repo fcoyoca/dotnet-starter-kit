@@ -20,6 +20,15 @@ public sealed class Appointment : AggregateRoot<Guid>, ISoftDeletable
     public bool Cancelled { get; private set; }
     public bool NoShow { get; private set; }
 
+    /// <summary>
+    /// True when this is a "reserve time" block — a titled hold on a provider's calendar with no patient or
+    /// appointment type (legacy <c>IsReserveTime</c>). Patient/type are forced null for reservations.
+    /// </summary>
+    public bool IsReservation { get; private set; }
+
+    /// <summary>Display title for a reservation block (required when <see cref="IsReservation"/>); null otherwise.</summary>
+    public string? ReservationTitle { get; private set; }
+
     /// <summary>Legacy <c>apptID</c> of the source record; null for native records.</summary>
     public int? LegacyId { get; private set; }
 
@@ -33,36 +42,44 @@ public sealed class Appointment : AggregateRoot<Guid>, ISoftDeletable
 
     public static Appointment Create(
         Guid clinicId, Guid providerId, Guid? patientId, Guid? appointmentTypeId,
-        DateTime startUtc, DateTime endUtc, string? notes, int? legacyId = null)
+        DateTime startUtc, DateTime endUtc, string? notes, int? legacyId = null,
+        bool isReservation = false, string? reservationTitle = null)
     {
         Guard(clinicId, providerId, startUtc, endUtc);
+        var title = NormalizeReservation(isReservation, reservationTitle);
         return new Appointment
         {
             Id = Guid.CreateVersion7(),
             ClinicId = clinicId,
             ProviderId = providerId,
-            PatientId = patientId,
-            AppointmentTypeId = appointmentTypeId,
+            PatientId = isReservation ? null : patientId,
+            AppointmentTypeId = isReservation ? null : appointmentTypeId,
             StartUtc = startUtc,
             EndUtc = endUtc,
             Notes = Trim(notes),
             Status = AppointmentStatus.Scheduled,
+            IsReservation = isReservation,
+            ReservationTitle = title,
             LegacyId = legacyId,
             CreatedAtUtc = DateTime.UtcNow,
         };
     }
 
     public void Update(Guid clinicId, Guid providerId, Guid? patientId, Guid? appointmentTypeId,
-        DateTime startUtc, DateTime endUtc, string? notes)
+        DateTime startUtc, DateTime endUtc, string? notes,
+        bool isReservation = false, string? reservationTitle = null)
     {
         Guard(clinicId, providerId, startUtc, endUtc);
+        var title = NormalizeReservation(isReservation, reservationTitle);
         ClinicId = clinicId;
         ProviderId = providerId;
-        PatientId = patientId;
-        AppointmentTypeId = appointmentTypeId;
+        PatientId = isReservation ? null : patientId;
+        AppointmentTypeId = isReservation ? null : appointmentTypeId;
         StartUtc = startUtc;
         EndUtc = endUtc;
         Notes = Trim(notes);
+        IsReservation = isReservation;
+        ReservationTitle = title;
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
@@ -94,6 +111,21 @@ public sealed class Appointment : AggregateRoot<Guid>, ISoftDeletable
         {
             throw new ArgumentException("End must be after start.", nameof(endUtc));
         }
+    }
+
+    private static string? NormalizeReservation(bool isReservation, string? reservationTitle)
+    {
+        if (!isReservation)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(reservationTitle))
+        {
+            throw new ArgumentException("Reservation title is required for a reserve-time block.", nameof(reservationTitle));
+        }
+
+        return reservationTitle.Trim();
     }
 
     private static string? Trim(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

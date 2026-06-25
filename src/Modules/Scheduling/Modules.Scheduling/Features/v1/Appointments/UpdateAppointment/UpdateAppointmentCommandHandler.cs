@@ -24,7 +24,8 @@ public sealed class UpdateAppointmentCommandHandler(
             .ConfigureAwait(false);
 
         entity.Update(command.ClinicId, command.ProviderId, command.PatientId, command.AppointmentTypeId,
-            command.StartUtc, command.EndUtc, command.Notes);
+            command.StartUtc, command.EndUtc, command.Notes,
+            isReservation: command.IsReservation, reservationTitle: command.ReservationTitle);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await notifier.NotifyChangedAsync(entity.ClinicId, entity.ProviderId, entity.StartUtc, entity.EndUtc, "updated", cancellationToken)
             .ConfigureAwait(false);

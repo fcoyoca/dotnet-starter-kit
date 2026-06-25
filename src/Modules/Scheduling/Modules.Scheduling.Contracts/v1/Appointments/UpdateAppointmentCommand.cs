@@ -10,4 +10,6 @@ public sealed record UpdateAppointmentCommand(
     Guid? AppointmentTypeId,
     DateTime StartUtc,
     DateTime EndUtc,
-    string? Notes) : ICommand<Unit>;
+    string? Notes,
+    bool IsReservation = false,
+    string? ReservationTitle = null) : ICommand<Unit>;

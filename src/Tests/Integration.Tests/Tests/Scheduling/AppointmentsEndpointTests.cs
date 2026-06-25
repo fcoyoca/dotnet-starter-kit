@@ -156,6 +156,60 @@ public sealed class AppointmentsEndpointTests
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
+    // ─── reservations ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateReservation_Should_Persist_WithTitle_And_NoPatient()
+    {
+        using var client = await _auth.CreateRootAdminClientAsync();
+        var (clinicId, providerId) = await CreateClinicAndProviderAsync(client);
+        var start = new DateTime(2026, 7, 9, 12, 0, 0, DateTimeKind.Utc);
+
+        var response = await client.PostAsJsonAsync(Appointments, new
+        {
+            clinicId,
+            providerId,
+            patientId = (Guid?)null,
+            appointmentTypeId = (Guid?)null,
+            startUtc = start,
+            endUtc = start.AddMinutes(60),
+            notes = "out to lunch",
+            isReservation = true,
+            reservationTitle = "Lunch",
+        });
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var id = await response.DeserializeAsync<Guid>();
+
+        var dto = await GetAsync(client, id);
+        dto.IsReservation.ShouldBeTrue();
+        dto.ReservationTitle.ShouldBe("Lunch");
+        dto.PatientId.ShouldBeNull();
+        dto.AppointmentTypeId.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task CreateReservation_Should_Return400_When_TitleBlank()
+    {
+        using var client = await _auth.CreateRootAdminClientAsync();
+        var (clinicId, providerId) = await CreateClinicAndProviderAsync(client);
+        var start = new DateTime(2026, 7, 9, 13, 0, 0, DateTimeKind.Utc);
+
+        var response = await client.PostAsJsonAsync(Appointments, new
+        {
+            clinicId,
+            providerId,
+            patientId = (Guid?)null,
+            appointmentTypeId = (Guid?)null,
+            startUtc = start,
+            endUtc = start.AddMinutes(30),
+            notes = (string?)null,
+            isReservation = true,
+            reservationTitle = "",
+        });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
     // ─── auth gating ─────────────────────────────────────────────────
 
     [Fact]

@@ -89,4 +89,44 @@ public sealed class AppointmentTests
         a.DeletedOnUtc.ShouldNotBeNull();
         a.DeletedBy.ShouldBe("admin@tenant");
     }
+
+    [Fact]
+    public void Create_Reservation_Should_RequireTitle_And_NullPatientAndType()
+    {
+        var s = new DateTime(2026, 7, 1, 12, 0, 0, DateTimeKind.Utc);
+        var a = Appointment.Create(
+            Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(),
+            s, s.AddMinutes(30), "lunch break", isReservation: true, reservationTitle: "  Lunch  ");
+
+        a.IsReservation.ShouldBeTrue();
+        a.ReservationTitle.ShouldBe("Lunch");
+        a.PatientId.ShouldBeNull();
+        a.AppointmentTypeId.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Create_Reservation_Should_Throw_When_TitleBlank(string title)
+    {
+        var s = new DateTime(2026, 7, 1, 12, 0, 0, DateTimeKind.Utc);
+        Should.Throw<ArgumentException>(() => Appointment.Create(
+            Guid.CreateVersion7(), Guid.CreateVersion7(), null, null,
+            s, s.AddMinutes(30), null, isReservation: true, reservationTitle: title));
+    }
+
+    [Fact]
+    public void Update_To_Reservation_Should_ClearPatientAndType()
+    {
+        var a = New(); // a patient appointment with patient + type set
+        a.PatientId.ShouldNotBeNull();
+
+        a.Update(a.ClinicId, a.ProviderId, a.PatientId, a.AppointmentTypeId,
+            a.StartUtc, a.EndUtc, a.Notes, isReservation: true, reservationTitle: "Hold");
+
+        a.IsReservation.ShouldBeTrue();
+        a.ReservationTitle.ShouldBe("Hold");
+        a.PatientId.ShouldBeNull();
+        a.AppointmentTypeId.ShouldBeNull();
+    }
 }
