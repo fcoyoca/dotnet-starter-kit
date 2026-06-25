@@ -1,10 +1,7 @@
 using FSH.Framework.Core.Domain;
+using FSH.Modules.Patient.Contracts.Dtos;
 
 namespace FSH.Modules.Patient.Domain;
-
-public enum AccidentType { None, Auto, WorkersComp, Slip, Other }
-
-public enum IncidentPatientStatus { Active, Inactive, Discharged, Transferred }
 
 public sealed class PatientIncident : AggregateRoot<Guid>, ISoftDeletable
 {
