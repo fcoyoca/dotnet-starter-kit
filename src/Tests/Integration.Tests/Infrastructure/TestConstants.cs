@@ -16,4 +16,6 @@ public static class TestConstants
     public const string WebhooksBasePath = "/api/v1/webhooks";
     public const string CatalogBasePath = "/api/v1/catalog";
     public const string TicketsBasePath = "/api/v1";
+    public const string AdministrationBasePath = "/api/v1/administration";
+    public const string SchedulingBasePath = "/api/v1/scheduling";
 }
