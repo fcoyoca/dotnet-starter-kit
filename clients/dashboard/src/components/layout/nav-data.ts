@@ -88,6 +88,19 @@ export const sections: NavSection[] = [
     ],
   },
   {
+    id: "scheduling",
+    caption: "Scheduling",
+    icon: CalendarClock,
+    items: [
+      {
+        to: "/scheduling/appointments",
+        label: "Appointments",
+        icon: CalendarClock,
+        perm: "Permissions.Scheduling.Appointments.View",
+      },
+    ],
+  },
+  {
     id: "operations",
     caption: "Operations",
     icon: Activity,

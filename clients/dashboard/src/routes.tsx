@@ -174,6 +174,10 @@ const PatientDetailPage = lazyNamed(
   () => import("@/pages/patients/patient-detail"),
   "PatientDetailPage",
 );
+const AppointmentsPage = lazyNamed(
+  () => import("@/pages/scheduling/appointments"),
+  "AppointmentsPage",
+);
 
 /**
  * RouteFallback — what shows while a lazy chunk is downloading. Mirrors
@@ -274,6 +278,8 @@ export const router = createBrowserRouter([
           { path: "tickets/:ticketId", element: withSuspense(<TicketDetailPage />) },
           { path: "patients", element: withSuspense(<PatientsListPage />) },
           { path: "patients/:patientId", element: withSuspense(<PatientDetailPage />) },
+          { path: "scheduling", element: <Navigate to="/scheduling/appointments" replace /> },
+          { path: "scheduling/appointments", element: withSuspense(<AppointmentsPage />) },
           { path: "administration", element: <Navigate to="/administration/clinics" replace /> },
           { path: "administration/clinics", element: withSuspense(<ClinicsPage />) },
           { path: "administration/departments", element: withSuspense(<DepartmentsPage />) },
