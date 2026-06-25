@@ -28,6 +28,7 @@ public sealed class PatientDbContext : BaseDbContext
     }
 
     public DbSet<Domain.Patient> Patients => Set<Domain.Patient>();
+    public DbSet<Domain.PatientIncident> PatientIncidents => Set<Domain.PatientIncident>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +36,8 @@ public sealed class PatientDbContext : BaseDbContext
         modelBuilder.HasDefaultSchema(Schema);
         // PatientConfiguration requires IPhiEncryptor — apply it directly instead of via reflection
         modelBuilder.ApplyConfiguration(new PatientConfiguration(_phi));
+        modelBuilder.ApplyConfiguration(new PatientIncidentConfiguration());
+        modelBuilder.ApplyConfiguration(new PatientIncidentDiagnosticConfiguration());
         base.OnModelCreating(modelBuilder);
     }
 }
