@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   keepPreviousData,
@@ -8,13 +8,14 @@ import {
 } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  CalendarDays,
   ClipboardList,
+  Eye,
+  FileSearch,
   Lock,
-  LockOpen,
+  Pencil,
   Plus,
   Trash2,
-  Eye,
-  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getPatientById } from "@/api/patients";
@@ -29,6 +30,7 @@ import { INCIDENT_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
 import {
+  Combobox,
   EntityEmpty,
   EntityFilterPill,
   EntityListCard,
@@ -38,17 +40,74 @@ import {
   EntityPageHeader,
   EntityStatusBadge,
 } from "@/components/list";
-import { formatDate } from "@/lib/list-helpers";
+import { describe, formatDate } from "@/lib/list-helpers";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
+import { ReportSearchDialog } from "@/pages/patient-charts/report-search-dialog";
 
 type ClosedFilter = "all" | "open" | "closed";
 
-const DESKTOP_COLS = "grid-cols-[1fr_1fr_1fr_80px_80px_auto]";
+const DESKTOP_COLS = "grid-cols-[1fr_1fr_1fr_84px_72px_auto]";
 
-function resolveLabel(id: string | null | undefined, options: { value: string; label: string }[] | undefined): string {
-  if (!id || !options) return id ?? "—";
-  return options.find((o) => o.value === id)?.label ?? id;
+function resolveLabel(
+  id: string | null | undefined,
+  options: { value: string; label: string }[] | undefined,
+): string {
+  if (!id || !options) return id ? "—" : "—";
+  return options.find((o) => o.value === id)?.label ?? "—";
+}
+
+function ageFromDob(dob: string | null | undefined): string {
+  if (!dob) return "—";
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return "—";
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return String(age);
+}
+
+function SidebarRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[12px] font-medium text-[var(--color-muted-foreground)]">{label}</span>
+      <span className="text-right text-[12px] font-medium">{value}</span>
+    </div>
+  );
+}
+
+function IconShortcut({
+  label,
+  onClick,
+  disabled,
+  tone = "default",
+  children,
+}: {
+  label: string;
+  onClick(): void;
+  disabled?: boolean;
+  tone?: "default" | "destructive";
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={[
+        "inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)]",
+        "transition-colors hover:bg-[var(--color-accent)] disabled:pointer-events-none disabled:opacity-40",
+        tone === "destructive"
+          ? "text-[var(--color-destructive)] hover:text-[var(--color-destructive)]"
+          : "text-[var(--color-foreground)]",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
 }
 
 export function PatientChartDetailPage() {
@@ -57,13 +116,20 @@ export function PatientChartDetailPage() {
   const queryClient = useQueryClient();
 
   const [closedFilter, setClosedFilter] = useState<ClosedFilter>("all");
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [transferOnly, setTransferOnly] = useState(false);
+  const [deptFilter, setDeptFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+
+  const [activeIncidentId, setActiveIncidentId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [editIncident, setEditIncident] = useState<PatientIncidentListItemDto | null>(null);
+  const [editIncidentId, setEditIncidentId] = useState<string | null>(null);
   const [viewIncidentId, setViewIncidentId] = useState<string | null>(null);
+  const [reportSearchOpen, setReportSearchOpen] = useState(false);
 
   const canCreate = user?.permissions?.includes(INCIDENT_PERMISSIONS.create) ?? false;
   const canUpdate = user?.permissions?.includes(INCIDENT_PERMISSIONS.update) ?? false;
-  const canClose  = user?.permissions?.includes(INCIDENT_PERMISSIONS.close) ?? false;
+  const canClose = user?.permissions?.includes(INCIDENT_PERMISSIONS.close) ?? false;
   const canDelete = user?.permissions?.includes(INCIDENT_PERMISSIONS.delete) ?? false;
 
   const patientQuery = useQuery({
@@ -72,13 +138,17 @@ export function PatientChartDetailPage() {
     enabled: !!patientId,
   });
 
-  const isClosed =
-    closedFilter === "all" ? null : closedFilter === "closed";
+  const isClosed = closedFilter === "all" ? null : closedFilter === "closed";
 
   const incidentsQuery = useQuery({
-    queryKey: ["incidents", patientId, closedFilter],
+    queryKey: ["incidents", patientId, closedFilter, showDeleted],
     queryFn: () =>
-      searchPatientIncidents({ patientId: patientId!, isClosed, pageSize: 100 }),
+      searchPatientIncidents({
+        patientId: patientId!,
+        isClosed,
+        includeDeleted: showDeleted,
+        pageSize: 100,
+      }),
     enabled: !!patientId,
     placeholderData: keepPreviousData,
   });
@@ -92,7 +162,7 @@ export function PatientChartDetailPage() {
       toast.success("Incident closed.");
       void queryClient.invalidateQueries({ queryKey: ["incidents", patientId] });
     },
-    onError: () => toast.error("Failed to close incident."),
+    onError: (err) => toast.error("Failed to close incident.", { description: describe(err) }),
   });
 
   const deleteMutation = useMutation({
@@ -101,19 +171,52 @@ export function PatientChartDetailPage() {
       toast.success("Incident deleted.");
       void queryClient.invalidateQueries({ queryKey: ["incidents", patientId] });
     },
-    onError: () => toast.error("Failed to delete incident."),
+    onError: (err) => toast.error("Failed to delete incident.", { description: describe(err) }),
   });
 
   const patient = patientQuery.data;
-  const incidents = incidentsQuery.data?.items ?? [];
+  const allIncidents = useMemo(() => incidentsQuery.data?.items ?? [], [incidentsQuery.data]);
+
+  // Client-side refinement (the API filters by closed/deleted; these narrow further).
+  const incidents = useMemo(
+    () =>
+      allIncidents.filter((x) => {
+        if (deptFilter && x.departmentId !== deptFilter) return false;
+        if (typeFilter && x.incidentTypeId !== typeFilter) return false;
+        if (transferOnly && !x.isTransfer) return false;
+        return true;
+      }),
+    [allIncidents, deptFilter, typeFilter, transferOnly],
+  );
+
+  // Keep an active incident selected (mirrors BackChart's ActiveIncident).
+  useEffect(() => {
+    if (incidents.length === 0) {
+      setActiveIncidentId(null);
+      return;
+    }
+    if (!activeIncidentId || !incidents.some((x) => x.id === activeIncidentId)) {
+      setActiveIncidentId(incidents[0].id);
+    }
+  }, [incidents, activeIncidentId]);
+
+  const activeIncident = useMemo<PatientIncidentListItemDto | null>(
+    () => incidents.find((x) => x.id === activeIncidentId) ?? null,
+    [incidents, activeIncidentId],
+  );
+
   const fullName = patient
-    ? [patient.demographics.firstName, patient.demographics.middleInitial, patient.demographics.lastName]
+    ? [
+        patient.demographics.firstName,
+        patient.demographics.middleInitial,
+        patient.demographics.lastName,
+      ]
         .filter(Boolean)
         .join(" ")
     : "";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Back link */}
       <Link
         to="/patient-charts"
@@ -123,172 +226,307 @@ export function PatientChartDetailPage() {
         Patient Chart
       </Link>
 
-      {/* Patient header */}
-      {patientQuery.isLoading ? (
-        <div className="h-24 animate-pulse rounded-xl bg-[var(--color-muted)]" />
-      ) : patient ? (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5">
-          {patient.demographics.medicalAlertNotes && (
-            <div className="mb-4 rounded-lg border border-[oklch(from_var(--color-destructive)_l_c_h_/_0.3)] bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.06)] px-3 py-2 text-[12px] font-medium text-[var(--color-destructive)]">
-              ⚠ Medical Alert: {patient.demographics.medicalAlertNotes}
+      <div className="grid gap-4 lg:grid-cols-[330px_1fr]">
+        {/* ─── Left: patient minimal info + incident shortcuts ─── */}
+        <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+          {/* Patient Info card */}
+          {patientQuery.isLoading ? (
+            <div className="h-64 animate-pulse rounded-xl bg-[var(--color-muted)]" />
+          ) : patient ? (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-[13px]">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                  Patient Info
+                </h2>
+                <EntityStatusBadge tone={patient.isActive ? "success" : "default"}>
+                  {patient.isActive ? "Active" : "Inactive"}
+                </EntityStatusBadge>
+              </div>
+
+              <p className="text-[15px] font-semibold leading-tight">{fullName}</p>
+
+              <div className="mt-3 space-y-1.5">
+                <SidebarRow label="Code" value={patient.patientCode} />
+                <SidebarRow
+                  label="DOB"
+                  value={`${formatDate(patient.demographics.dateOfBirth)} · ${ageFromDob(patient.demographics.dateOfBirth)}y`}
+                />
+                <SidebarRow label="Gender" value={patient.demographics.gender || "—"} />
+              </div>
+
+              <div className="mt-3 rounded-lg border border-[var(--color-border)] p-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                  Insurance
+                </p>
+                <p className="mt-0.5 text-[13px]">
+                  {patient.insurance?.insuredFullName || "—"}
+                </p>
+              </div>
+
+              {patient.demographics.medicalAlertNotes && (
+                <div className="mt-3 rounded-lg border border-[oklch(from_var(--color-destructive)_l_c_h_/_0.3)] bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.06)] px-3 py-2 text-[12px] font-medium text-[var(--color-destructive)]">
+                  ⚠ Medical Alert: {patient.demographics.medicalAlertNotes}
+                </div>
+              )}
+
+              {/* Appointments / visit dates */}
+              <div className="mt-3 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                <CalendarDays className="size-3.5" />
+                Appointments
+              </div>
+              <div className="mt-1.5 space-y-1.5">
+                <SidebarRow label="Last Visit" value={formatDate(patient.lastVisitDate)} />
+                <SidebarRow label="Next Visit" value={formatDate(patient.nextVisitDate)} />
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-[13px] text-[var(--color-muted-foreground)]">
+              Patient not found.
             </div>
           )}
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="text-[20px] font-semibold">{fullName}</h1>
-              <p className="mt-0.5 text-[13px] text-[var(--color-muted-foreground)]">
-                {patient.patientCode} · DOB {formatDate(patient.demographics.dateOfBirth)} · {patient.demographics.gender}
-              </p>
-              {patient.insurance?.insuredFullName && (
-                <p className="mt-1 text-[13px] text-[var(--color-muted-foreground)]">
-                  Insured: {patient.insurance.insuredFullName}
-                </p>
-              )}
+
+          {/* Incident shortcuts card */}
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-[13px]">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                Incident
+              </h2>
+              <div className="flex items-center gap-1.5">
+                {canCreate && (
+                  <IconShortcut label="Add incident" onClick={() => setCreateOpen(true)}>
+                    <Plus className="size-4" />
+                  </IconShortcut>
+                )}
+                {canUpdate && (
+                  <IconShortcut
+                    label="Edit selected incident"
+                    disabled={!activeIncident}
+                    onClick={() => activeIncident && setEditIncidentId(activeIncident.id)}
+                  >
+                    <Pencil className="size-4" />
+                  </IconShortcut>
+                )}
+                <IconShortcut
+                  label="View selected incident"
+                  disabled={!activeIncident}
+                  onClick={() => activeIncident && setViewIncidentId(activeIncident.id)}
+                >
+                  <Eye className="size-4" />
+                </IconShortcut>
+                <IconShortcut
+                  label="Search patient reports"
+                  disabled={!activeIncident}
+                  onClick={() => setReportSearchOpen(true)}
+                >
+                  <FileSearch className="size-4" />
+                </IconShortcut>
+              </div>
             </div>
-            <EntityStatusBadge tone={patient.isActive ? "success" : "default"}>
-              {patient.isActive ? "Active" : "Inactive"}
-            </EntityStatusBadge>
+
+            {activeIncident ? (
+              <div className="space-y-1.5 rounded-lg border border-[var(--color-border)] p-2.5">
+                <SidebarRow
+                  label="Date of Initial Visit"
+                  value={formatDate(activeIncident.dateOfInitialVisit)}
+                />
+                <SidebarRow label="Date of Loss" value={formatDate(activeIncident.dateOfLoss)} />
+                <SidebarRow
+                  label="Incident Type"
+                  value={resolveLabel(activeIncident.incidentTypeId, incidentTypeOptions)}
+                />
+                <SidebarRow
+                  label="Department"
+                  value={resolveLabel(activeIncident.departmentId, departmentOptions)}
+                />
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <EntityStatusBadge tone={activeIncident.isClosed ? "default" : "success"}>
+                    {activeIncident.isClosed ? "Closed" : "Open"}
+                  </EntityStatusBadge>
+                  {activeIncident.isTransfer && (
+                    <EntityStatusBadge tone="info">Transfer</EntityStatusBadge>
+                  )}
+                  {activeIncident.isAccident && (
+                    <EntityStatusBadge tone="warning">Accident</EntityStatusBadge>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-[12px] text-[var(--color-muted-foreground)]">
+                No incident selected. Add one or pick a row from the list.
+              </p>
+            )}
           </div>
         </div>
-      ) : null}
 
-      {/* Incidents section */}
-      <div>
-        <EntityPageHeader
-          icon={ClipboardList}
-          title="Incidents"
-          total={incidentsQuery.data?.totalCount ?? null}
-          unit="incident"
-          description="Clinical incidents for this patient."
-        >
-          {canCreate && (
-            <Button
-              onClick={() => setCreateOpen(true)}
-              className="h-9 flex-1 gap-1.5 rounded-lg px-4 text-[13px] font-semibold sm:flex-none"
-            >
-              <Plus className="size-4" />
-              Add Incident
-            </Button>
-          )}
-        </EntityPageHeader>
+        {/* ─── Right: incidents list ─── */}
+        <div>
+          <EntityPageHeader
+            icon={ClipboardList}
+            title="Incidents"
+            total={incidents.length}
+            unit="incident"
+            description="Clinical incidents (episodes of care) for this patient."
+          >
+            {canCreate && (
+              <Button
+                onClick={() => setCreateOpen(true)}
+                className="h-9 flex-1 gap-1.5 rounded-lg px-4 text-[13px] font-semibold sm:flex-none"
+              >
+                <Plus className="size-4" />
+                Add Incident
+              </Button>
+            )}
+          </EntityPageHeader>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <EntityFilterPill
-            label="Status"
-            value={closedFilter}
-            onChange={(v) => setClosedFilter(v as ClosedFilter)}
-            options={[
-              { value: "all",    label: "All" },
-              { value: "open",   label: "Open" },
-              { value: "closed", label: "Closed" },
-            ]}
-          />
-        </div>
-
-        <div className="mt-4">
-          {incidentsQuery.isLoading && incidents.length === 0 ? (
-            <EntityListLoading desktopColumns={DESKTOP_COLS} />
-          ) : incidents.length === 0 ? (
-            <EntityEmpty
-              icon={ClipboardList}
-              title="No incidents"
-              body={
-                closedFilter !== "all"
-                  ? "No incidents match the current filter."
-                  : "No incidents have been recorded for this patient yet."
-              }
-              action={
-                canCreate ? (
-                  <Button
-                    onClick={() => setCreateOpen(true)}
-                    className="h-9 rounded-lg px-4 text-[13px]"
-                  >
-                    <Plus className="mr-1.5 size-4" />
-                    Add Incident
-                  </Button>
-                ) : undefined
-              }
+          {/* Filters */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <EntityFilterPill
+              label="Status"
+              value={closedFilter}
+              onChange={(v) => setClosedFilter(v as ClosedFilter)}
+              options={[
+                { value: "all", label: "All" },
+                { value: "open", label: "Open" },
+                { value: "closed", label: "Closed" },
+              ]}
             />
-          ) : (
-            <EntityListCard>
-              <EntityListHeader className={DESKTOP_COLS}>
-                <span>Date of Loss</span>
-                <span>Incident Type</span>
-                <span>Department</span>
-                <span>Status</span>
-                <span>Transfer</span>
-                <span />
-              </EntityListHeader>
+            <div className="w-44">
+              <Combobox
+                id="filter-type"
+                label="Incident type"
+                value={typeFilter}
+                onChange={setTypeFilter}
+                options={incidentTypeOptions ?? []}
+                placeholder="All types"
+              />
+            </div>
+            <div className="w-44">
+              <Combobox
+                id="filter-dept"
+                label="Department"
+                value={deptFilter}
+                onChange={setDeptFilter}
+                options={departmentOptions ?? []}
+                placeholder="All departments"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={transferOnly}
+                onChange={(e) => setTransferOnly(e.target.checked)}
+                className="rounded border-[var(--color-border)]"
+              />
+              <span>Transfers only</span>
+            </label>
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showDeleted}
+                onChange={(e) => setShowDeleted(e.target.checked)}
+                className="rounded border-[var(--color-border)]"
+              />
+              <span>Show deleted</span>
+            </label>
+          </div>
 
-              {incidents.map((incident, i) => (
-                <EntityListRow
-                  key={incident.id}
-                  className={DESKTOP_COLS}
-                  isLast={i === incidents.length - 1}
-                >
-                  <span className="text-[13px]">{formatDate(incident.dateOfLoss)}</span>
-                  <span className="truncate text-[13px] text-[var(--color-muted-foreground)]">
-                    {resolveLabel(incident.incidentTypeId, incidentTypeOptions)}
-                  </span>
-                  <span className="truncate text-[13px] text-[var(--color-muted-foreground)]">
-                    {resolveLabel(incident.departmentId, departmentOptions)}
-                  </span>
-                  <EntityStatusBadge tone={incident.isClosed ? "default" : "success"}>
-                    {incident.isClosed ? "Closed" : "Open"}
-                  </EntityStatusBadge>
-                  <EntityStatusBadge tone={incident.isTransfer ? "info" : "default"}>
-                    {incident.isTransfer ? "Yes" : "No"}
-                  </EntityStatusBadge>
-                  <div className="flex items-center gap-1">
+          <div className="mt-4">
+            {incidentsQuery.isLoading && allIncidents.length === 0 ? (
+              <EntityListLoading desktopColumns={DESKTOP_COLS} />
+            ) : incidents.length === 0 ? (
+              <EntityEmpty
+                icon={ClipboardList}
+                title="No incidents"
+                body={
+                  closedFilter !== "all" || deptFilter || typeFilter || transferOnly || showDeleted
+                    ? "No incidents match the current filters."
+                    : "No incidents have been recorded for this patient yet."
+                }
+                action={
+                  canCreate ? (
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      aria-label="View incident"
-                      onClick={() => setViewIncidentId(incident.id)}
+                      onClick={() => setCreateOpen(true)}
+                      className="h-9 rounded-lg px-4 text-[13px]"
                     >
-                      <Eye className="size-4" />
+                      <Plus className="mr-1.5 size-4" />
+                      Add Incident
                     </Button>
-                    {canUpdate && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7"
-                        aria-label="Edit incident"
-                        onClick={() => setEditIncident(incident)}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                    )}
-                    {canClose && !incident.isClosed && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7"
-                        aria-label="Close incident"
-                        disabled={closeMutation.isPending}
-                        onClick={() => closeMutation.mutate(incident.id)}
-                      >
-                        <Lock className="size-4" />
-                      </Button>
-                    )}
-                    {canDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7 text-[var(--color-destructive)] hover:text-[var(--color-destructive)]"
-                        aria-label="Delete incident"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => deleteMutation.mutate(incident.id)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
-                  </div>
-                </EntityListRow>
-              ))}
-            </EntityListCard>
-          )}
+                  ) : undefined
+                }
+              />
+            ) : (
+              <EntityListCard>
+                <EntityListHeader className={DESKTOP_COLS}>
+                  <span>Date of Loss</span>
+                  <span>Incident Type</span>
+                  <span>Department</span>
+                  <span>Status</span>
+                  <span>Transfer</span>
+                  <span />
+                </EntityListHeader>
+
+                {incidents.map((incident, i) => (
+                  <EntityListRow
+                    key={incident.id}
+                    className={`${DESKTOP_COLS} cursor-pointer ${
+                      incident.id === activeIncidentId ? "bg-[var(--color-accent)]" : ""
+                    }`}
+                    isLast={i === incidents.length - 1}
+                    onClick={() => setActiveIncidentId(incident.id)}
+                  >
+                    <span className="text-[13px]">{formatDate(incident.dateOfLoss)}</span>
+                    <span className="truncate text-[13px] text-[var(--color-muted-foreground)]">
+                      {resolveLabel(incident.incidentTypeId, incidentTypeOptions)}
+                    </span>
+                    <span className="truncate text-[13px] text-[var(--color-muted-foreground)]">
+                      {resolveLabel(incident.departmentId, departmentOptions)}
+                    </span>
+                    <EntityStatusBadge tone={incident.isClosed ? "default" : "success"}>
+                      {incident.isClosed ? "Closed" : "Open"}
+                    </EntityStatusBadge>
+                    <EntityStatusBadge tone={incident.isTransfer ? "info" : "default"}>
+                      {incident.isTransfer ? "Yes" : "No"}
+                    </EntityStatusBadge>
+                    <div
+                      className="flex items-center justify-end gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <IconShortcut label="View incident" onClick={() => setViewIncidentId(incident.id)}>
+                        <Eye className="size-4" />
+                      </IconShortcut>
+                      {canUpdate && (
+                        <IconShortcut
+                          label="Edit incident"
+                          onClick={() => setEditIncidentId(incident.id)}
+                        >
+                          <Pencil className="size-4" />
+                        </IconShortcut>
+                      )}
+                      {canClose && !incident.isClosed && (
+                        <IconShortcut
+                          label="Close incident"
+                          disabled={closeMutation.isPending}
+                          onClick={() => closeMutation.mutate(incident.id)}
+                        >
+                          <Lock className="size-4" />
+                        </IconShortcut>
+                      )}
+                      {canDelete && (
+                        <IconShortcut
+                          label="Delete incident"
+                          tone="destructive"
+                          disabled={deleteMutation.isPending}
+                          onClick={() => deleteMutation.mutate(incident.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </IconShortcut>
+                      )}
+                    </div>
+                  </EntityListRow>
+                ))}
+              </EntityListCard>
+            )}
+          </div>
         </div>
       </div>
 
@@ -302,12 +540,12 @@ export function PatientChartDetailPage() {
       )}
 
       {/* Edit dialog */}
-      {patientId && editIncident && (
+      {patientId && editIncidentId && (
         <IncidentDialog
           patientId={patientId}
-          open={!!editIncident}
-          onClose={() => setEditIncident(null)}
-          incidentId={editIncident.id}
+          open={!!editIncidentId}
+          onClose={() => setEditIncidentId(null)}
+          incidentId={editIncidentId}
         />
       )}
 
@@ -319,14 +557,20 @@ export function PatientChartDetailPage() {
         onEdit={
           canUpdate && viewIncidentId
             ? () => {
-                const inc = incidents.find((x) => x.id === viewIncidentId);
-                if (inc) {
-                  setViewIncidentId(null);
-                  setEditIncident(inc);
-                }
+                const id = viewIncidentId;
+                setViewIncidentId(null);
+                setEditIncidentId(id);
               }
             : undefined
         }
+      />
+
+      {/* Report search (patient reports land in a later sprint) */}
+      <ReportSearchDialog
+        open={reportSearchOpen}
+        onClose={() => setReportSearchOpen(false)}
+        incident={activeIncident}
+        incidentTypeLabel={resolveLabel(activeIncident?.incidentTypeId, incidentTypeOptions)}
       />
     </div>
   );
