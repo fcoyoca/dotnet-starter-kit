@@ -16,13 +16,18 @@ public static class SearchPatientIncidentsEndpoint
                 async (
                     Guid patientId,
                     bool? isClosed,
-                    bool includeDeleted,
-                    int pageNumber,
-                    int pageSize,
+                    bool? includeDeleted,
+                    int? pageNumber,
+                    int? pageSize,
                     IMediator mediator,
                     CancellationToken ct) =>
                     Results.Ok(await mediator.Send(
-                        new SearchPatientIncidentsQuery(patientId, isClosed, includeDeleted, pageNumber, pageSize), ct)))
+                        new SearchPatientIncidentsQuery(
+                            patientId,
+                            isClosed,
+                            includeDeleted ?? false,
+                            pageNumber ?? 1,
+                            pageSize ?? 50), ct)))
             .WithName("SearchPatientIncidents")
             .WithSummary("Search incidents for a patient")
             .RequirePermission(PatientPermissions.Incidents.View);
