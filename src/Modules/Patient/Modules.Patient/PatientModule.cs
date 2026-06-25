@@ -4,6 +4,12 @@ using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Patient.Contracts.Authorization;
 using FSH.Modules.Patient.Data;
+using FSH.Modules.Patient.Features.v1.PatientIncidents.ClosePatientIncident;
+using FSH.Modules.Patient.Features.v1.PatientIncidents.CreatePatientIncident;
+using FSH.Modules.Patient.Features.v1.PatientIncidents.DeletePatientIncident;
+using FSH.Modules.Patient.Features.v1.PatientIncidents.GetPatientIncidentById;
+using FSH.Modules.Patient.Features.v1.PatientIncidents.SearchPatientIncidents;
+using FSH.Modules.Patient.Features.v1.PatientIncidents.UpdatePatientIncident;
 using FSH.Modules.Patient.Features.v1.Patients.CreatePatient;
 using FSH.Modules.Patient.Features.v1.Patients.DeletePatient;
 using FSH.Modules.Patient.Features.v1.Patients.GetPatientById;
@@ -71,5 +77,13 @@ public sealed class PatientModule : IModule
         group.MapDeletePatientEndpoint();
         group.MapGetPatientByIdEndpoint();
         group.MapSearchPatientsEndpoint();
+
+        // Incident endpoints — /incidents/{id:guid}/close before /{id:guid} so the literal wins
+        group.MapClosePatientIncidentEndpoint();
+        group.MapSearchPatientIncidentsEndpoint();
+        group.MapGetPatientIncidentByIdEndpoint();
+        group.MapCreatePatientIncidentEndpoint();
+        group.MapUpdatePatientIncidentEndpoint();
+        group.MapDeletePatientIncidentEndpoint();
     }
 }
