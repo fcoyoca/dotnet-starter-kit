@@ -5,12 +5,14 @@ using FSH.Framework.Storage;
 using FSH.Framework.Storage.Services;
 using FSH.Modules.Administration.Contracts.v1.Providers;
 using FSH.Modules.Administration.Data;
+using FSH.Modules.Administration.Services;
 using Mediator;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Administration.Features.v1.Providers.SetProviderSignature;
 
-public sealed class SetProviderSignatureCommandHandler(AdministrationDbContext dbContext, IStorageService storage)
+public sealed class SetProviderSignatureCommandHandler(AdministrationDbContext dbContext, IStorageService storage, IHttpContextAccessor httpContextAccessor)
     : ICommandHandler<SetProviderSignatureCommand, string>
 {
     public async ValueTask<string> Handle(SetProviderSignatureCommand command, CancellationToken cancellationToken)
@@ -45,7 +47,7 @@ public sealed class SetProviderSignatureCommandHandler(AdministrationDbContext d
             await storage.RemoveAsync(previousPath, cancellationToken).ConfigureAwait(false);
         }
 
-        return storage.BuildPublicUrl(storedPath);
+        return ProviderSignatureUrl.Resolve(storedPath, httpContextAccessor)!;
     }
 
     private static byte[] DecodePng(string imageBase64)

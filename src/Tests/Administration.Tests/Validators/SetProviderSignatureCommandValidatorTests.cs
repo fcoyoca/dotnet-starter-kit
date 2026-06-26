@@ -32,4 +32,11 @@ public sealed class SetProviderSignatureCommandValidatorTests
         _sut.TestValidate(Valid() with { ImageBase64 = image })
             .ShouldHaveValidationErrorFor(x => x.ImageBase64);
     }
+
+    [Fact]
+    public void Validate_Should_Fail_When_ImageBase64ExceedsMaxLength()
+    {
+        _sut.TestValidate(Valid() with { ImageBase64 = new string('A', 7_000_001) })
+            .ShouldHaveValidationErrorFor(x => x.ImageBase64);
+    }
 }

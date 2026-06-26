@@ -1,14 +1,15 @@
 using FSH.Framework.Core.Exceptions;
-using FSH.Framework.Storage.Services;
 using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Administration.Contracts.v1.Providers;
 using FSH.Modules.Administration.Data;
+using FSH.Modules.Administration.Services;
 using Mediator;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Administration.Features.v1.Providers.GetProviderById;
 
-public sealed class GetProviderByIdQueryHandler(AdministrationDbContext dbContext, IStorageService storage)
+public sealed class GetProviderByIdQueryHandler(AdministrationDbContext dbContext, IHttpContextAccessor httpContextAccessor)
     : IQueryHandler<GetProviderByIdQuery, ProviderDto>
 {
     public async ValueTask<ProviderDto> Handle(GetProviderByIdQuery query, CancellationToken cancellationToken)
@@ -33,6 +34,6 @@ public sealed class GetProviderByIdQueryHandler(AdministrationDbContext dbContex
 
         return dto.SignatureImagePath is null
             ? dto
-            : dto with { SignatureImageUrl = storage.BuildPublicUrl(dto.SignatureImagePath) };
+            : dto with { SignatureImageUrl = ProviderSignatureUrl.Resolve(dto.SignatureImagePath, httpContextAccessor) };
     }
 }

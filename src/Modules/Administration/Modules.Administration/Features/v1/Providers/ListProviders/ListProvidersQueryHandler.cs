@@ -1,14 +1,15 @@
 using FSH.Framework.Shared.Persistence;
-using FSH.Framework.Storage.Services;
 using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Administration.Contracts.v1.Providers;
 using FSH.Modules.Administration.Data;
+using FSH.Modules.Administration.Services;
 using Mediator;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Administration.Features.v1.Providers.ListProviders;
 
-public sealed class ListProvidersQueryHandler(AdministrationDbContext dbContext, IStorageService storage)
+public sealed class ListProvidersQueryHandler(AdministrationDbContext dbContext, IHttpContextAccessor httpContextAccessor)
     : IQueryHandler<ListProvidersQuery, PagedResponse<ProviderDto>>
 {
     public async ValueTask<PagedResponse<ProviderDto>> Handle(ListProvidersQuery query, CancellationToken cancellationToken)
@@ -59,7 +60,7 @@ public sealed class ListProvidersQueryHandler(AdministrationDbContext dbContext,
         {
             if (items[i].SignatureImagePath is { } path)
             {
-                items[i] = items[i] with { SignatureImageUrl = storage.BuildPublicUrl(path) };
+                items[i] = items[i] with { SignatureImageUrl = ProviderSignatureUrl.Resolve(path, httpContextAccessor) };
             }
         }
 

@@ -9,5 +9,6 @@ public sealed class SetProviderSignatureCommandValidator : AbstractValidator<Set
     {
         RuleFor(x => x.ProviderId).NotEmpty();
         RuleFor(x => x.ImageBase64).NotEmpty();
+        RuleFor(x => x.ImageBase64).MaximumLength(7_000_000).When(x => !string.IsNullOrEmpty(x.ImageBase64));
     }
 }
