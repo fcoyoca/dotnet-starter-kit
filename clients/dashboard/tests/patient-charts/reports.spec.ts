@@ -204,6 +204,41 @@ test.describe("patient reports — editor", () => {
     expect(body.text).toBe("Patient improving.");
   });
 
+  test("create-new-macro from a field posts to the Administration macros API", async ({ page }) => {
+    await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, draftReport());
+    // Both the field-scoped and general macro lookups hit /macros — return empty.
+    await mockJsonResponse(page, "**/api/v1/administration/macros**", paged([]));
+
+    await page.goto(`/patient-charts/${PATIENT_ID}/reports/${REPORT_ID}`);
+    await expect(page.getByText("Chief Complaint")).toBeVisible();
+
+    // Open the first field's macro popover, then the create form.
+    await page.getByRole("button", { name: "Insert macro" }).first().click();
+    await page.getByRole("button", { name: /create new macro/i }).click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: /create new macro/i })).toBeVisible();
+    await dialog.getByLabel("Macro Name").fill("Normal Exam");
+    await dialog.getByLabel("Macro Text").fill("Patient in no acute distress.");
+
+    // POST mock (method-filtered) sits over the GET list mock.
+    await mockJsonResponse(page, "**/api/v1/administration/macros**", '"new-macro-id"', {
+      method: "POST",
+    });
+    const postRequest = page.waitForRequest(
+      (req) => req.url().includes("/api/v1/administration/macros") && req.method() === "POST",
+    );
+    await dialog.getByRole("button", { name: /save macro/i }).click();
+
+    const body = (await postRequest).postDataJSON();
+    expect(body.name).toBe("Normal Exam");
+    expect(body.text).toBe("Patient in no acute distress.");
+    // "available to all fields" unchecked → scoped to this field (id 11).
+    expect(body.reportFieldId).toBe(11);
+    // "allow everyone" checked by default → shared (null owner).
+    expect(body.useableByUserId).toBeNull();
+  });
+
   test("signed report exposes Request Review and posts the reviewer", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, signedReport());
 

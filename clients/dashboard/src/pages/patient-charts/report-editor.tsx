@@ -399,7 +399,11 @@ export function ReportEditorPage() {
                       {f.name}
                     </label>
                     {!readOnly && (
-                      <MacroInsert reportFieldId={f.id} onInsert={(text) => insertMacro(f.id, text)} />
+                      <MacroInsert
+                        reportFieldId={f.id}
+                        fieldName={f.name}
+                        onInsert={(text) => insertMacro(f.id, text)}
+                      />
                     )}
                   </div>
                   <Textarea
