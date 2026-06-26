@@ -8,15 +8,18 @@ import {
 import { ChevronRight, Pencil, Plus, Search, Stethoscope, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  clearProviderSignature,
   createProvider,
   deleteProvider,
   listProviders,
+  setProviderSignature,
   updateProvider,
   useClinicOptions,
   type ProviderDto,
   type CreateProviderInput,
   type UpdateProviderInput,
 } from "@/api/administration";
+import { SignatureEditor } from "@/components/ui/signature-editor";
 import { searchUsers } from "@/api/identity";
 import { Button } from "@/components/ui/button";
 import {
@@ -357,6 +360,27 @@ function ProviderEditorDialog({ state, onClose }: { state: EditorState; onClose:
     onError: (err) => toast.error("Update failed", { description: describe(err) }),
   });
 
+  const [signatureOpen, setSignatureOpen] = useState(false);
+
+  const setSignatureMutation = useMutation({
+    mutationFn: (arg: { providerId: string; imageBase64: string }) =>
+      setProviderSignature(arg.providerId, arg.imageBase64),
+    onSuccess: () => {
+      toast.success("Signature updated");
+      invalidate();
+    },
+    onError: (err) => toast.error("Signature update failed", { description: describe(err) }),
+  });
+
+  const clearSignatureMutation = useMutation({
+    mutationFn: (providerId: string) => clearProviderSignature(providerId),
+    onSuccess: () => {
+      toast.success("Signature removed");
+      invalidate();
+    },
+    onError: (err) => toast.error("Remove failed", { description: describe(err) }),
+  });
+
   const isPending = createMutation.isPending || updateMutation.isPending;
   const npiValid = !form.npi.trim() || /^[0-9]{10}$/.test(form.npi.trim());
   const valid = form.firstName.trim() && form.lastName.trim() && npiValid;
@@ -468,6 +492,37 @@ function ProviderEditorDialog({ state, onClose }: { state: EditorState; onClose:
             </Field>
 
             {provider && (
+              <div className="rounded-lg border border-[var(--color-border)] px-3 py-2.5">
+                <p className="mb-2 text-[13px] font-medium text-[var(--color-foreground)]">Signature</p>
+                <div className="flex items-center gap-3">
+                  {provider.signatureImageUrl ? (
+                    <img
+                      src={provider.signatureImageUrl}
+                      alt="Provider signature"
+                      className="h-[30px] w-[180px] border border-[var(--color-border)] object-contain"
+                    />
+                  ) : (
+                    <span className="text-[12px] text-[var(--color-muted-foreground)]">No signature on file.</span>
+                  )}
+                  <Button type="button" variant="outline" size="sm" onClick={() => setSignatureOpen(true)}>
+                    {provider.signatureImageUrl ? "Change signature image" : "Add signature image"}
+                  </Button>
+                  {provider.signatureImageUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => clearSignatureMutation.mutate(provider.id)}
+                      disabled={clearSignatureMutation.isPending}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {provider && (
               <div className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2.5">
                 <div>
                   <p className="text-[13px] font-medium text-[var(--color-foreground)]">Active</p>
@@ -492,6 +547,14 @@ function ProviderEditorDialog({ state, onClose }: { state: EditorState; onClose:
           </DialogFooter>
         </form>
       </DialogContent>
+      {provider && (
+        <SignatureEditor
+          open={signatureOpen}
+          onOpenChange={setSignatureOpen}
+          value={provider.signatureImageUrl}
+          onSave={(pngBase64) => setSignatureMutation.mutate({ providerId: provider.id, imageBase64: pngBase64 })}
+        />
+      )}
     </Dialog>
   );
 }
