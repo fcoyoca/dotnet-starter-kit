@@ -22,6 +22,8 @@ public sealed class SetProviderSignatureCommandHandler(AdministrationDbContext d
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"Provider {command.ProviderId} not found.");
 
+        string? previousPath = entity.SignatureImagePath;
+
         byte[] bytes = DecodePng(command.ImageBase64);
 
         var request = new FileUploadRequest
@@ -37,6 +39,11 @@ public sealed class SetProviderSignatureCommandHandler(AdministrationDbContext d
 
         entity.SetSignature(storedPath);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        if (!string.IsNullOrWhiteSpace(previousPath) && previousPath != storedPath)
+        {
+            await storage.RemoveAsync(previousPath, cancellationToken).ConfigureAwait(false);
+        }
 
         return storage.BuildPublicUrl(storedPath);
     }
