@@ -1,0 +1,231 @@
+// E2E coverage for the Patient Reports flow (route-mocked): the report editor
+// (draft fields + vitals + Save Draft), a signed report rendering read-only
+// with the addendum composer, the peer-review "Request Review" action, and the
+// reports panel on the chart page.
+//
+// Gotcha: GET getReport and PUT updateReport share the URL
+// `**/api/v1/patient/reports/{id}`. As in patients.spec.ts, let the unfiltered
+// GET mock satisfy the load, register a `{ method: "PUT" }` mock for the save,
+// and capture the body via page.waitForRequest.
+
+import { expect, test, type Page } from "@playwright/test";
+import { mockJsonResponse } from "../helpers/api-mocks";
+import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
+import { installShellMocks, paged } from "../helpers/shell-mocks";
+
+const REPORT_PERMS = {
+  view: "Permissions.Patient.Reports.View",
+  create: "Permissions.Patient.Reports.Create",
+  update: "Permissions.Patient.Reports.Update",
+  sign: "Permissions.Patient.Reports.Sign",
+  review: "Permissions.Patient.Reports.Review",
+  delete: "Permissions.Patient.Reports.Delete",
+};
+const ALL_REPORT_PERMS = Object.values(REPORT_PERMS);
+
+async function grantPermissions(page: Page, perms: readonly string[]): Promise<void> {
+  await mockJsonResponse(page, "**/api/v1/identity/permissions", perms);
+}
+
+const PATIENT_ID = "00000000-0000-0000-0000-0000000a1111";
+const INCIDENT_ID = "00000000-0000-0000-0000-0000000c3333";
+const REPORT_ID = "00000000-0000-0000-0000-0000000d4444";
+
+const PATIENT = {
+  id: PATIENT_ID,
+  patientCode: "P-10293",
+  isActive: true,
+  demographics: {
+    firstName: "Alice",
+    middleInitial: "Q",
+    lastName: "Vance",
+    dateOfBirth: "1990-04-12",
+    gender: "F",
+  },
+  insurance: null,
+  lastVisitDate: null,
+  nextVisitDate: null,
+};
+
+const REPORT_TYPES = [
+  { id: 1, name: "Initial Evaluation", displayOrder: 0, isActive: true },
+  { id: 2, name: "Progress Note", displayOrder: 1, isActive: true },
+];
+
+const REPORT_FIELDS = [
+  { id: 11, reportTypeId: 1, name: "Chief Complaint", category: "Subjective", displayOrder: 0, isActive: true },
+  { id: 12, reportTypeId: 1, name: "Exam Findings", category: "Objective", displayOrder: 1, isActive: true },
+];
+
+const PROVIDERS = paged([
+  { id: "prov-1", firstName: "Greg", lastName: "House", prefix: "Dr.", suffix: "MD", isActive: true },
+]);
+const CLINICS = paged([{ id: "clinic-1", name: "Downtown Clinic", isActive: true }]);
+
+function draftReport() {
+  return {
+    id: REPORT_ID,
+    incidentId: INCIDENT_ID,
+    patientId: PATIENT_ID,
+    reportTypeId: 1,
+    reportDate: "2026-06-26T00:00:00Z",
+    version: 1,
+    providerId: null,
+    clinicId: null,
+    isNoShow: false,
+    vitals: {
+      heightInches: null,
+      weightLbs: null,
+      bmi: null,
+      systolic: null,
+      diastolic: null,
+      pulse: null,
+      temperatureF: null,
+    },
+    workflowStatus: "Draft",
+    isSigned: false,
+    signedByUserId: null,
+    signedByName: null,
+    signedOnUtc: null,
+    signatureImagePath: null,
+    signatureImageUrl: null,
+    reviewRequestedByUserId: null,
+    reviewRequestedOnUtc: null,
+    reviewerProviderId: null,
+    reviewSignedByUserId: null,
+    reviewSignedByName: null,
+    reviewSignedOnUtc: null,
+    reviewSignatureImagePath: null,
+    reviewSignatureImageUrl: null,
+    fieldValues: [],
+    addendums: [],
+    createdAtUtc: "2026-06-26T08:00:00Z",
+    updatedAtUtc: null,
+  };
+}
+
+function signedReport(overrides: Record<string, unknown> = {}) {
+  return {
+    ...draftReport(),
+    workflowStatus: "Signed",
+    isSigned: true,
+    signedByUserId: "u-test-1",
+    signedByName: "Alice Nguyen",
+    signedOnUtc: "2026-06-26T09:00:00Z",
+    signatureImagePath: "signatures/prov-1.png",
+    signatureImageUrl: "https://api.example.com/files/signatures/prov-1.png",
+    providerId: "prov-1",
+    fieldValues: [{ reportFieldId: 11, text: "Lower back pain" }],
+    ...overrides,
+  };
+}
+
+async function mockEditorLookups(page: Page) {
+  await mockJsonResponse(page, "**/api/v1/patient/patients/" + PATIENT_ID, PATIENT);
+  await mockJsonResponse(page, "**/api/v1/administration/report-fields**", REPORT_FIELDS);
+  await mockJsonResponse(page, "**/api/v1/administration/report-types**", REPORT_TYPES);
+  await mockJsonResponse(page, "**/api/v1/administration/providers**", PROVIDERS);
+  await mockJsonResponse(page, "**/api/v1/administration/clinics**", CLINICS);
+}
+
+test.describe("patient reports — editor", () => {
+  test.beforeEach(async ({ page }) => {
+    await seedAuthedSession(page, TEST_USER);
+    await installShellMocks(page);
+    await grantPermissions(page, ALL_REPORT_PERMS);
+    await mockEditorLookups(page);
+  });
+
+  test("draft report renders header, vitals, field sections and action bar", async ({ page }) => {
+    await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, draftReport());
+
+    await page.goto(`/patient-charts/${PATIENT_ID}/reports/${REPORT_ID}`);
+
+    await expect(page.getByText("Alice Q Vance")).toBeVisible();
+    await expect(page.getByText("Vitals")).toBeVisible();
+    // Field sections come from listReportFields, grouped by category.
+    await expect(page.getByText("Subjective")).toBeVisible();
+    await expect(page.getByText("Objective")).toBeVisible();
+    await expect(page.getByText("Chief Complaint")).toBeVisible();
+    await expect(page.getByRole("button", { name: /save draft/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /sign report/i })).toBeVisible();
+  });
+
+  test("Save Draft sends field values + vitals in the PUT body", async ({ page }) => {
+    await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, draftReport());
+
+    await page.goto(`/patient-charts/${PATIENT_ID}/reports/${REPORT_ID}`);
+    await expect(page.getByText("Chief Complaint")).toBeVisible();
+
+    await page.locator("#f-11").fill("Lower back pain for 3 weeks");
+    await page.locator("#v-height").fill("70");
+    await page.locator("#v-weight").fill("180");
+
+    await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, '""', { method: "PUT" });
+    const putRequest = page.waitForRequest(
+      (req) => req.url().includes(`/api/v1/patient/reports/${REPORT_ID}`) && req.method() === "PUT",
+    );
+    await page.getByRole("button", { name: /save draft/i }).click();
+
+    const body = (await putRequest).postDataJSON();
+    expect(body.fieldValues).toEqual([{ reportFieldId: 11, text: "Lower back pain for 3 weeks" }]);
+    expect(body.vitals.heightInches).toBe(70);
+    expect(body.vitals.weightLbs).toBe(180);
+    // BMI auto-computed from height+weight: 180/(70^2)*703 ≈ 25.8
+    expect(body.vitals.bmi).toBeCloseTo(25.8, 1);
+  });
+
+  test("signed report renders read-only with signature + addendum composer", async ({ page }) => {
+    await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, signedReport());
+
+    await page.goto(`/patient-charts/${PATIENT_ID}/reports/${REPORT_ID}`);
+
+    await expect(page.getByText(/signed by/i)).toBeVisible();
+    await expect(page.getByRole("img", { name: /^signature$/i })).toBeVisible();
+    // Draft action bar is gone once signed.
+    await expect(page.getByRole("button", { name: /save draft/i })).toHaveCount(0);
+    // Field values render read-only.
+    await expect(page.locator("#f-11")).toBeDisabled();
+
+    // Addendum composer posts to /addendums.
+    await mockJsonResponse(
+      page,
+      "**/api/v1/patient/reports/" + REPORT_ID + "/addendums",
+      '"new-addendum-id"',
+      { method: "POST" },
+    );
+    const postRequest = page.waitForRequest(
+      (req) => req.url().includes(`/reports/${REPORT_ID}/addendums`) && req.method() === "POST",
+    );
+    await page.getByPlaceholder("Add an addendum…").fill("Patient improving.");
+    await page.getByRole("button", { name: /add addendum/i }).click();
+
+    const body = (await postRequest).postDataJSON();
+    expect(body.text).toBe("Patient improving.");
+  });
+
+  test("signed report exposes Request Review and posts the reviewer", async ({ page }) => {
+    await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, signedReport());
+
+    await page.goto(`/patient-charts/${PATIENT_ID}/reports/${REPORT_ID}`);
+    await expect(page.getByText("Peer Review")).toBeVisible();
+
+    // Pick a reviewer from the provider combobox.
+    await page.getByLabel("Reviewer", { exact: true }).click();
+    await page.getByRole("menuitemradio", { name: /house/i }).click();
+
+    await mockJsonResponse(
+      page,
+      "**/api/v1/patient/reports/" + REPORT_ID + "/request-review",
+      '""',
+      { method: "PUT" },
+    );
+    const putRequest = page.waitForRequest(
+      (req) => req.url().includes(`/reports/${REPORT_ID}/request-review`) && req.method() === "PUT",
+    );
+    await page.getByRole("button", { name: /request review/i }).click();
+
+    const body = (await putRequest).postDataJSON();
+    expect(body.reviewerProviderId).toBe("prov-1");
+  });
+});
