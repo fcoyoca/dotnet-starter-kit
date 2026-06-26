@@ -27,3 +27,14 @@ export const INCIDENT_PERMISSIONS = {
 } as const;
 
 export type IncidentPermissionKey = keyof typeof INCIDENT_PERMISSIONS;
+
+export const REPORT_PERMISSIONS = {
+  view:   "Permissions.Patient.Reports.View",
+  create: "Permissions.Patient.Reports.Create",
+  update: "Permissions.Patient.Reports.Update",
+  sign:   "Permissions.Patient.Reports.Sign",
+  review: "Permissions.Patient.Reports.Review",
+  delete: "Permissions.Patient.Reports.Delete",
+} as const;
+
+export type ReportPermissionKey = keyof typeof REPORT_PERMISSIONS;

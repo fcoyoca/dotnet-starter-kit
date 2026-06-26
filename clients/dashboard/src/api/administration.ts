@@ -396,6 +396,21 @@ export async function clearProviderSignature(providerId: string): Promise<void> 
   });
 }
 
+/** Active providers as combobox options — for the report doctor picker. */
+export function useProviderOptions(): ComboboxOption[] | undefined {
+  const { data } = useQuery({
+    queryKey: ["administration.providerOptions"],
+    queryFn: () => listProviders({ isActive: true, pageSize: 200, sortBy: "lastName", sortDir: "asc" }),
+    staleTime: 5 * 60 * 1000,
+  });
+  return data
+    ? data.items.map((p) => ({
+        value: p.id,
+        label: [p.prefix, p.firstName, p.lastName, p.suffix].filter(Boolean).join(" "),
+      }))
+    : undefined;
+}
+
 // ─── Insurance Types (tenant-scoped CRUD) ──────────────────────────────
 
 export type InsuranceTypeDto = {
