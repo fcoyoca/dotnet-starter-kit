@@ -34,10 +34,12 @@ using FSH.Modules.Administration.Features.v1.ProcedureCategories.DeleteProcedure
 using FSH.Modules.Administration.Features.v1.ProcedureCategories.GetProcedureCategoryById;
 using FSH.Modules.Administration.Features.v1.ProcedureCategories.ListProcedureCategories;
 using FSH.Modules.Administration.Features.v1.ProcedureCategories.UpdateProcedureCategory;
+using FSH.Modules.Administration.Features.v1.Providers.ClearProviderSignature;
 using FSH.Modules.Administration.Features.v1.Providers.CreateProvider;
 using FSH.Modules.Administration.Features.v1.Providers.DeleteProvider;
 using FSH.Modules.Administration.Features.v1.Providers.GetProviderById;
 using FSH.Modules.Administration.Features.v1.Providers.ListProviders;
+using FSH.Modules.Administration.Features.v1.Providers.SetProviderSignature;
 using FSH.Modules.Administration.Features.v1.Providers.UpdateProvider;
 using FSH.Modules.Administration.Features.v1.InsuranceTypes.CreateInsuranceType;
 using FSH.Modules.Administration.Features.v1.InsuranceTypes.DeleteInsuranceType;
@@ -178,6 +180,8 @@ public sealed class AdministrationModule : IModule
         group.MapListProvidersEndpoint();
         group.MapGetProviderByIdEndpoint();
         group.MapUpdateProviderEndpoint();
+        group.MapSetProviderSignatureEndpoint();
+        group.MapClearProviderSignatureEndpoint();
         group.MapDeleteProviderEndpoint();
 
         group.MapCreateInsuranceTypeEndpoint();
