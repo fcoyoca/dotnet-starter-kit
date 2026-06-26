@@ -301,6 +301,8 @@ export type ProviderDto = {
   primaryClinicId?: string | null;
   primaryClinicName?: string | null;
   userId?: string | null;
+  signatureImagePath?: string | null;
+  signatureImageUrl?: string | null;
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc?: string | null;
@@ -375,6 +377,21 @@ export async function updateProvider(input: UpdateProviderInput): Promise<void> 
 
 export async function deleteProvider(id: string): Promise<void> {
   await apiFetch<void>(`/api/v1/administration/providers/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+/** Upload/replace a provider's signature image. Returns the stored image's public URL. */
+export async function setProviderSignature(providerId: string, imageBase64: string): Promise<string> {
+  return apiFetch<string>(`/api/v1/administration/providers/${encodeURIComponent(providerId)}/signature`, {
+    method: "PUT",
+    body: JSON.stringify({ providerId, imageBase64 }),
+  });
+}
+
+/** Remove a provider's signature image (idempotent). */
+export async function clearProviderSignature(providerId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/providers/${encodeURIComponent(providerId)}/signature`, {
     method: "DELETE",
   });
 }
