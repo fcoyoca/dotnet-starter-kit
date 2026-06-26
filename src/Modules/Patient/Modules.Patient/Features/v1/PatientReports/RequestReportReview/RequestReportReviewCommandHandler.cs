@@ -1,6 +1,7 @@
 using System.Net;
 using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
+using FSH.Modules.Patient.Contracts.Dtos;
 using FSH.Modules.Patient.Contracts.v1.PatientReports;
 using FSH.Modules.Patient.Data;
 using FSH.Modules.Patient.Domain;
@@ -21,7 +22,7 @@ public sealed class RequestReportReviewCommandHandler(PatientDbContext dbContext
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"Report {command.ReportId} not found.");
 
-        if (!report.IsSigned)
+        if (report.WorkflowStatus != ReportWorkflowStatus.Signed)
         {
             throw new CustomException("Only a signed report can be sent for review.", (IEnumerable<string>?)null, HttpStatusCode.Conflict);
         }

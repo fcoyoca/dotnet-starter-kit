@@ -1,6 +1,8 @@
+using System.Net;
 using FSH.Framework.Core.Context;
 using FSH.Framework.Core.Exceptions;
 using FSH.Modules.Administration.Contracts.v1.Providers;
+using FSH.Modules.Patient.Contracts.Dtos;
 using FSH.Modules.Patient.Contracts.v1.PatientReports;
 using FSH.Modules.Patient.Data;
 using FSH.Modules.Patient.Domain;
@@ -23,6 +25,11 @@ public sealed class ReviewSignReportCommandHandler(
             .FirstOrDefaultAsync(x => x.Id == command.ReportId && !x.IsDeleted, cancellationToken)
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"Report {command.ReportId} not found.");
+
+        if (report.WorkflowStatus != ReportWorkflowStatus.ReviewRequested)
+        {
+            throw new CustomException("This report has not been requested for review.", (IEnumerable<string>?)null, HttpStatusCode.Conflict);
+        }
 
         // Snapshot the reviewer provider's saved signature image (optional). Cross-module read via Contracts.
         string? signaturePath = null;

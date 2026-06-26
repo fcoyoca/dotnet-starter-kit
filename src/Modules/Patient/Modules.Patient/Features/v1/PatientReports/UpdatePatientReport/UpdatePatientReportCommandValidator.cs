@@ -9,5 +9,7 @@ public sealed class UpdatePatientReportCommandValidator : AbstractValidator<Upda
     {
         RuleFor(x => x.ReportId).NotEmpty();
         RuleFor(x => x.ReportDate).NotEmpty();
+        RuleFor(x => x.Vitals).NotNull();
+        RuleFor(x => x.FieldValues).NotNull();
     }
 }
