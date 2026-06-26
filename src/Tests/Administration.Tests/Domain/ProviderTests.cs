@@ -94,4 +94,37 @@ public sealed class ProviderTests
         provider.DeletedOnUtc.ShouldNotBeNull();
         provider.DeletedBy.ShouldBe("admin@tenant");
     }
+
+    [Fact]
+    public void SetSignature_Should_StorePath_And_StampUpdatedAt()
+    {
+        var provider = Provider.Create("Gregory", "House", null, null, null, null, null, null, null);
+
+        provider.SetSignature("administration/providers/abc/signature.png");
+
+        provider.SignatureImagePath.ShouldBe("administration/providers/abc/signature.png");
+        provider.UpdatedAtUtc.ShouldNotBeNull();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetSignature_Should_Throw_When_PathBlank(string path)
+    {
+        var provider = Provider.Create("Gregory", "House", null, null, null, null, null, null, null);
+
+        Should.Throw<ArgumentException>(() => provider.SetSignature(path));
+    }
+
+    [Fact]
+    public void ClearSignature_Should_NullPath_And_StampUpdatedAt()
+    {
+        var provider = Provider.Create("Gregory", "House", null, null, null, null, null, null, null);
+        provider.SetSignature("administration/providers/abc/signature.png");
+
+        provider.ClearSignature();
+
+        provider.SignatureImagePath.ShouldBeNull();
+        provider.UpdatedAtUtc.ShouldNotBeNull();
+    }
 }

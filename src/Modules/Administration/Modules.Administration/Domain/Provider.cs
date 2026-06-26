@@ -31,6 +31,12 @@ public sealed class Provider : AggregateRoot<Guid>, ISoftDeletable
     /// </summary>
     public string? UserId { get; private set; }
 
+    /// <summary>
+    /// Storage key of this provider's signature image (PNG), or null when unset. Set via the
+    /// Administration signature editor; snapshotted onto reports at signing time by the Patient module.
+    /// </summary>
+    public string? SignatureImagePath { get; private set; }
+
     public bool IsActive { get; private set; }
 
     /// <summary>Legacy <c>uID</c> of the source user that represented this provider; null for native records.</summary>
@@ -103,6 +109,19 @@ public sealed class Provider : AggregateRoot<Guid>, ISoftDeletable
         PrimaryClinicId = primaryClinicId;
         UserId = Clean(userId);
         IsActive = isActive;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void SetSignature(string signatureImagePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(signatureImagePath);
+        SignatureImagePath = signatureImagePath.Trim();
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    public void ClearSignature()
+    {
+        SignatureImagePath = null;
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
