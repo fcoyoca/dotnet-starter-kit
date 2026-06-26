@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   keepPreviousData,
   useMutation,
@@ -11,7 +11,9 @@ import {
   CalendarDays,
   ClipboardList,
   Eye,
+  FilePlus,
   FileSearch,
+  FileText,
   Lock,
   Pencil,
   Plus,
@@ -25,10 +27,22 @@ import {
   deleteIncident,
   type PatientIncidentListItemDto,
 } from "@/api/incidents";
-import { useDepartmentOptions, useIncidentTypeOptions } from "@/api/administration";
-import { INCIDENT_PERMISSIONS } from "@/lib/patient-permissions";
+import {
+  listReportTypes,
+  useDepartmentOptions,
+  useIncidentTypeOptions,
+} from "@/api/administration";
+import { createReport, deleteReport, searchPatientReports } from "@/api/reports";
+import { INCIDENT_PERMISSIONS, REPORT_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Combobox,
   EntityEmpty,
@@ -112,6 +126,7 @@ function IconShortcut({
 
 export function PatientChartDetailPage() {
   const { patientId } = useParams<{ patientId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -131,6 +146,11 @@ export function PatientChartDetailPage() {
   const canUpdate = user?.permissions?.includes(INCIDENT_PERMISSIONS.update) ?? false;
   const canClose = user?.permissions?.includes(INCIDENT_PERMISSIONS.close) ?? false;
   const canDelete = user?.permissions?.includes(INCIDENT_PERMISSIONS.delete) ?? false;
+
+  const canViewReports = user?.permissions?.includes(REPORT_PERMISSIONS.view) ?? false;
+  const canCreateReports = user?.permissions?.includes(REPORT_PERMISSIONS.create) ?? false;
+  const canUpdateReports = user?.permissions?.includes(REPORT_PERMISSIONS.update) ?? false;
+  const canDeleteReports = user?.permissions?.includes(REPORT_PERMISSIONS.delete) ?? false;
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -173,6 +193,53 @@ export function PatientChartDetailPage() {
     },
     onError: (err) => toast.error("Failed to delete incident.", { description: describe(err) }),
   });
+
+  // ─── Patient reports (scoped to the active incident) ───
+  const reportTypesQuery = useQuery({
+    queryKey: ["report-types"],
+    queryFn: () => listReportTypes(true),
+    staleTime: 10 * 60 * 1000,
+    enabled: canViewReports || canCreateReports,
+  });
+
+  const reportsQuery = useQuery({
+    queryKey: ["reports", activeIncidentId],
+    queryFn: () => searchPatientReports({ incidentId: activeIncidentId!, pageSize: 100 }),
+    enabled: canViewReports && !!activeIncidentId,
+    placeholderData: keepPreviousData,
+  });
+
+  const reportTypeLabel = (id: number): string =>
+    reportTypesQuery.data?.find((t) => t.id === id)?.name ?? "Report";
+
+  const createReportMutation = useMutation({
+    mutationFn: createReport,
+    onSuccess: (reportId) => {
+      void queryClient.invalidateQueries({ queryKey: ["reports", activeIncidentId] });
+      navigate(`/patient-charts/${patientId}/reports/${reportId}`);
+    },
+    onError: (err) => toast.error("Failed to create report.", { description: describe(err) }),
+  });
+
+  const deleteReportMutation = useMutation({
+    mutationFn: (id: string) => deleteReport(id),
+    onSuccess: () => {
+      toast.success("Report deleted.");
+      void queryClient.invalidateQueries({ queryKey: ["reports", activeIncidentId] });
+    },
+    onError: (err) => toast.error("Failed to delete report.", { description: describe(err) }),
+  });
+
+  const onAddReport = (reportTypeId: number) => {
+    if (!patientId || !activeIncidentId) return;
+    createReportMutation.mutate({
+      incidentId: activeIncidentId,
+      patientId,
+      reportTypeId,
+      reportDate: new Date().toISOString().slice(0, 10),
+      isNoShow: false,
+    });
+  };
 
   const patient = patientQuery.data;
   const allIncidents = useMemo(() => incidentsQuery.data?.items ?? [], [incidentsQuery.data]);
@@ -529,6 +596,103 @@ export function PatientChartDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* ─── Patient Reports (for the active incident) ─── */}
+      {canViewReports && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+              <FileText className="size-3.5" />
+              Patient Reports
+            </h2>
+            {canCreateReports && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild disabled={!activeIncident || createReportMutation.isPending}>
+                  <Button
+                    size="sm"
+                    className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
+                    disabled={!activeIncident || createReportMutation.isPending}
+                  >
+                    <FilePlus className="size-4" />
+                    Add Report
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="max-h-[min(340px,55vh)] w-56 overflow-y-auto">
+                  <DropdownMenuLabel>Report Type</DropdownMenuLabel>
+                  {(reportTypesQuery.data ?? []).length === 0 ? (
+                    <p className="px-3 py-3 text-[12px] text-[var(--color-muted-foreground)]">
+                      No report types defined.
+                    </p>
+                  ) : (
+                    (reportTypesQuery.data ?? []).map((t) => (
+                      <DropdownMenuItem key={t.id} onSelect={() => onAddReport(t.id)}>
+                        {t.name}
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+
+          {!activeIncident ? (
+            <p className="text-[12px] text-[var(--color-muted-foreground)]">
+              Select an incident to view its reports.
+            </p>
+          ) : reportsQuery.isLoading ? (
+            <div className="h-16 animate-pulse rounded-lg bg-[var(--color-muted)]" />
+          ) : (reportsQuery.data?.items ?? []).length === 0 ? (
+            <p className="text-[12px] text-[var(--color-muted-foreground)]">
+              No reports for this incident yet.
+            </p>
+          ) : (
+            <ul className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)]">
+              {(reportsQuery.data?.items ?? []).map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-medium">{reportTypeLabel(r.reportTypeId)}</p>
+                    <p className="text-[12px] text-[var(--color-muted-foreground)]">
+                      {formatDate(r.reportDate)}
+                      {r.signedByName ? ` · Signed by ${r.signedByName}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <EntityStatusBadge tone={r.isSigned ? "info" : "default"}>
+                      {r.workflowStatus}
+                    </EntityStatusBadge>
+                    <div className="flex items-center gap-1">
+                      <IconShortcut
+                        label="View report"
+                        onClick={() => navigate(`/patient-charts/${patientId}/reports/${r.id}`)}
+                      >
+                        <Eye className="size-4" />
+                      </IconShortcut>
+                      {canUpdateReports && !r.isSigned && (
+                        <IconShortcut
+                          label="Edit report"
+                          onClick={() => navigate(`/patient-charts/${patientId}/reports/${r.id}`)}
+                        >
+                          <Pencil className="size-4" />
+                        </IconShortcut>
+                      )}
+                      {canDeleteReports && (
+                        <IconShortcut
+                          label="Delete report"
+                          tone="destructive"
+                          disabled={deleteReportMutation.isPending}
+                          onClick={() => deleteReportMutation.mutate(r.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </IconShortcut>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Create dialog */}
       {patientId && (
