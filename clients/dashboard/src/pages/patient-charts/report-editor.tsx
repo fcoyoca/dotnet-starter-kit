@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, FileText, PenLine, Plus, Save } from "lucide-react";
+import { ArrowLeft, CheckCircle2, FileText, PenLine, Plus, Save, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { getPatientById } from "@/api/patients";
 import {
@@ -13,6 +13,8 @@ import {
 import {
   addAddendum,
   getReport,
+  requestReview,
+  reviewSign,
   signReport,
   updateReport,
   type ReportFieldValue,
@@ -32,6 +34,14 @@ function computeBmi(heightInches: number | null, weightLbs: number | null): numb
   const bmi = (weightLbs / (heightInches * heightInches)) * 703;
   if (!Number.isFinite(bmi)) return null;
   return Math.round(bmi * 10) / 10;
+}
+
+function resolveProviderLabel(
+  id: string | null | undefined,
+  options: { value: string; label: string }[] | undefined,
+): string {
+  if (!id) return "—";
+  return options?.find((o) => o.value === id)?.label ?? "the reviewer";
 }
 
 function toNum(value: string): number | null {
@@ -63,6 +73,7 @@ export function ReportEditorPage() {
 
   const canUpdate = user?.permissions?.includes(REPORT_PERMISSIONS.update) ?? false;
   const canSign = user?.permissions?.includes(REPORT_PERMISSIONS.sign) ?? false;
+  const canReview = user?.permissions?.includes(REPORT_PERMISSIONS.review) ?? false;
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -101,6 +112,7 @@ export function ReportEditorPage() {
   const [temperature, setTemperature] = useState("");
   const [values, setValues] = useState<Record<number, string>>({});
   const [addendumText, setAddendumText] = useState("");
+  const [reviewerProviderId, setReviewerProviderId] = useState<string | null>(null);
 
   // Refs to each field's textarea so macro-insert can splice at the caret.
   const fieldRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
@@ -117,6 +129,7 @@ export function ReportEditorPage() {
     setDiastolic(report.vitals.diastolic != null ? String(report.vitals.diastolic) : "");
     setPulse(report.vitals.pulse != null ? String(report.vitals.pulse) : "");
     setTemperature(report.vitals.temperatureF != null ? String(report.vitals.temperatureF) : "");
+    setReviewerProviderId(report.reviewerProviderId ?? null);
     const map: Record<number, string> = {};
     for (const fv of report.fieldValues) map[fv.reportFieldId] = fv.text;
     setValues(map);
@@ -159,6 +172,26 @@ export function ReportEditorPage() {
       void queryClient.invalidateQueries({ queryKey: ["report", reportId] });
     },
     onError: (err) => toast.error("Failed to add addendum.", { description: describe(err) }),
+  });
+
+  const requestReviewMutation = useMutation({
+    mutationFn: requestReview,
+    onSuccess: () => {
+      toast.success("Review requested.");
+      void queryClient.invalidateQueries({ queryKey: ["report", reportId] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
+    },
+    onError: (err) => toast.error("Failed to request review.", { description: describe(err) }),
+  });
+
+  const reviewSignMutation = useMutation({
+    mutationFn: (id: string) => reviewSign(id),
+    onSuccess: () => {
+      toast.success("Review signed.");
+      void queryClient.invalidateQueries({ queryKey: ["report", reportId] });
+      void queryClient.invalidateQueries({ queryKey: ["reports"] });
+    },
+    onError: (err) => toast.error("Failed to review-sign report.", { description: describe(err) }),
   });
 
   const onSave = () => {
@@ -407,6 +440,88 @@ export function ReportEditorPage() {
               alt="Signature"
               className="mt-2 max-h-24 rounded-md border border-[var(--color-border)] bg-white p-1"
             />
+          )}
+        </div>
+      )}
+
+      {/* Review workflow */}
+      {isSigned && (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+          <h3 className="mb-3 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+            <UserCheck className="size-3.5" />
+            Peer Review
+          </h3>
+
+          {report.workflowStatus === "Reviewed" ? (
+            <div className="space-y-2">
+              <p className="flex items-center gap-1.5 text-[13px]">
+                <CheckCircle2 className="size-4 text-[var(--color-primary)]" />
+                Reviewed by <span className="font-medium">{report.reviewSignedByName ?? "—"}</span>
+                {" · "}
+                <span className="text-[var(--color-muted-foreground)]">
+                  {formatDateTimeMono(report.reviewSignedOnUtc)}
+                </span>
+              </p>
+              {report.reviewSignatureImageUrl && (
+                <img
+                  src={report.reviewSignatureImageUrl}
+                  alt="Reviewer signature"
+                  className="max-h-24 rounded-md border border-[var(--color-border)] bg-white p-1"
+                />
+              )}
+            </div>
+          ) : report.workflowStatus === "ReviewRequested" ? (
+            <div className="space-y-3">
+              <p className="text-[13px] text-[var(--color-muted-foreground)]">
+                Review requested on {formatDateTimeMono(report.reviewRequestedOnUtc)}
+                {report.reviewerProviderId
+                  ? ` for ${resolveProviderLabel(report.reviewerProviderId, providerOptions)}`
+                  : ""}
+                .
+              </p>
+              {canReview && (
+                <Button
+                  size="sm"
+                  disabled={reviewSignMutation.isPending}
+                  onClick={() => reportId && reviewSignMutation.mutate(reportId)}
+                >
+                  <PenLine className="size-4" />
+                  {reviewSignMutation.isPending ? "Signing…" : "Review-Sign"}
+                </Button>
+              )}
+            </div>
+          ) : canReview ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-64">
+                <Field id="rpt-reviewer" label="Reviewer">
+                  <Combobox
+                    id="rpt-reviewer"
+                    label="Reviewer"
+                    value={reviewerProviderId}
+                    onChange={setReviewerProviderId}
+                    options={providerOptions ?? []}
+                    placeholder="Select reviewer…"
+                    searchable
+                  />
+                </Field>
+              </div>
+              <Button
+                size="sm"
+                disabled={!reviewerProviderId || requestReviewMutation.isPending}
+                onClick={() =>
+                  reportId &&
+                  reviewerProviderId &&
+                  requestReviewMutation.mutate({ reportId, reviewerProviderId })
+                }
+              >
+                <UserCheck className="size-4" />
+                {requestReviewMutation.isPending ? "Requesting…" : "Request Review"}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-[12px] text-[var(--color-muted-foreground)]">
+              No review has been requested for this report.
+            </p>
           )}
         </div>
       )}
