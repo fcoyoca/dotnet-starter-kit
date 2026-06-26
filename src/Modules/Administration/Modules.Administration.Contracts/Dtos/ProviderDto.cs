@@ -14,4 +14,6 @@ public sealed record ProviderDto(
     string? UserId,
     bool IsActive,
     DateTime CreatedAtUtc,
-    DateTime? UpdatedAtUtc);
+    DateTime? UpdatedAtUtc,
+    string? SignatureImagePath = null,
+    string? SignatureImageUrl = null);

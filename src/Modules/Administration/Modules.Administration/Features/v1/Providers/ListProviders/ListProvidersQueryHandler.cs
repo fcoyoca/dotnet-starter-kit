@@ -1,4 +1,5 @@
 using FSH.Framework.Shared.Persistence;
+using FSH.Framework.Storage.Services;
 using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Administration.Contracts.v1.Providers;
 using FSH.Modules.Administration.Data;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Administration.Features.v1.Providers.ListProviders;
 
-public sealed class ListProvidersQueryHandler(AdministrationDbContext dbContext)
+public sealed class ListProvidersQueryHandler(AdministrationDbContext dbContext, IStorageService storage)
     : IQueryHandler<ListProvidersQuery, PagedResponse<ProviderDto>>
 {
     public async ValueTask<PagedResponse<ProviderDto>> Handle(ListProvidersQuery query, CancellationToken cancellationToken)
@@ -49,9 +50,18 @@ public sealed class ListProvidersQueryHandler(AdministrationDbContext dbContext)
                 p.Id, p.FirstName, p.LastName, p.Prefix, p.Suffix, p.Specialty,
                 p.Npi, p.KareoExternalId, p.PrimaryClinicId,
                 dbContext.Clinics.Where(c => c.Id == p.PrimaryClinicId).Select(c => c.Name).FirstOrDefault(),
-                p.UserId, p.IsActive, p.CreatedAtUtc, p.UpdatedAtUtc))
+                p.UserId, p.IsActive, p.CreatedAtUtc, p.UpdatedAtUtc,
+                p.SignatureImagePath, null))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (items[i].SignatureImagePath is { } path)
+            {
+                items[i] = items[i] with { SignatureImageUrl = storage.BuildPublicUrl(path) };
+            }
+        }
 
         return new PagedResponse<ProviderDto>
         {

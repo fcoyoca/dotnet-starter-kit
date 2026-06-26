@@ -1,4 +1,5 @@
 using FSH.Framework.Core.Exceptions;
+using FSH.Framework.Storage.Services;
 using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Administration.Contracts.v1.Providers;
 using FSH.Modules.Administration.Data;
@@ -7,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Administration.Features.v1.Providers.GetProviderById;
 
-public sealed class GetProviderByIdQueryHandler(AdministrationDbContext dbContext)
+public sealed class GetProviderByIdQueryHandler(AdministrationDbContext dbContext, IStorageService storage)
     : IQueryHandler<GetProviderByIdQuery, ProviderDto>
 {
     public async ValueTask<ProviderDto> Handle(GetProviderByIdQuery query, CancellationToken cancellationToken)
@@ -20,9 +21,18 @@ public sealed class GetProviderByIdQueryHandler(AdministrationDbContext dbContex
                 p.Id, p.FirstName, p.LastName, p.Prefix, p.Suffix, p.Specialty,
                 p.Npi, p.KareoExternalId, p.PrimaryClinicId,
                 dbContext.Clinics.Where(c => c.Id == p.PrimaryClinicId).Select(c => c.Name).FirstOrDefault(),
-                p.UserId, p.IsActive, p.CreatedAtUtc, p.UpdatedAtUtc))
+                p.UserId, p.IsActive, p.CreatedAtUtc, p.UpdatedAtUtc,
+                p.SignatureImagePath, null))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dto ?? throw new NotFoundException($"Provider {query.Id} not found.");
+
+        if (dto is null)
+        {
+            throw new NotFoundException($"Provider {query.Id} not found.");
+        }
+
+        return dto.SignatureImagePath is null
+            ? dto
+            : dto with { SignatureImageUrl = storage.BuildPublicUrl(dto.SignatureImagePath) };
     }
 }
