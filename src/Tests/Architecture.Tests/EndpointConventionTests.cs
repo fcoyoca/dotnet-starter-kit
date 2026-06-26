@@ -281,7 +281,9 @@ public class EndpointConventionTests
                                name.StartsWith("Unpin", StringComparison.Ordinal) ||
                                name.StartsWith("Check", StringComparison.Ordinal) ||
                                name.StartsWith("Cancel", StringComparison.Ordinal) ||
-                               name.StartsWith("NoShow", StringComparison.Ordinal);
+                               name.StartsWith("NoShow", StringComparison.Ordinal) ||
+                               name.StartsWith("Sign", StringComparison.Ordinal) ||
+                               name.StartsWith("Review", StringComparison.Ordinal);
 
                 if (!hasVerb)
                 {

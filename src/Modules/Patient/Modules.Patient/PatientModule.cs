@@ -10,6 +10,15 @@ using FSH.Modules.Patient.Features.v1.PatientIncidents.DeletePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.GetPatientIncidentById;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.SearchPatientIncidents;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.UpdatePatientIncident;
+using FSH.Modules.Patient.Features.v1.PatientReports.AddPatientReportAddendum;
+using FSH.Modules.Patient.Features.v1.PatientReports.CreatePatientReport;
+using FSH.Modules.Patient.Features.v1.PatientReports.DeletePatientReport;
+using FSH.Modules.Patient.Features.v1.PatientReports.GetPatientReportById;
+using FSH.Modules.Patient.Features.v1.PatientReports.RequestReportReview;
+using FSH.Modules.Patient.Features.v1.PatientReports.ReviewSignReport;
+using FSH.Modules.Patient.Features.v1.PatientReports.SearchPatientReports;
+using FSH.Modules.Patient.Features.v1.PatientReports.SignPatientReport;
+using FSH.Modules.Patient.Features.v1.PatientReports.UpdatePatientReport;
 using FSH.Modules.Patient.Features.v1.Patients.CreatePatient;
 using FSH.Modules.Patient.Features.v1.Patients.DeletePatient;
 using FSH.Modules.Patient.Features.v1.Patients.GetPatientById;
@@ -85,5 +94,17 @@ public sealed class PatientModule : IModule
         group.MapCreatePatientIncidentEndpoint();
         group.MapUpdatePatientIncidentEndpoint();
         group.MapDeletePatientIncidentEndpoint();
+
+        // Report endpoints — literal sub-routes (/reports/{id}/sign, /addendums, /request-review,
+        // /review-sign) registered before the generic /reports/{id:guid} so the literal segments win
+        group.MapSignPatientReportEndpoint();
+        group.MapAddPatientReportAddendumEndpoint();
+        group.MapRequestReportReviewEndpoint();
+        group.MapReviewSignReportEndpoint();
+        group.MapSearchPatientReportsEndpoint();
+        group.MapCreatePatientReportEndpoint();
+        group.MapGetPatientReportByIdEndpoint();
+        group.MapUpdatePatientReportEndpoint();
+        group.MapDeletePatientReportEndpoint();
     }
 }
