@@ -19,6 +19,7 @@ public sealed class ProviderConfiguration : IEntityTypeConfiguration<Provider>
         builder.Property(x => x.Npi).HasMaxLength(10);
         builder.Property(x => x.KareoExternalId).HasMaxLength(64);
         builder.Property(x => x.UserId).HasMaxLength(256);
+        builder.Property(x => x.SignatureImagePath).HasMaxLength(512);
         builder.Property(x => x.IsActive).IsRequired();
         builder.Property(x => x.DeletedBy).HasMaxLength(64);
         builder.Property(x => x.LegacyUserId);
