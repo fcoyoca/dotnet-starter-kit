@@ -270,6 +270,7 @@ public class EndpointConventionTests
                                name.StartsWith("Request", StringComparison.Ordinal) ||
                                name.StartsWith("Finalize", StringComparison.Ordinal) ||
                                name.StartsWith("Set", StringComparison.Ordinal) ||
+                               name.StartsWith("Clear", StringComparison.Ordinal) ||
                                name.StartsWith("Reorder", StringComparison.Ordinal) ||
                                name.StartsWith("Archive", StringComparison.Ordinal) ||
                                name.StartsWith("Find", StringComparison.Ordinal) ||
