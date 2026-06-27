@@ -126,6 +126,8 @@ async function mockEditorLookups(page: Page) {
   await mockJsonResponse(page, "**/api/v1/administration/report-types**", REPORT_TYPES);
   await mockJsonResponse(page, "**/api/v1/administration/providers**", PROVIDERS);
   await mockJsonResponse(page, "**/api/v1/administration/clinics**", CLINICS);
+  // The editor's Associated Problems panel loads the patient's problems.
+  await mockJsonResponse(page, "**/api/v1/patient/problems**", paged([]));
 }
 
 test.describe("patient reports — editor", () => {
