@@ -165,6 +165,12 @@ export const sections: NavSection[] = [
         perm: "Permissions.Administration.CustomDiagnostics.View",
       },
       {
+        to: "/administration/diagnostics",
+        label: "Diagnostic Details",
+        icon: Stethoscope,
+        perm: "Permissions.Administration.Diagnostics.View",
+      },
+      {
         to: "/administration/procedure-categories",
         label: "Procedure Categories",
         icon: Layers,

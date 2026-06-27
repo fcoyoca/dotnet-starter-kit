@@ -1211,6 +1211,92 @@ export async function deleteCustomDiagnostic(id: string): Promise<void> {
   });
 }
 
+// ─── Diagnostics (global ICD catalog — "Diagnostic Details") ───────────
+
+export type DiagnosticDto = {
+  id: number;
+  code: string;
+  description?: string | null;
+  longDescription?: string | null;
+  codeSourceId: number;
+  codeSourceName?: string | null;
+  isChiropractic: boolean;
+  isBillable?: boolean | null;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListDiagnosticsParams = {
+  search?: string;
+  codeSourceId?: number | null;
+  isActive?: boolean | null;
+  isChiropractic?: boolean | null;
+  isBillable?: boolean | null;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
+};
+
+export type DiagnosticInput = {
+  code: string;
+  description?: string | null;
+  longDescription?: string | null;
+  codeSourceId: number;
+  isChiropractic: boolean;
+  isBillable?: boolean | null;
+};
+
+export type CreateDiagnosticInput = DiagnosticInput;
+export type UpdateDiagnosticInput = DiagnosticInput & { diagnosticId: number; isActive: boolean };
+
+export function listDiagnostics(params: ListDiagnosticsParams = {}): Promise<PagedResponse<DiagnosticDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.codeSourceId != null) query.set("codeSourceId", String(params.codeSourceId));
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  if (params.isChiropractic !== undefined && params.isChiropractic !== null)
+    query.set("isChiropractic", String(params.isChiropractic));
+  if (params.isBillable !== undefined && params.isBillable !== null)
+    query.set("isBillable", String(params.isBillable));
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  return apiFetch<PagedResponse<DiagnosticDto>>(`/api/v1/administration/diagnostics?${query.toString()}`);
+}
+
+function diagnosticBody(input: DiagnosticInput): Record<string, unknown> {
+  return {
+    code: input.code,
+    description: input.description ?? null,
+    longDescription: input.longDescription ?? null,
+    codeSourceId: input.codeSourceId,
+    isChiropractic: input.isChiropractic,
+    isBillable: input.isBillable ?? null,
+  };
+}
+
+export async function createDiagnostic(input: CreateDiagnosticInput): Promise<number> {
+  return apiFetch<number>("/api/v1/administration/diagnostics", {
+    method: "POST",
+    body: JSON.stringify(diagnosticBody(input)),
+  });
+}
+
+export async function updateDiagnostic(input: UpdateDiagnosticInput): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/diagnostics/${input.diagnosticId}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...diagnosticBody(input), id: input.diagnosticId, isActive: input.isActive }),
+  });
+}
+
+export async function deleteDiagnostic(id: number): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/diagnostics/${id}`, { method: "DELETE" });
+}
+
 // ─── Procedure Categories (tenant-scoped CRUD) ─────────────────────────
 
 export type ProcedureCategoryDto = {
