@@ -39,6 +39,15 @@ public sealed class ListMacrosQueryHandler(AdministrationDbContext dbContext)
         {
             q = q.Where(c => c.ReportFieldId == query.ReportFieldId.Value);
         }
+        else if (!string.IsNullOrWhiteSpace(query.ReportFieldName))
+        {
+            // Report fields are duplicated per report type, so the same field (by name)
+            // has a distinct id under each type. Match macros across every same-named
+            // field so a field's macros surface regardless of which type's report is open.
+            string fieldName = query.ReportFieldName.Trim();
+            q = q.Where(c => c.ReportFieldId != null
+                && dbContext.ReportFields.Any(f => f.Id == c.ReportFieldId && EF.Functions.ILike(f.Name, fieldName)));
+        }
 
         if (query.UseableByUserId.HasValue)
         {

@@ -906,6 +906,8 @@ export type ListMacrosParams = {
   isActive?: boolean | null;
   /** Filter to a specific report field. */
   reportFieldId?: number | null;
+  /** Filter across every report field sharing this name (case-insensitive). */
+  reportFieldName?: string | null;
   /** Filter to the "All (General)" (unassigned) bucket. */
   general?: boolean;
   /** Filter to macros owned by a specific tenant user. */
@@ -938,6 +940,7 @@ export function listMacros(params: ListMacrosParams = {}): Promise<PagedResponse
     query.set("isActive", String(params.isActive));
   if (params.general) query.set("general", "true");
   else if (params.reportFieldId != null) query.set("reportFieldId", String(params.reportFieldId));
+  else if (params.reportFieldName) query.set("reportFieldName", params.reportFieldName);
   if (params.useableByUserId) query.set("useableByUserId", params.useableByUserId);
   query.set("pageNumber", String(params.pageNumber ?? 1));
   query.set("pageSize", String(params.pageSize ?? 20));
