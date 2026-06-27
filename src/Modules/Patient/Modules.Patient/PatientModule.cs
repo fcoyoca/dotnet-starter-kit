@@ -19,6 +19,11 @@ using FSH.Modules.Patient.Features.v1.PatientReports.ReviewSignReport;
 using FSH.Modules.Patient.Features.v1.PatientReports.SearchPatientReports;
 using FSH.Modules.Patient.Features.v1.PatientReports.SignPatientReport;
 using FSH.Modules.Patient.Features.v1.PatientReports.UpdatePatientReport;
+using FSH.Modules.Patient.Features.v1.PatientProblems.CreatePatientProblem;
+using FSH.Modules.Patient.Features.v1.PatientProblems.DeletePatientProblem;
+using FSH.Modules.Patient.Features.v1.PatientProblems.GetPatientProblemById;
+using FSH.Modules.Patient.Features.v1.PatientProblems.SearchPatientProblems;
+using FSH.Modules.Patient.Features.v1.PatientProblems.UpdatePatientProblem;
 using FSH.Modules.Patient.Features.v1.Patients.CreatePatient;
 using FSH.Modules.Patient.Features.v1.Patients.DeletePatient;
 using FSH.Modules.Patient.Features.v1.Patients.GetPatientById;
@@ -106,5 +111,12 @@ public sealed class PatientModule : IModule
         group.MapGetPatientReportByIdEndpoint();
         group.MapUpdatePatientReportEndpoint();
         group.MapDeletePatientReportEndpoint();
+
+        // Problem endpoints — /problems/{id:guid} generic registered after the literal /problems collection route
+        group.MapSearchPatientProblemsEndpoint();
+        group.MapCreatePatientProblemEndpoint();
+        group.MapGetPatientProblemByIdEndpoint();
+        group.MapUpdatePatientProblemEndpoint();
+        group.MapDeletePatientProblemEndpoint();
     }
 }
