@@ -144,7 +144,7 @@ export function MacrosPage() {
 
   const usersQuery = useQuery({
     queryKey: ["identity", "users", "active-all"],
-    queryFn: () => searchUsers({ isActive: true, pageSize: 200 }),
+    queryFn: () => searchUsers({ isActive: true, pageSize: 100 }),
     staleTime: 5 * 60 * 1000,
   });
   const users = usersQuery.data?.items ?? [];

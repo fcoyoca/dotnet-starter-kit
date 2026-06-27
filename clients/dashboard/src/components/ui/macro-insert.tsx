@@ -204,7 +204,7 @@ function CreateMacroDialog({
   // Users for the "Useable by" picker — only fetched while the dialog is open.
   const usersQuery = useQuery({
     queryKey: ["identity.users", "macro-owner-options"],
-    queryFn: () => searchUsers({ isActive: true, pageSize: 200 }),
+    queryFn: () => searchUsers({ isActive: true, pageSize: 100 }),
     enabled: open,
     staleTime: 5 * 60 * 1000,
   });
