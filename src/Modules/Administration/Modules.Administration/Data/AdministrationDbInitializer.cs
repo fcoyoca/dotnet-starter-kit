@@ -24,6 +24,8 @@ public sealed class AdministrationDbInitializer(
     /// </summary>
     public async Task SeedAsync(CancellationToken cancellationToken)
     {
+        await SeedDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
+
         if (await dbContext.ReportTypes.AnyAsync(cancellationToken).ConfigureAwait(false))
         {
             return;
@@ -45,5 +47,51 @@ public sealed class AdministrationDbInitializer(
         }
 
         logger.LogInformation("[Administration] seeded report-template catalog");
+    }
+
+    /// <summary>
+    /// Seeds the global ICD-10-CM diagnostics catalog from the embedded seed (migrated from legacy
+    /// <c>ICD10CMCodes</c>). Diagnostics are <c>IGlobalEntity</c> (cross-tenant), so this is guarded on the
+    /// shared table being empty — the first tenant initialized loads it, the rest skip. Batched insert.
+    /// </summary>
+    private async Task SeedDiagnosticsAsync(CancellationToken cancellationToken)
+    {
+        const int icd10CmCodeSourceId = 7; // see CodeSourceConfiguration seed.
+
+        if (await dbContext.Diagnostics.AnyAsync(cancellationToken).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        int count = 0;
+        var batch = new List<Diagnostic>(2000);
+        foreach (Icd10SeedData.SeedRow row in Icd10SeedData.Read())
+        {
+            batch.Add(Diagnostic.Create(
+                row.Code, row.ShortDescription, row.LongDescription,
+                icd10CmCodeSourceId, isChiropractic: false, isBillable: row.IsBillable));
+
+            if (batch.Count >= 2000)
+            {
+                dbContext.Diagnostics.AddRange(batch);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                dbContext.ChangeTracker.Clear();
+                count += batch.Count;
+                batch.Clear();
+            }
+        }
+
+        if (batch.Count > 0)
+        {
+            dbContext.Diagnostics.AddRange(batch);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            dbContext.ChangeTracker.Clear();
+            count += batch.Count;
+        }
+
+        if (count > 0 && logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation("[Administration] seeded {Count} ICD-10 diagnostics", count);
+        }
     }
 }
