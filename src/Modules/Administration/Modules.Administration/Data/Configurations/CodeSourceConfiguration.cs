@@ -24,6 +24,7 @@ public sealed class CodeSourceConfiguration : IEntityTypeConfiguration<CodeSourc
             new { Id = 3, Name = "CDT", IsActive = true, IsDeleted = false, DeletedOnUtc = (DateTimeOffset?)null, DeletedBy = (string?)null },
             new { Id = 4, Name = "NDC", IsActive = true, IsDeleted = false, DeletedOnUtc = (DateTimeOffset?)null, DeletedBy = (string?)null },
             new { Id = 5, Name = "ICD-10-PCS", IsActive = true, IsDeleted = false, DeletedOnUtc = (DateTimeOffset?)null, DeletedBy = (string?)null },
-            new { Id = 6, Name = "Custom", IsActive = true, IsDeleted = false, DeletedOnUtc = (DateTimeOffset?)null, DeletedBy = (string?)null });
+            new { Id = 6, Name = "Custom", IsActive = true, IsDeleted = false, DeletedOnUtc = (DateTimeOffset?)null, DeletedBy = (string?)null },
+            new { Id = 7, Name = "ICD-10-CM", IsActive = true, IsDeleted = false, DeletedOnUtc = (DateTimeOffset?)null, DeletedBy = (string?)null });
     }
 }
