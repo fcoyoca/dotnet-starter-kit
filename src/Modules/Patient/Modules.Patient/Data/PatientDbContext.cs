@@ -30,6 +30,7 @@ public sealed class PatientDbContext : BaseDbContext
     public DbSet<Domain.Patient> Patients => Set<Domain.Patient>();
     public DbSet<Domain.PatientIncident> PatientIncidents => Set<Domain.PatientIncident>();
     public DbSet<Domain.PatientReport> PatientReports => Set<Domain.PatientReport>();
+    public DbSet<Domain.PatientProblem> PatientProblems => Set<Domain.PatientProblem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,6 +43,7 @@ public sealed class PatientDbContext : BaseDbContext
         modelBuilder.ApplyConfiguration(new PatientReportConfiguration());
         modelBuilder.ApplyConfiguration(new PatientReportFieldValueConfiguration());
         modelBuilder.ApplyConfiguration(new PatientReportAddendumConfiguration());
+        modelBuilder.ApplyConfiguration(new PatientProblemConfiguration());
         base.OnModelCreating(modelBuilder);
     }
 }
