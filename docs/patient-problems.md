@@ -47,8 +47,10 @@ of the patient chart (alongside the demographic medical-alert note).
 
 - `src/api/problems.ts` — typed client (`searchPatientProblems`, `createProblem`,
   `updateProblem`, `deleteProblem`, `setReportProblems`).
-- `src/pages/patient-charts/chart.tsx` — Problem List panel (status filters, add /
-  edit / delete) + medical-alert banner.
+- `src/pages/patient-charts/chart.tsx` — a **Problem List** button (chart-actions
+  cluster, mirroring BackChart's chart card) + the medical-alert banner.
+- `src/pages/patient-charts/problem-list-dialog.tsx` — the list dialog the button
+  opens (status filters, add / edit / delete).
 - `src/pages/patient-charts/problem-dialog.tsx` — add/edit dialog with DX-code search.
 - `src/pages/patient-charts/report-editor.tsx` — Associated Problems panel.
 

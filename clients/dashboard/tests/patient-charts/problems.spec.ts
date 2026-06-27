@@ -63,38 +63,43 @@ test.describe("patient problem list", () => {
     await mockChartLookups(page);
   });
 
-  test("renders the problem list and medical-alert banner", async ({ page }) => {
+  test("medical-alert banner + Problem List button open the problem list", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/patient/problems**", paged([PROBLEM_ALERT]));
 
     await page.goto(`/patient-charts/${PATIENT_ID}`);
 
-    await expect(page.getByRole("heading", { name: "Problem List" })).toBeVisible();
-    // The code appears in both the medical-alert banner and the list row.
-    await expect(page.getByText("M99.01").first()).toBeVisible();
+    // Medical alerts surface on the chart page itself.
     await expect(page.getByText("Medical Alerts")).toBeVisible();
+    await expect(page.getByText("M99.01").first()).toBeVisible();
+
+    // The list lives behind a Problem List button (BackChart chart-card pattern).
+    await page.getByRole("button", { name: "Problem List" }).click();
+    const dialog = page.getByRole("dialog").filter({ hasText: "Show resolved" });
+    await expect(dialog.getByRole("heading", { name: "Problem List" })).toBeVisible();
+    await expect(dialog.getByText("M99.01")).toBeVisible();
   });
 
   test("Add Problem dialog searches a DX code and posts the problem", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/patient/problems**", paged([]));
 
     await page.goto(`/patient-charts/${PATIENT_ID}`);
-    await expect(page.getByRole("heading", { name: "Problem List" })).toBeVisible();
+    await page.getByRole("button", { name: "Problem List" }).click();
 
-    await page.getByRole("button", { name: "Add Problem" }).first().click();
+    const listDialog = page.getByRole("dialog").filter({ hasText: "Show resolved" });
+    await listDialog.getByRole("button", { name: "Add Problem" }).click();
 
-    const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "Add Problem" })).toBeVisible();
+    const addDialog = page.getByRole("dialog").filter({ hasText: "Flag as medical alert" });
+    await expect(addDialog.getByRole("heading", { name: "Add Problem" })).toBeVisible();
 
-    await dialog.getByPlaceholder(/search by code or description/i).fill("M54");
-    await dialog.getByRole("button", { name: /M54\.5/ }).click();
-    // Selected DX is shown.
-    await expect(dialog.getByText("M54.5")).toBeVisible();
+    await addDialog.getByPlaceholder(/search by code or description/i).fill("M54");
+    await addDialog.getByRole("button", { name: /M54\.5/ }).click();
+    await expect(addDialog.getByText("M54.5")).toBeVisible();
 
     await mockJsonResponse(page, "**/api/v1/patient/problems", '"new-problem-id"', { method: "POST" });
     const postRequest = page.waitForRequest(
       (req) => req.url().endsWith("/api/v1/patient/problems") && req.method() === "POST",
     );
-    await dialog.getByRole("button", { name: "Add Problem" }).click();
+    await addDialog.getByRole("button", { name: "Add Problem" }).click();
 
     const body = (await postRequest).postDataJSON();
     expect(body.patientId).toBe(PATIENT_ID);

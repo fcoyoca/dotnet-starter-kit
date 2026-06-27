@@ -35,7 +35,7 @@ import {
   useIncidentTypeOptions,
 } from "@/api/administration";
 import { createReport, deleteReport, searchPatientReports } from "@/api/reports";
-import { deleteProblem, searchPatientProblems, type PatientProblem } from "@/api/problems";
+import { searchPatientProblems } from "@/api/problems";
 import { INCIDENT_PERMISSIONS, PROBLEM_PERMISSIONS, REPORT_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ import {
 import { describe, formatDate } from "@/lib/list-helpers";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
-import { ProblemDialog } from "@/pages/patient-charts/problem-dialog";
+import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
 import { ReportSearchDialog } from "@/pages/patient-charts/report-search-dialog";
 
 type ClosedFilter = "all" | "open" | "closed";
@@ -84,12 +84,6 @@ function ageFromDob(dob: string | null | undefined): string {
   const m = now.getMonth() - d.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
   return String(age);
-}
-
-function problemStatusTone(status: string): "success" | "default" | "warning" {
-  if (status === "Active") return "success";
-  if (status === "Resolved") return "default";
-  return "warning";
 }
 
 function SidebarRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -163,14 +157,8 @@ export function PatientChartDetailPage() {
   const canDeleteReports = user?.permissions?.includes(REPORT_PERMISSIONS.delete) ?? false;
 
   const canViewProblems = user?.permissions?.includes(PROBLEM_PERMISSIONS.view) ?? false;
-  const canCreateProblems = user?.permissions?.includes(PROBLEM_PERMISSIONS.create) ?? false;
-  const canUpdateProblems = user?.permissions?.includes(PROBLEM_PERMISSIONS.update) ?? false;
-  const canDeleteProblems = user?.permissions?.includes(PROBLEM_PERMISSIONS.delete) ?? false;
 
-  const [showResolvedProblems, setShowResolvedProblems] = useState(false);
-  const [showInactiveProblems, setShowInactiveProblems] = useState(false);
-  const [problemDialogOpen, setProblemDialogOpen] = useState(false);
-  const [editProblem, setEditProblem] = useState<PatientProblem | null>(null);
+  const [problemListOpen, setProblemListOpen] = useState(false);
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -261,34 +249,21 @@ export function PatientChartDetailPage() {
     });
   };
 
-  // ─── Patient problem list (patient-level) ───
-  const problemsQuery = useQuery({
-    queryKey: ["problems", patientId, showResolvedProblems, showInactiveProblems],
+  // Medical-alert problems power the chart banner; the full list lives in the
+  // Problem List dialog. Keyed under ["problems", patientId, ...] so the dialog's
+  // mutations (which invalidate that prefix) also refresh this banner.
+  const medicalAlertsQuery = useQuery({
+    queryKey: ["problems", patientId, "alerts"],
     queryFn: () =>
-      searchPatientProblems({
-        patientId: patientId!,
-        includeResolved: showResolvedProblems,
-        includeInactive: showInactiveProblems,
-        pageSize: 200,
-      }),
+      searchPatientProblems({ patientId: patientId!, medicalAlertsOnly: true, pageSize: 100 }),
     enabled: canViewProblems && !!patientId,
     placeholderData: keepPreviousData,
   });
 
-  const problems = useMemo(() => problemsQuery.data?.items ?? [], [problemsQuery.data]);
   const medicalAlertProblems = useMemo(
-    () => problems.filter((p) => p.isMedicalAlert),
-    [problems],
+    () => medicalAlertsQuery.data?.items ?? [],
+    [medicalAlertsQuery.data],
   );
-
-  const deleteProblemMutation = useMutation({
-    mutationFn: (id: string) => deleteProblem(id),
-    onSuccess: () => {
-      toast.success("Problem deleted.");
-      void queryClient.invalidateQueries({ queryKey: ["problems", patientId] });
-    },
-    onError: (err) => toast.error("Failed to delete problem.", { description: describe(err) }),
-  });
 
   const patient = patientQuery.data;
   const allIncidents = useMemo(() => incidentsQuery.data?.items ?? [], [incidentsQuery.data]);
@@ -361,6 +336,22 @@ export function PatientChartDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Chart actions — opens per-section dialogs (Problem List today; Allergy/
+          Medication/Notes/Export/Outcome/Documents to follow). */}
+      <div className="flex flex-wrap items-center gap-2">
+        {canViewProblems && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
+            onClick={() => setProblemListOpen(true)}
+          >
+            <Stethoscope className="size-4" />
+            Problem List
+          </Button>
+        )}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-[330px_1fr]">
         {/* ─── Left: patient minimal info + incident shortcuts ─── */}
@@ -666,112 +657,6 @@ export function PatientChartDetailPage() {
         </div>
       </div>
 
-      {/* ─── Problem List (patient-level) ─── */}
-      {canViewProblems && (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-              <Stethoscope className="size-3.5" />
-              Problem List
-            </h2>
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showResolvedProblems}
-                  onChange={(e) => setShowResolvedProblems(e.target.checked)}
-                  className="rounded border-[var(--color-border)]"
-                />
-                <span>Show resolved</span>
-              </label>
-              <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showInactiveProblems}
-                  onChange={(e) => setShowInactiveProblems(e.target.checked)}
-                  className="rounded border-[var(--color-border)]"
-                />
-                <span>Show inactive</span>
-              </label>
-              {canCreateProblems && (
-                <Button
-                  size="sm"
-                  className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
-                  onClick={() => {
-                    setEditProblem(null);
-                    setProblemDialogOpen(true);
-                  }}
-                >
-                  <Plus className="size-4" />
-                  Add Problem
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {problemsQuery.isLoading ? (
-            <div className="h-16 animate-pulse rounded-lg bg-[var(--color-muted)]" />
-          ) : problems.length === 0 ? (
-            <p className="text-[12px] text-[var(--color-muted-foreground)]">
-              No problems recorded for this patient.
-            </p>
-          ) : (
-            <ul className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)]">
-              {problems.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <p className="flex items-center gap-1.5 truncate text-[13px] font-medium">
-                      {p.diagnosticCode}
-                      {p.isMedicalAlert && (
-                        <AlertTriangle className="size-3.5 text-[var(--color-destructive)]" />
-                      )}
-                    </p>
-                    {p.diagnosticDescription && (
-                      <p className="truncate text-[12px] text-[var(--color-muted-foreground)]">
-                        {p.diagnosticDescription}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {p.diagnosisDate && (
-                      <span className="hidden text-[12px] text-[var(--color-muted-foreground)] sm:inline">
-                        {formatDate(p.diagnosisDate)}
-                      </span>
-                    )}
-                    <EntityStatusBadge tone={problemStatusTone(p.status)}>
-                      {p.status}
-                    </EntityStatusBadge>
-                    <div className="flex items-center gap-1">
-                      {canUpdateProblems && (
-                        <IconShortcut
-                          label="Edit problem"
-                          onClick={() => {
-                            setEditProblem(p);
-                            setProblemDialogOpen(true);
-                          }}
-                        >
-                          <Pencil className="size-4" />
-                        </IconShortcut>
-                      )}
-                      {canDeleteProblems && (
-                        <IconShortcut
-                          label="Delete problem"
-                          tone="destructive"
-                          disabled={deleteProblemMutation.isPending}
-                          onClick={() => deleteProblemMutation.mutate(p.id)}
-                        >
-                          <Trash2 className="size-4" />
-                        </IconShortcut>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
       {/* ─── Patient Reports (for the active incident) ─── */}
       {canViewReports && (
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
@@ -904,16 +789,12 @@ export function PatientChartDetailPage() {
         }
       />
 
-      {/* Problem add/edit dialog */}
+      {/* Problem List dialog (opens add/edit problem dialogs from within) */}
       {patientId && (
-        <ProblemDialog
+        <ProblemListDialog
           patientId={patientId}
-          open={problemDialogOpen}
-          onClose={() => {
-            setProblemDialogOpen(false);
-            setEditProblem(null);
-          }}
-          problem={editProblem}
+          open={problemListOpen}
+          onClose={() => setProblemListOpen(false)}
           incidentId={activeIncidentId}
         />
       )}
