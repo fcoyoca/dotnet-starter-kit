@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { createMacro, listMacros, type MacroDto } from "@/api/administration";
-import { useAuth } from "@/auth/use-auth";
+import { searchUsers } from "@/api/identity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field } from "@/components/list";
+import { Combobox, Field, type ComboboxOption } from "@/components/list";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,15 +54,20 @@ export function MacroInsert({
   disabled?: boolean;
   className?: string;
 }) {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
   // Only fetch once the popover is opened — avoids N queries on a long report.
+  // Match by field NAME (not id) so macros are shared across the per-type copies
+  // of a field (e.g. "Diagnostic Imaging" exists under Initial Eval / Progress /
+  // Discharge as distinct ids). Falls back to the id when no name is supplied.
   const fieldMacrosQuery = useQuery({
-    queryKey: ["administration.macros", "field", reportFieldId],
-    queryFn: () => listMacros({ reportFieldId, isActive: true, pageSize: 100 }),
+    queryKey: ["administration.macros", "field", fieldName ?? reportFieldId],
+    queryFn: () =>
+      fieldName
+        ? listMacros({ reportFieldName: fieldName, isActive: true, pageSize: 100 })
+        : listMacros({ reportFieldId, isActive: true, pageSize: 100 }),
     enabled: open,
     staleTime: 5 * 60 * 1000,
   });
@@ -165,7 +170,6 @@ export function MacroInsert({
         onClose={() => setCreateOpen(false)}
         reportFieldId={reportFieldId}
         fieldName={fieldName}
-        currentUserId={user?.id ?? null}
         onCreated={(text, insertNow) => {
           // Refresh both buckets so the new macro shows next time the popover opens.
           void queryClient.invalidateQueries({ queryKey: ["administration.macros"] });
@@ -182,27 +186,49 @@ function CreateMacroDialog({
   onClose,
   reportFieldId,
   fieldName,
-  currentUserId,
   onCreated,
 }: {
   open: boolean;
   onClose: () => void;
   reportFieldId: number;
   fieldName?: string;
-  currentUserId: string | null;
   onCreated: (text: string, insertNow: boolean) => void;
 }) {
   const [name, setName] = useState("");
   const [text, setText] = useState("");
   const [allFields, setAllFields] = useState(false);
-  const [everyone, setEveryone] = useState(true);
+  // null = "All users" (shared with everyone); otherwise the chosen user's id.
+  const [useableByUserId, setUseableByUserId] = useState<string | null>(null);
   const [insertAfter, setInsertAfter] = useState(true);
+
+  // Users for the "Useable by" picker — only fetched while the dialog is open.
+  const usersQuery = useQuery({
+    queryKey: ["identity.users", "macro-owner-options"],
+    queryFn: () => searchUsers({ isActive: true, pageSize: 200 }),
+    enabled: open,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const userOptions: ComboboxOption[] = useMemo(
+    () =>
+      (usersQuery.data?.items ?? [])
+        .filter((u) => !!u.id)
+        .map((u) => ({
+          value: u.id as string,
+          label:
+            [u.firstName, u.lastName].filter(Boolean).join(" ").trim() ||
+            u.userName ||
+            u.email ||
+            (u.id as string),
+        })),
+    [usersQuery.data],
+  );
 
   const reset = () => {
     setName("");
     setText("");
     setAllFields(false);
-    setEveryone(true);
+    setUseableByUserId(null);
     setInsertAfter(true);
   };
 
@@ -224,8 +250,8 @@ function CreateMacroDialog({
       text: text.trim(),
       // Unchecked "all fields" → scope to this field; checked → general (null).
       reportFieldId: allFields ? null : reportFieldId,
-      // Checked "everyone" → shared (null); unchecked → owned by current user.
-      useableByUserId: everyone ? null : currentUserId,
+      // "All users" (null) → shared with everyone; otherwise owned by the chosen user.
+      useableByUserId,
     });
   };
 
@@ -283,15 +309,22 @@ function CreateMacroDialog({
               <span>Make this macro available to all fields</span>
             </label>
 
-            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={everyone}
-                onChange={(e) => setEveryone(e.target.checked)}
-                className="rounded border-[var(--color-border)]"
+            <Field
+              id="macro-useable-by"
+              label="Useable by"
+              hint="Choose “All users” to share with everyone, or pick a user to keep it private to them."
+            >
+              <Combobox
+                id="macro-useable-by"
+                label="Useable by"
+                value={useableByUserId}
+                onChange={setUseableByUserId}
+                options={userOptions}
+                emptyOptionLabel="All users"
+                placeholder="All users"
+                searchable
               />
-              <span>Allow everyone to use this macro</span>
-            </label>
+            </Field>
 
             <label className="flex items-center gap-2 text-[13px] cursor-pointer">
               <input

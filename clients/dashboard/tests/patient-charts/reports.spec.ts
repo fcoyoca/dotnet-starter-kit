@@ -206,8 +206,10 @@ test.describe("patient reports — editor", () => {
 
   test("create-new-macro from a field posts to the Administration macros API", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, draftReport());
-    // Both the field-scoped and general macro lookups hit /macros — return empty.
+    // Both the field-name and general macro lookups hit /macros — return empty.
     await mockJsonResponse(page, "**/api/v1/administration/macros**", paged([]));
+    // The create dialog's "Useable by" picker lists users.
+    await mockJsonResponse(page, "**/api/v1/identity/users/search**", paged([]));
 
     await page.goto(`/patient-charts/${PATIENT_ID}/reports/${REPORT_ID}`);
     await expect(page.getByText("Chief Complaint")).toBeVisible();
