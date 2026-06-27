@@ -7,7 +7,7 @@ export type PatientProblem = {
   id: string;
   patientId: string;
   incidentId?: string | null;
-  diagnosticId: string;
+  diagnosticId: number;
   diagnosticCode: string;
   diagnosticDescription?: string | null;
   diagnosisDate?: string | null;
@@ -50,7 +50,7 @@ export function getProblem(id: string): Promise<PatientProblem> {
 
 export type CreateProblemInput = {
   patientId: string;
-  diagnosticId: string;
+  diagnosticId: number;
   diagnosticCode: string;
   diagnosticDescription?: string | null;
   diagnosisDate?: string | null;
@@ -79,7 +79,7 @@ export async function createProblem(input: CreateProblemInput): Promise<string> 
 
 export type UpdateProblemInput = {
   problemId: string;
-  diagnosticId: string;
+  diagnosticId: number;
   diagnosticCode: string;
   diagnosticDescription?: string | null;
   diagnosisDate?: string | null;

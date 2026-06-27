@@ -5,7 +5,7 @@ namespace FSH.Modules.Patient.Contracts.v1.PatientProblems;
 
 public sealed record UpdatePatientProblemCommand(
     Guid ProblemId,
-    Guid DiagnosticId,
+    int DiagnosticId,
     string DiagnosticCode,
     string? DiagnosticDescription,
     DateTime? DiagnosisDate,

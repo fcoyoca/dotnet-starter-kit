@@ -8,7 +8,7 @@ public sealed class UpdatePatientProblemCommandValidator : AbstractValidator<Upd
     public UpdatePatientProblemCommandValidator()
     {
         RuleFor(x => x.ProblemId).NotEmpty();
-        RuleFor(x => x.DiagnosticId).NotEmpty();
+        RuleFor(x => x.DiagnosticId).GreaterThan(0);
         RuleFor(x => x.DiagnosticCode).NotEmpty().MaximumLength(64);
         RuleFor(x => x.Notes).MaximumLength(4000);
     }

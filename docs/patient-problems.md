@@ -10,9 +10,15 @@ associated with patient reports.
 ## Model
 
 `PatientProblem` (Patient module, `AggregateRoot<Guid>`, soft-deletable):
-`PatientId`, optional `IncidentId`, `DiagnosticId` (bare id → Administration
-diagnostics), `DiagnosticCode` + `DiagnosticDescription` (snapshot),
-`DiagnosisDate?`, `Status`, `Notes?`, `IsMedicalAlert`, audit fields.
+`PatientId`, optional `IncidentId`, `DiagnosticId` (**bare int id → the global ICD
+`Diagnostic` catalog**, legacy `ppPatientProblemTypeID` = `ldxID`), `DiagnosticCode`
++ `DiagnosticDescription` (snapshot), `DiagnosisDate?`, `Status`, `Notes?`,
+`IsMedicalAlert`, audit fields.
+
+The Add/Edit Problem dialog's **DX Code search hits the ICD catalog**
+(`listDiagnostics`, i.e. Administration → Diagnostic Details), mirroring BackChart's
+diagnostic-code dialog (ICD-10 search). It snapshots the picked code + description
+onto the problem.
 
 **Status** (`ProblemStatus`): `Active`, `Resolved`, `Inactive` (legacy 1/2/3).
 The list shows **Active** by default; Resolved/Inactive are opt-in filters.

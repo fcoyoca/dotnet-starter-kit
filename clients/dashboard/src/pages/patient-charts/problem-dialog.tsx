@@ -7,7 +7,7 @@ import {
   type PatientProblem,
   type ProblemStatus,
 } from "@/api/problems";
-import { listCustomDiagnostics } from "@/api/administration";
+import { listDiagnostics } from "@/api/administration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,7 +43,7 @@ export function ProblemDialog({ patientId, open, onClose, problem, incidentId }:
   const queryClient = useQueryClient();
   const isEdit = !!problem;
 
-  const [diagnosticId, setDiagnosticId] = useState<string | null>(null);
+  const [diagnosticId, setDiagnosticId] = useState<number | null>(null);
   const [diagnosticCode, setDiagnosticCode] = useState("");
   const [diagnosticDescription, setDiagnosticDescription] = useState<string | null>(null);
   const [diagnosisDate, setDiagnosisDate] = useState("");
@@ -75,8 +75,8 @@ export function ProblemDialog({ patientId, open, onClose, problem, incidentId }:
   }, [open, problem]);
 
   const dxQuery = useQuery({
-    queryKey: ["dx-search", dxSearch],
-    queryFn: () => listCustomDiagnostics({ search: dxSearch, isActive: true, pageSize: 50 }),
+    queryKey: ["dx-icd-search", dxSearch],
+    queryFn: () => listDiagnostics({ search: dxSearch, isActive: true, pageSize: 50 }),
     enabled: open && dxSearch.length >= 2,
   });
 
@@ -91,7 +91,7 @@ export function ProblemDialog({ patientId, open, onClose, problem, incidentId }:
     [dxQuery.data],
   );
 
-  const pickDx = (opt: { id: string; code: string; description: string | null }) => {
+  const pickDx = (opt: { id: number; code: string; description: string | null }) => {
     setDiagnosticId(opt.id);
     setDiagnosticCode(opt.code);
     setDiagnosticDescription(opt.description);

@@ -4,7 +4,7 @@ public sealed record PatientProblemDto(
     Guid Id,
     Guid PatientId,
     Guid? IncidentId,
-    Guid DiagnosticId,
+    int DiagnosticId,
     string DiagnosticCode,
     string? DiagnosticDescription,
     DateTime? DiagnosisDate,

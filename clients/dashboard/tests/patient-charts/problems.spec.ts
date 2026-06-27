@@ -30,7 +30,7 @@ const PROBLEM_ALERT = {
   id: "00000000-0000-0000-0000-0000000e5555",
   patientId: PATIENT_ID,
   incidentId: null,
-  diagnosticId: "00000000-0000-0000-0000-0000000f6666",
+  diagnosticId: 79,
   diagnosticCode: "M99.01",
   diagnosticDescription: "Segmental dysfunction of cervical region",
   diagnosisDate: "2026-01-18T00:00:00Z",
@@ -43,8 +43,20 @@ const PROBLEM_ALERT = {
   updatedAtUtc: null,
 };
 
-const CUSTOM_DX = paged([
-  { id: "dx-1", code: "M54.5", description: "Low back pain", isChiropractic: true, isActive: true },
+const ICD_DX = paged([
+  {
+    id: 1,
+    code: "M54.5",
+    description: "Low back pain",
+    longDescription: "Low back pain",
+    codeSourceId: 7,
+    codeSourceName: "ICD-10-CM",
+    isChiropractic: false,
+    isBillable: true,
+    isActive: true,
+    createdAtUtc: "2026-01-01T00:00:00Z",
+    updatedAtUtc: null,
+  },
 ]);
 
 async function mockChartLookups(page: Page) {
@@ -52,7 +64,7 @@ async function mockChartLookups(page: Page) {
   await mockJsonResponse(page, "**/api/v1/patient/incidents**", paged([]));
   await mockJsonResponse(page, "**/api/v1/administration/departments**", paged([]));
   await mockJsonResponse(page, "**/api/v1/administration/incident-types**", paged([]));
-  await mockJsonResponse(page, "**/api/v1/administration/custom-diagnostics**", CUSTOM_DX);
+  await mockJsonResponse(page, "**/api/v1/administration/diagnostics**", ICD_DX);
 }
 
 test.describe("patient problem list", () => {
@@ -103,7 +115,7 @@ test.describe("patient problem list", () => {
 
     const body = (await postRequest).postDataJSON();
     expect(body.patientId).toBe(PATIENT_ID);
-    expect(body.diagnosticId).toBe("dx-1");
+    expect(body.diagnosticId).toBe(1);
     expect(body.diagnosticCode).toBe("M54.5");
     expect(body.status).toBe("Active");
   });

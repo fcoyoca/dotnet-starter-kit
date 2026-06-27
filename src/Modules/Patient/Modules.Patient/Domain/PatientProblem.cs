@@ -17,8 +17,9 @@ public sealed class PatientProblem : AggregateRoot<Guid>, ISoftDeletable
     /// <summary>Optional incident this problem was raised under (legacy <c>ppIncidentID</c>).</summary>
     public Guid? IncidentId { get; private set; }
 
-    /// <summary>The diagnostic this problem is for (bare id into the Administration diagnostics catalog).</summary>
-    public Guid DiagnosticId { get; private set; }
+    /// <summary>The ICD diagnostic this problem is for (bare id into the Administration global diagnostics
+    /// catalog — legacy <c>ppPatientProblemTypeID</c> = <c>ldxID</c>).</summary>
+    public int DiagnosticId { get; private set; }
 
     /// <summary>Snapshot of the diagnostic code at create/update time (legacy <c>pptName</c>).</summary>
     public string DiagnosticCode { get; private set; } = default!;
@@ -46,7 +47,7 @@ public sealed class PatientProblem : AggregateRoot<Guid>, ISoftDeletable
 
     public static PatientProblem Create(
         Guid patientId,
-        Guid diagnosticId,
+        int diagnosticId,
         string diagnosticCode,
         string? diagnosticDescription,
         DateTime? diagnosisDate,
@@ -77,7 +78,7 @@ public sealed class PatientProblem : AggregateRoot<Guid>, ISoftDeletable
     }
 
     public void Update(
-        Guid diagnosticId,
+        int diagnosticId,
         string diagnosticCode,
         string? diagnosticDescription,
         DateTime? diagnosisDate,
