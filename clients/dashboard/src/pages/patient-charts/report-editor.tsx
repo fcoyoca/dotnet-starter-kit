@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, FileText, PenLine, Plus, Save, UserCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, FileText, PenLine, Plus, Save, Stethoscope, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { getPatientById } from "@/api/patients";
 import {
@@ -19,6 +19,7 @@ import {
   updateReport,
   type ReportFieldValue,
 } from "@/api/reports";
+import { searchPatientProblems, setReportProblems } from "@/api/problems";
 import { REPORT_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,7 @@ export function ReportEditorPage() {
   const [values, setValues] = useState<Record<number, string>>({});
   const [addendumText, setAddendumText] = useState("");
   const [reviewerProviderId, setReviewerProviderId] = useState<string | null>(null);
+  const [associatedProblemIds, setAssociatedProblemIds] = useState<string[]>([]);
 
   // Refs to each field's textarea so macro-insert can splice at the caret.
   const fieldRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
@@ -130,6 +132,7 @@ export function ReportEditorPage() {
     setPulse(report.vitals.pulse != null ? String(report.vitals.pulse) : "");
     setTemperature(report.vitals.temperatureF != null ? String(report.vitals.temperatureF) : "");
     setReviewerProviderId(report.reviewerProviderId ?? null);
+    setAssociatedProblemIds(report.associatedProblemIds ?? []);
     const map: Record<number, string> = {};
     for (const fv of report.fieldValues) map[fv.reportFieldId] = fv.text;
     setValues(map);
@@ -173,6 +176,33 @@ export function ReportEditorPage() {
     },
     onError: (err) => toast.error("Failed to add addendum.", { description: describe(err) }),
   });
+
+  const problemsQuery = useQuery({
+    queryKey: ["problems", patientId, "all-for-report"],
+    queryFn: () =>
+      searchPatientProblems({
+        patientId: patientId!,
+        includeResolved: true,
+        includeInactive: true,
+        pageSize: 200,
+      }),
+    enabled: !!patientId,
+  });
+  const patientProblems = problemsQuery.data?.items ?? [];
+
+  const setProblemsMutation = useMutation({
+    mutationFn: (problemIds: string[]) => setReportProblems(reportId!, problemIds),
+    onSuccess: () => {
+      toast.success("Associated problems saved.");
+      void queryClient.invalidateQueries({ queryKey: ["report", reportId] });
+    },
+    onError: (err) => toast.error("Failed to save associated problems.", { description: describe(err) }),
+  });
+
+  const toggleProblem = (id: string) =>
+    setAssociatedProblemIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
 
   const requestReviewMutation = useMutation({
     mutationFn: requestReview,
@@ -424,6 +454,60 @@ export function ReportEditorPage() {
           </div>
         ))
       )}
+
+      {/* Associated Problems */}
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+        <h3 className="mb-3 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+          <Stethoscope className="size-3.5" />
+          Associated Problems
+        </h3>
+        {problemsQuery.isLoading ? (
+          <div className="h-12 animate-pulse rounded-lg bg-[var(--color-muted)]" />
+        ) : patientProblems.length === 0 ? (
+          <p className="text-[12px] text-[var(--color-muted-foreground)]">
+            This patient has no problems to associate.
+          </p>
+        ) : (
+          <>
+            <ul className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)]">
+              {patientProblems.map((p) => (
+                <li key={p.id}>
+                  <label className="flex cursor-pointer items-center gap-3 px-3 py-2 text-[13px]">
+                    <input
+                      type="checkbox"
+                      checked={associatedProblemIds.includes(p.id)}
+                      onChange={() => toggleProblem(p.id)}
+                      disabled={!canUpdate}
+                      className="rounded border-[var(--color-border)]"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium">{p.diagnosticCode}</span>
+                      {p.diagnosticDescription ? (
+                        <span className="text-[var(--color-muted-foreground)]"> — {p.diagnosticDescription}</span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 text-[11px] uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                      {p.status}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            {canUpdate && (
+              <Button
+                size="sm"
+                className="mt-3"
+                variant="outline"
+                disabled={setProblemsMutation.isPending}
+                onClick={() => setProblemsMutation.mutate(associatedProblemIds)}
+              >
+                <Save className="size-4" />
+                {setProblemsMutation.isPending ? "Saving…" : "Save Associated Problems"}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Signature (read-only snapshot) */}
       {isSigned && (
