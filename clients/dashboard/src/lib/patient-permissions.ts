@@ -38,3 +38,12 @@ export const REPORT_PERMISSIONS = {
 } as const;
 
 export type ReportPermissionKey = keyof typeof REPORT_PERMISSIONS;
+
+export const PROBLEM_PERMISSIONS = {
+  view:   "Permissions.Patient.Problems.View",
+  create: "Permissions.Patient.Problems.Create",
+  update: "Permissions.Patient.Problems.Update",
+  delete: "Permissions.Patient.Problems.Delete",
+} as const;
+
+export type ProblemPermissionKey = keyof typeof PROBLEM_PERMISSIONS;

@@ -69,6 +69,7 @@ export type PatientReportDetail = {
   reviewSignatureImageUrl?: string | null;
   fieldValues: ReportFieldValue[];
   addendums: ReportAddendum[];
+  associatedProblemIds: string[];
   createdAtUtc: string;
   updatedAtUtc?: string | null;
 };
