@@ -43,6 +43,7 @@ public sealed class PatientDbContext : BaseDbContext
         modelBuilder.ApplyConfiguration(new PatientReportConfiguration());
         modelBuilder.ApplyConfiguration(new PatientReportFieldValueConfiguration());
         modelBuilder.ApplyConfiguration(new PatientReportAddendumConfiguration());
+        modelBuilder.ApplyConfiguration(new PatientReportProblemConfiguration());
         modelBuilder.ApplyConfiguration(new PatientProblemConfiguration());
         base.OnModelCreating(modelBuilder);
     }

@@ -54,6 +54,11 @@ public sealed class PatientReportConfiguration : IEntityTypeConfiguration<Patien
             .HasForeignKey(a => a.ReportId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(x => x.AssociatedProblems)
+            .WithOne()
+            .HasForeignKey(p => p.ReportId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.Ignore(x => x.DomainEvents);
     }
 }

@@ -28,5 +28,6 @@ public sealed record PatientReportDetailDto(
     string? ReviewSignatureImageUrl,
     IReadOnlyList<ReportFieldValueDto> FieldValues,
     IReadOnlyList<ReportAddendumDto> Addendums,
+    IReadOnlyList<Guid> AssociatedProblemIds,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);

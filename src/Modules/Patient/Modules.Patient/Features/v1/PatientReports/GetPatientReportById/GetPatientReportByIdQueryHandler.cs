@@ -20,6 +20,7 @@ public sealed class GetPatientReportByIdQueryHandler(PatientDbContext dbContext,
         Domain.PatientReport report = await dbContext.PatientReports
             .Include(x => x.FieldValues)
             .Include(x => x.Addendums)
+            .Include(x => x.AssociatedProblems)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == query.ReportId && !x.IsDeleted, cancellationToken)
             .ConfigureAwait(false)
@@ -42,6 +43,7 @@ public sealed class GetPatientReportByIdQueryHandler(PatientDbContext dbContext,
                 .OrderBy(a => a.CreatedAtUtc)
                 .Select(a => new ReportAddendumDto(a.Id, a.Text, a.CreatedByUserId, a.CreatedByName, a.CreatedAtUtc))
                 .ToList(),
+            report.AssociatedProblems.Select(p => p.ProblemId).ToList(),
             report.CreatedAtUtc, report.UpdatedAtUtc);
     }
 }

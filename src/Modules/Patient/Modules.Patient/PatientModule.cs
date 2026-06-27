@@ -17,6 +17,7 @@ using FSH.Modules.Patient.Features.v1.PatientReports.GetPatientReportById;
 using FSH.Modules.Patient.Features.v1.PatientReports.RequestReportReview;
 using FSH.Modules.Patient.Features.v1.PatientReports.ReviewSignReport;
 using FSH.Modules.Patient.Features.v1.PatientReports.SearchPatientReports;
+using FSH.Modules.Patient.Features.v1.PatientReports.SetReportProblems;
 using FSH.Modules.Patient.Features.v1.PatientReports.SignPatientReport;
 using FSH.Modules.Patient.Features.v1.PatientReports.UpdatePatientReport;
 using FSH.Modules.Patient.Features.v1.PatientProblems.CreatePatientProblem;
@@ -106,6 +107,7 @@ public sealed class PatientModule : IModule
         group.MapAddPatientReportAddendumEndpoint();
         group.MapRequestReportReviewEndpoint();
         group.MapReviewSignReportEndpoint();
+        group.MapSetReportProblemsEndpoint();
         group.MapSearchPatientReportsEndpoint();
         group.MapCreatePatientReportEndpoint();
         group.MapGetPatientReportByIdEndpoint();

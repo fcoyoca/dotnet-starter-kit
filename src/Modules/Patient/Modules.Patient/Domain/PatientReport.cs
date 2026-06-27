@@ -41,6 +41,8 @@ public sealed class PatientReport : AggregateRoot<Guid>, ISoftDeletable
     private readonly List<PatientReportFieldValue> _fieldValues = [];
     public IReadOnlyList<PatientReportAddendum> Addendums => _addendums.AsReadOnly();
     private readonly List<PatientReportAddendum> _addendums = [];
+    public IReadOnlyList<PatientReportProblem> AssociatedProblems => _associatedProblems.AsReadOnly();
+    private readonly List<PatientReportProblem> _associatedProblems = [];
 
     private PatientReport() { }
 
@@ -107,6 +109,22 @@ public sealed class PatientReport : AggregateRoot<Guid>, ISoftDeletable
         SignedOnUtc = DateTime.UtcNow;
         SignatureImagePath = signatureImagePath;
         WorkflowStatus = ReportWorkflowStatus.Signed;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>Replace the set of problems associated with this report. Allowed after signing
+    /// (associating problems is a review/curation action, not part of the locked report body).</summary>
+    public void SetAssociatedProblems(IEnumerable<Guid> problemIds)
+    {
+        ArgumentNullException.ThrowIfNull(problemIds);
+        _associatedProblems.Clear();
+        foreach (Guid problemId in problemIds.Distinct())
+        {
+            if (problemId != Guid.Empty)
+            {
+                _associatedProblems.Add(PatientReportProblem.Create(Id, problemId));
+            }
+        }
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
