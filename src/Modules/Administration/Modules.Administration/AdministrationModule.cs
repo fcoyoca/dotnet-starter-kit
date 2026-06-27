@@ -94,6 +94,11 @@ using FSH.Modules.Administration.Features.v1.CustomDiagnostics.DeleteCustomDiagn
 using FSH.Modules.Administration.Features.v1.CustomDiagnostics.GetCustomDiagnosticById;
 using FSH.Modules.Administration.Features.v1.CustomDiagnostics.ListCustomDiagnostics;
 using FSH.Modules.Administration.Features.v1.CustomDiagnostics.UpdateCustomDiagnostic;
+using FSH.Modules.Administration.Features.v1.Diagnostics.CreateDiagnostic;
+using FSH.Modules.Administration.Features.v1.Diagnostics.DeleteDiagnostic;
+using FSH.Modules.Administration.Features.v1.Diagnostics.GetDiagnosticById;
+using FSH.Modules.Administration.Features.v1.Diagnostics.ListDiagnostics;
+using FSH.Modules.Administration.Features.v1.Diagnostics.UpdateDiagnostic;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.CreateDiagnosticCategory;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.DeleteDiagnosticCategory;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.GetDiagnosticCategoryById;
@@ -210,6 +215,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetCustomDiagnosticByIdEndpoint();
         group.MapUpdateCustomDiagnosticEndpoint();
         group.MapDeleteCustomDiagnosticEndpoint();
+
+        group.MapCreateDiagnosticEndpoint();
+        group.MapListDiagnosticsEndpoint();
+        group.MapGetDiagnosticByIdEndpoint();
+        group.MapUpdateDiagnosticEndpoint();
+        group.MapDeleteDiagnosticEndpoint();
 
         group.MapCreateProcedureCategoryEndpoint();
         group.MapListProcedureCategoriesEndpoint();
