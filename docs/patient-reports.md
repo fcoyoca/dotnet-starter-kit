@@ -44,6 +44,14 @@ Permissions: `Patient.Reports.{View,Create,Update,Sign,Review,Delete}`.
 Administration schema), mirroring `PatientIncidentDiagnostic`; the editor resolves
 names via the admin list APIs.
 
+## Import Dx Codes
+
+Fields named **Clinical Impression** or **Assessment** (legacy `ldfID` 15 / 22)
+show an **Import Dx Codes** action beside the field's Macro button. It appends the
+report's associated problems as `{code} - {description}` lines into that field
+(mirrors BackChart's inline "Import Dx Codes"). Associate problems first via the
+Associated Problems panel.
+
 ## Frontend (dashboard)
 
 - `src/api/reports.ts` — typed client mirroring the Contracts DTOs.

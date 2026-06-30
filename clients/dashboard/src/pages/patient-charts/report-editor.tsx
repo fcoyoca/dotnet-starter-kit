@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, FileText, PenLine, Plus, Save, Stethoscope, UserCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, FileDown, FileText, PenLine, Plus, Save, Stethoscope, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { getPatientById } from "@/api/patients";
 import {
@@ -35,6 +35,13 @@ function computeBmi(heightInches: number | null, weightLbs: number | null): numb
   const bmi = (weightLbs / (heightInches * heightInches)) * 703;
   if (!Number.isFinite(bmi)) return null;
   return Math.round(bmi * 10) / 10;
+}
+
+// Fields that expose "Import Dx Codes" (legacy: Clinical Impression = ldfID 15,
+// Assessment = ldfID 22). Matched by name since clinic fields are per-type copies.
+const DX_IMPORT_FIELDS = new Set(["clinical impression", "assessment"]);
+function fieldImportsDx(name: string): boolean {
+  return DX_IMPORT_FIELDS.has(name.trim().toLowerCase());
 }
 
 function resolveProviderLabel(
@@ -268,6 +275,19 @@ export function ReportEditorPage() {
     });
   };
 
+  // Import the report's associated diagnoses into the field as "{code} - {description}"
+  // lines (mirrors BackChart's "Import Dx Codes" on Clinical Impression / Assessment).
+  const importDxCodes = (fieldId: number) => {
+    const dx = patientProblems
+      .filter((p) => associatedProblemIds.includes(p.id))
+      .map((p) => `${p.diagnosticCode}${p.diagnosticDescription ? ` - ${p.diagnosticDescription}` : ""}`);
+    if (dx.length === 0) {
+      toast.info("No associated problems to import. Add them in the Associated Problems section first.");
+      return;
+    }
+    insertMacro(fieldId, dx.join("\n"));
+  };
+
   const fullName = patientQuery.data
     ? [
         patientQuery.data.demographics.firstName,
@@ -429,11 +449,24 @@ export function ReportEditorPage() {
                       {f.name}
                     </label>
                     {!readOnly && (
-                      <MacroInsert
-                        reportFieldId={f.id}
-                        fieldName={f.name}
-                        onInsert={(text) => insertMacro(f.id, text)}
-                      />
+                      <div className="flex items-center gap-1.5">
+                        {fieldImportsDx(f.name) && (
+                          <button
+                            type="button"
+                            title="Import the report's associated diagnoses into this field"
+                            onClick={() => importDxCodes(f.id)}
+                            className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--color-border)] px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-accent)] hover:text-[var(--color-foreground)]"
+                          >
+                            <FileDown className="size-3.5" />
+                            Import Dx Codes
+                          </button>
+                        )}
+                        <MacroInsert
+                          reportFieldId={f.id}
+                          fieldName={f.name}
+                          onInsert={(text) => insertMacro(f.id, text)}
+                        />
+                      </div>
                     )}
                   </div>
                   <Textarea

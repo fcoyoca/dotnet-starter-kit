@@ -99,6 +99,7 @@ function draftReport() {
     reviewSignatureImageUrl: null,
     fieldValues: [],
     addendums: [],
+    associatedProblemIds: [],
     createdAtUtc: "2026-06-26T08:00:00Z",
     updatedAtUtc: null,
   };
@@ -241,6 +242,46 @@ test.describe("patient reports — editor", () => {
     expect(body.reportFieldId).toBe(11);
     // "allow everyone" checked by default → shared (null owner).
     expect(body.useableByUserId).toBeNull();
+  });
+
+  test("Import Dx Codes appends associated diagnoses on Clinical Impression", async ({ page }) => {
+    // Report type 1 with a Clinical Impression field + one associated problem.
+    await mockJsonResponse(page, "**/api/v1/administration/report-fields**", [
+      { id: 13, reportTypeId: 1, name: "Clinical Impression", category: "Clinical Impression", displayOrder: 0, isActive: true },
+    ]);
+    await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, {
+      ...draftReport(),
+      associatedProblemIds: ["prob-1"],
+    });
+    await mockJsonResponse(
+      page,
+      "**/api/v1/patient/problems**",
+      paged([
+        {
+          id: "prob-1",
+          patientId: PATIENT_ID,
+          incidentId: null,
+          diagnosticId: 79,
+          diagnosticCode: "M99.01",
+          diagnosticDescription: "Segmental dysfunction, cervical",
+          diagnosisDate: null,
+          status: "Active",
+          notes: null,
+          isMedicalAlert: false,
+          createdByName: null,
+          createdAtUtc: "2026-01-01T00:00:00Z",
+          updatedByName: null,
+          updatedAtUtc: null,
+        },
+      ]),
+    );
+
+    await page.goto(`/patient-charts/${PATIENT_ID}/reports/${REPORT_ID}`);
+    await expect(page.getByText("Clinical Impression").first()).toBeVisible();
+
+    await page.getByRole("button", { name: /import dx codes/i }).click();
+
+    await expect(page.locator("#f-13")).toHaveValue(/M99\.01 - Segmental dysfunction, cervical/);
   });
 
   test("signed report exposes Request Review and posts the reviewer", async ({ page }) => {
