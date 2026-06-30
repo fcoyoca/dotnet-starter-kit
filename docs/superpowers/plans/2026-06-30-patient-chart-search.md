@@ -98,25 +98,52 @@ In `SearchPatientsEndpoint.cs`, add the two parameters to the delegate (after
             .RequirePermission(PatientPermissions.Patients.View);
 ```
 
-- [ ] **Step 4: Build the backend**
+- [ ] **Step 4: Create the missing SearchPatients validator (golden rule 8)**
+
+`SearchPatientsQuery` is a paginated query but has NO validator today — this is a
+pre-existing Architecture.Tests failure
+(`HandlerValidatorPairingTests.QueryHandlers_With_Pagination_Should_Have_Validators`).
+Since this task owns the slice, add it. Mirror
+`SearchPatientIncidentsQueryValidator` (no required PatientId on this query, so
+only the page-size bound). Create
+`src/Modules/Patient/Modules.Patient/Features/v1/Patients/SearchPatients/SearchPatientsQueryValidator.cs`:
+
+```csharp
+using FluentValidation;
+using FSH.Modules.Patient.Contracts.v1.Patients;
+
+namespace FSH.Modules.Patient.Features.v1.Patients.SearchPatients;
+
+public sealed class SearchPatientsQueryValidator : AbstractValidator<SearchPatientsQuery>
+{
+    public SearchPatientsQueryValidator()
+    {
+        RuleFor(x => x.PageSize).LessThanOrEqualTo(200);
+    }
+}
+```
+
+- [ ] **Step 5: Build the backend**
 
 Run: `dotnet build src/FSH.Starter.slnx`
 Expected: build succeeds with 0 warnings/0 errors (warnings-as-errors). The new
 `EXISTS` translates to SQL; no migration required.
 
-- [ ] **Step 5: Run the existing backend test suite (no Docker needed for unit/arch tests)**
+- [ ] **Step 6: Run the handler-validator pairing arch test**
 
-Run: `dotnet test src/Tests/Architecture.Tests/Architecture.Tests.csproj`
-Expected: PASS — confirms the handler still satisfies the "every paginated query
-handler has a validator" and module-boundary rules.
+Run: `dotnet test src/Tests/Architecture.Tests/Architecture.Tests.csproj --filter "FullyQualifiedName~HandlerValidatorPairingTests"`
+Expected: PASS — the new validator clears the pre-existing
+`SearchPatientsQueryHandler ... has no validator` failure. (Two OTHER pre-existing
+arch failures remain until Tasks 10 and 11.)
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/Modules/Patient
 git commit -m "feat(patient): add provider/clinic filters to patient search
 
-In-module EXISTS over PatientReports; no schema change.
+In-module EXISTS over PatientReports; no schema change. Adds the missing
+SearchPatientsQueryValidator (golden rule 8 / Architecture.Tests).
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
@@ -1087,7 +1114,9 @@ Run: `dotnet build src/FSH.Starter.slnx`
 Expected: 0 warnings, 0 errors.
 
 Run: `dotnet test src/Tests/Architecture.Tests/Architecture.Tests.csproj`
-Expected: PASS.
+Expected: PASS — all 51 tests. The 3 formerly-failing tests are now green
+(Task 1 added the SearchPatients validator; Task 10 recognized the "Reschedule"
+endpoint verb; Task 11 gave PatientDbContext the canonical constructor).
 
 - [ ] **Step 2: Frontend build, lint, full E2E**
 
@@ -1140,6 +1169,220 @@ git commit -m "docs: modernized Patient Chart search + consolidated patient nav"
 
 ---
 
+### Task 10: Recognize "Reschedule" as an endpoint action verb (pre-existing arch fix)
+
+**Files:**
+- Modify: `src/Tests/Architecture.Tests/EndpointConventionTests.cs` (the `hasVerb` chain, ~lines 228-286)
+
+**Context:** `Endpoint_Names_Should_Follow_Convention` fails today because
+`FSH.Modules.Scheduling.Features.v1.Appointments.RescheduleAppointment.RescheduleAppointmentEndpoint`
+starts with "Reschedule", which is a legitimate action verb (like the already-listed
+"Cancel", "NoShow", "Confirm") but is missing from the allow-list. Lowest-risk fix:
+add it to the list — no endpoint/route/class rename, so no scheduling-client impact.
+
+- [ ] **Step 1: Run the failing arch test to confirm the violation**
+
+Run: `dotnet test src/Tests/Architecture.Tests/Architecture.Tests.csproj --filter "FullyQualifiedName~EndpointConventionTests"`
+Expected: FAIL with `RescheduleAppointmentEndpoint name should start with an action verb`.
+
+- [ ] **Step 2: Add "Reschedule" to the recognized-verb chain**
+
+In `EndpointConventionTests.cs`, in the `bool hasVerb = ...` chain, add a line
+(place it next to the other appointment verbs, e.g. immediately after the
+`name.StartsWith("NoShow", StringComparison.Ordinal) ||` line):
+
+```csharp
+                               name.StartsWith("Reschedule", StringComparison.Ordinal) ||
+```
+
+- [ ] **Step 3: Run the arch test to confirm it passes**
+
+Run: `dotnet test src/Tests/Architecture.Tests/Architecture.Tests.csproj --filter "FullyQualifiedName~EndpointConventionTests"`
+Expected: PASS.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/Tests/Architecture.Tests/EndpointConventionTests.cs
+git commit -m "test(arch): recognize Reschedule as an endpoint action verb
+
+Clears the pre-existing EndpointConventionTests failure for
+RescheduleAppointmentEndpoint; no endpoint rename.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 11: Give PatientDbContext the canonical BaseDbContext constructor (pre-existing arch fix)
+
+**Files:**
+- Modify: `src/Modules/Patient/Modules.Patient/Data/PatientDbContext.cs`
+- Test: `src/Tests/Patient.Tests/Infrastructure/PatientDbContextConstructorTests.cs` (create)
+
+**Context:** `TenantIsolationTests.BaseDbContext_Entities_Should_Be_TenantIsolated_Or_Marked_Global`
+fails because it reflects for the canonical 4-arg `BaseDbContext` ctor
+`(IMultiTenantContextAccessor<AppTenantInfo>, DbContextOptions<PatientDbContext>, IOptions<DatabaseOptions>, IHostEnvironment)`
+and `PatientDbContext` only exposes a 5-arg ctor (extra `IPhiEncryptor`). The
+encryptor is used in `OnModelCreating` (`new PatientConfiguration(_phi)`), so the
+model needs a non-null encryptor to build.
+
+**Approach:** Add a second PUBLIC 4-arg ctor that chains to the 5-arg one with a
+no-op passthrough encryptor. .NET DI greedily selects the *5-arg* ctor at runtime
+(its parameter set is a strict superset and every param is registered), so
+production always gets the real `IPhiEncryptor`. The 4-arg ctor is used only by
+the arch test's explicit reflection (and never reads/writes PHI — it only inspects
+`ctx.Model` metadata). A guard test proves DI still wires the real encryptor.
+
+- [ ] **Step 1: Write the failing guard test**
+
+Create `src/Tests/Patient.Tests/Infrastructure/PatientDbContextConstructorTests.cs`.
+This test builds a service provider mirroring the real registration and asserts the
+resolved `PatientDbContext` holds the **real** registered `IPhiEncryptor` (i.e. DI
+picked the 5-arg ctor), then separately asserts the canonical 4-arg ctor exists
+(what the arch test needs):
+
+```csharp
+using System.Reflection;
+using Finbuckle.MultiTenant.Abstractions;
+using FSH.Framework.Persistence.Context;
+using FSH.Framework.Shared.Multitenancy;
+using FSH.Framework.Shared.Persistence;
+using FSH.Modules.Patient.Data;
+using FSH.Modules.Patient.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using NSubstitute;
+using Shouldly;
+using Xunit;
+
+namespace Patient.Tests.Infrastructure;
+
+public sealed class PatientDbContextConstructorTests
+{
+    [Fact]
+    public void Has_The_Canonical_Four_Arg_BaseDbContext_Constructor()
+    {
+        var ctor = typeof(PatientDbContext).GetConstructor(
+        [
+            typeof(IMultiTenantContextAccessor<AppTenantInfo>),
+            typeof(DbContextOptions<PatientDbContext>),
+            typeof(IOptions<DatabaseOptions>),
+            typeof(IHostEnvironment),
+        ]);
+
+        ctor.ShouldNotBeNull(
+            "Architecture.Tests reflects for this exact signature to construct the context.");
+    }
+
+    [Fact]
+    public void Di_Resolves_The_Context_With_The_Real_Phi_Encryptor()
+    {
+        var realEncryptor = Substitute.For<IPhiEncryptor>();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IMultiTenantContextAccessor<AppTenantInfo>>(
+            Substitute.For<IMultiTenantContextAccessor<AppTenantInfo>>());
+        services.AddSingleton(Options.Create(new DatabaseOptions
+        {
+            Provider = "postgresql",
+            ConnectionString = string.Empty,
+            MigrationsAssembly = "FSH.Starter.Migrations.PostgreSQL",
+        }));
+        services.AddSingleton<IHostEnvironment>(new HostingEnvironment { EnvironmentName = "Development" });
+        services.AddSingleton(realEncryptor);
+        services.AddDbContext<PatientDbContext>(o =>
+            o.UseNpgsql("Host=arch;Database=arch;Username=arch;Password=arch"));
+
+        using var sp = services.BuildServiceProvider();
+        using var scope = sp.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<PatientDbContext>();
+
+        // Reflect the private _phi field: must be the registered real encryptor,
+        // proving DI selected the 5-arg ctor (not the no-op 4-arg test ctor).
+        var phiField = typeof(PatientDbContext).GetField("_phi", BindingFlags.Instance | BindingFlags.NonPublic);
+        phiField.ShouldNotBeNull();
+        phiField.GetValue(ctx).ShouldBeSameAs(realEncryptor);
+    }
+}
+```
+
+- [ ] **Step 2: Run the guard test to verify it fails to compile/pass**
+
+Run: `dotnet test src/Tests/Patient.Tests/Patient.Tests.csproj --filter "FullyQualifiedName~PatientDbContextConstructorTests"`
+Expected: FAIL — `Has_The_Canonical_Four_Arg_BaseDbContext_Constructor` fails
+(no such ctor) and the DI test may throw on ambiguous/no ctor.
+
+- [ ] **Step 3: Add the canonical 4-arg constructor + no-op encryptor**
+
+In `PatientDbContext.cs`, after the existing 5-arg constructor (ending at the
+`_phi = phi;` block, line ~28), add:
+
+```csharp
+    /// <summary>
+    /// Canonical <see cref="BaseDbContext"/> constructor (no <see cref="IPhiEncryptor"/>),
+    /// present so design-time tooling and <c>Architecture.Tests</c>'
+    /// <c>TenantIsolationTests</c> can construct the context to inspect its model.
+    /// Production never selects this overload: the .NET DI container greedily binds
+    /// the 5-arg constructor above (a strict superset whose every parameter is
+    /// registered), so the real encryptor is always used. The no-op encryptor here
+    /// only ever participates in model-metadata inspection, never PHI read/write.
+    /// </summary>
+    public PatientDbContext(
+        IMultiTenantContextAccessor<AppTenantInfo> multiTenantContextAccessor,
+        DbContextOptions<PatientDbContext> options,
+        IOptions<DatabaseOptions> settings,
+        IHostEnvironment environment)
+        : this(multiTenantContextAccessor, options, settings, environment, NoOpPhiEncryptor.Instance)
+    {
+    }
+
+    /// <summary>Identity encryptor used only by the design-time/test constructor above.</summary>
+    private sealed class NoOpPhiEncryptor : IPhiEncryptor
+    {
+        public static readonly NoOpPhiEncryptor Instance = new();
+        public string? Encrypt(string? plaintext) => plaintext;
+        public string? Decrypt(string? ciphertext) => ciphertext;
+    }
+```
+
+> Before writing, open `src/Modules/Patient/Modules.Patient/Infrastructure/PhiEncryptor.cs`
+> and the `IPhiEncryptor` interface and match the EXACT member signatures
+> (method names, nullability, parameters). The `Encrypt`/`Decrypt` shapes shown
+> are the expected ones; correct them to the interface if it differs (e.g.
+> different method names or a search-hash member). The no-op must implement every
+> interface member as a passthrough/no-op.
+
+- [ ] **Step 4: Build + run the guard test**
+
+Run: `dotnet build src/FSH.Starter.slnx`
+Expected: 0 warnings/0 errors.
+
+Run: `dotnet test src/Tests/Patient.Tests/Patient.Tests.csproj --filter "FullyQualifiedName~PatientDbContextConstructorTests"`
+Expected: PASS — both tests (canonical ctor exists; DI still wires the real encryptor).
+
+- [ ] **Step 5: Run the tenant-isolation arch test**
+
+Run: `dotnet test src/Tests/Architecture.Tests/Architecture.Tests.csproj --filter "FullyQualifiedName~TenantIsolationTests"`
+Expected: PASS — PatientDbContext now constructs via the canonical ctor.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/Modules/Patient/Modules.Patient/Data/PatientDbContext.cs src/Tests/Patient.Tests/Infrastructure/PatientDbContextConstructorTests.cs
+git commit -m "fix(patient): add canonical BaseDbContext constructor to PatientDbContext
+
+Clears the pre-existing TenantIsolationTests failure. DI still greedily binds
+the 5-arg ctor (real IPhiEncryptor); guard test proves it. The no-op encryptor
+only serves design-time model inspection.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+```
+
+---
+
 ## Self-Review
 
 **Spec coverage:**
@@ -1154,6 +1397,7 @@ git commit -m "docs: modernized Patient Chart search + consolidated patient nav"
 - Helper tooltip on provider/clinic meaning → Task 4 (the `<p>` under filters). ✓
 - No migration / no endpoint added / no BuildingBlocks → Tasks 1, Global Constraints. ✓
 - Docs + changelog → Task 9. ✓
+- Pre-existing arch failures (user chose "fix all 3"): SearchPatients validator → Task 1 Step 4; "Reschedule" endpoint verb → Task 10; PatientDbContext canonical ctor + DI guard → Task 11. Architecture.Tests goes 3-fail → 0-fail (verified in Task 8). ✓
 
 **Placeholder scan:** No TBD/TODO; every code step shows full code. ✓
 
