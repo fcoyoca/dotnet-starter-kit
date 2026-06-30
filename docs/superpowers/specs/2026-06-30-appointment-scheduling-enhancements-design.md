@@ -55,7 +55,7 @@ adding the three nullable columns and the series index.
 
 - **Confirm** — load, `Confirm()`, save, notify `"confirmed"`.
 - **Reschedule** — load original; create new `Appointment` (copy clinic/provider override/patient/type/notes) at new time; `original.MarkRescheduled(new.Id)`; save both; notify `"rescheduled"`; return new id. Reject if already rescheduled/cancelled.
-- **Recurring reserve** — input `{ clinicId, providerId, title, startDate, endDate, startTime, endTime, weekdays[] }` (dates/times are clinic-local wall values); handler iterates each day in `[startDate, endDate]`, includes days whose weekday ∈ `weekdays`, converts each day's start/end wall time to UTC, creates a reservation with the shared `ReservationSeriesId`; bulk-add; notify `"created"`; returns count. Validator: ≥1 weekday, end ≥ start, span ≤ 366 days, end time > start time, title required.
+- **Recurring reserve** — input `{ clinicId, providerId, title, notes, occurrences[] }` where each occurrence is a `{ startUtc, endUtc }` pair. The **client** expands weekdays + end date into occurrences (it already owns all clinic-local→UTC conversion via `zonedWallToUtc`, keeping timezone logic in one place); the handler assigns a shared `ReservationSeriesId`, bulk-adds, notifies `"created"`, returns count. Validator: ≥1 occurrence, ≤ 366 occurrences, each end > start, title required.
 - **Delete series** — soft-delete every appointment with that `ReservationSeriesId`.
 
 Each command gets a `{Command}Validator` (Architecture.Tests requirement). Register the four endpoints in `SchedulingModule.MapEndpoints()`.
