@@ -27,6 +27,8 @@ export type SearchPatientsParams = {
   pageSize?: number;
   sortBy?: string;
   sortDir?: "asc" | "desc";
+  providerId?: string;
+  clinicId?: string;
 };
 
 export function searchPatients(
@@ -41,6 +43,8 @@ export function searchPatients(
   query.set("pageSize", String(params.pageSize ?? 20));
   if (params.sortBy) query.set("sortBy", params.sortBy);
   if (params.sortDir) query.set("sortDir", params.sortDir);
+  if (params.providerId) query.set("providerId", params.providerId);
+  if (params.clinicId) query.set("clinicId", params.clinicId);
   return apiFetch<PagedResponse<PatientListItemDto>>(
     `/api/v1/patient/patients?${query.toString()}`,
   );
