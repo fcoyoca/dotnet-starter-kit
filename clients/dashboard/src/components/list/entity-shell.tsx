@@ -523,12 +523,7 @@ export function EntityListLoading({
 }
 
 function SkeletonBlock({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "animate-pulse bg-[oklch(from_var(--color-muted)_l_c_h_/_0.6)]",
-        className,
-      )}
-    />
-  );
+  // Use the shared `.skeleton` class so list loaders get the same calm,
+  // anti-flicker entrance + shimmer as every other skeleton in the app.
+  return <div className={cn("skeleton", className)} />;
 }

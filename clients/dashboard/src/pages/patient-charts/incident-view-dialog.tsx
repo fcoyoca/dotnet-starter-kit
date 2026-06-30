@@ -60,7 +60,7 @@ export function IncidentViewDialog({ incidentId, open, onClose, onEdit }: Props)
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-8 animate-pulse rounded bg-[var(--color-muted)]" />
+                <div key={i} className="skeleton h-8 rounded" />
               ))}
             </div>
           ) : incident ? (

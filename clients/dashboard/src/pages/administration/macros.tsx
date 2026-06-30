@@ -545,7 +545,7 @@ function SelectorSkeleton() {
   return (
     <div className="space-y-1.5 py-1">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-8 animate-pulse rounded-lg bg-[var(--color-muted)]" />
+        <div key={i} className="skeleton h-8 rounded-lg" />
       ))}
     </div>
   );

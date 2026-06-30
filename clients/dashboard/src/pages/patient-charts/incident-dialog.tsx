@@ -230,7 +230,7 @@ export function IncidentDialog({ patientId, open, onClose, incidentId }: Props) 
 
           <DialogBody className="space-y-4">
             {isEdit && detailQuery.isLoading && (
-              <div className="h-8 animate-pulse rounded bg-[var(--color-muted)]" />
+              <div className="skeleton h-8 rounded" />
             )}
 
             <div className="grid gap-3 sm:grid-cols-2">

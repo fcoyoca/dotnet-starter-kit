@@ -116,7 +116,7 @@ export function ProblemListDialog({ patientId, open, onClose, incidentId }: Prop
             </div>
 
             {problemsQuery.isLoading ? (
-              <div className="h-20 animate-pulse rounded-lg bg-[var(--color-muted)]" />
+              <div className="skeleton h-20 rounded-lg" />
             ) : problems.length === 0 ? (
               <p className="py-6 text-center text-[13px] text-[var(--color-muted-foreground)]">
                 No problems recorded for this patient.

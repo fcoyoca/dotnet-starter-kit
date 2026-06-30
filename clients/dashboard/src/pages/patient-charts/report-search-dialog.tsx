@@ -117,7 +117,7 @@ export function ReportSearchDialog({ open, onClose, incident, incidentTypeLabel 
               </p>
             </div>
           ) : resultsQuery.isLoading ? (
-            <div className="h-24 animate-pulse rounded-lg bg-[var(--color-muted)]" />
+            <div className="skeleton h-24 rounded-lg" />
           ) : items.length === 0 ? (
             <p className="py-6 text-center text-[13px] text-[var(--color-muted-foreground)]">
               No reports match “{debounced}”.

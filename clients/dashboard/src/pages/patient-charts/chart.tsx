@@ -375,7 +375,7 @@ export function PatientChartDetailPage() {
         <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
           {/* Patient Info card */}
           {patientQuery.isLoading ? (
-            <div className="h-64 animate-pulse rounded-xl bg-[var(--color-muted)]" />
+            <div className="skeleton h-64 rounded-xl" />
           ) : patient ? (
             <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-[13px]">
               <div className="mb-3 flex items-center justify-between">
@@ -717,7 +717,7 @@ export function PatientChartDetailPage() {
               Select an incident to view its reports.
             </p>
           ) : reportsQuery.isLoading ? (
-            <div className="h-16 animate-pulse rounded-lg bg-[var(--color-muted)]" />
+            <div className="skeleton h-16 rounded-lg" />
           ) : (reportsQuery.data?.items ?? []).length === 0 ? (
             <p className="text-[12px] text-[var(--color-muted-foreground)]">
               No reports for this incident yet.

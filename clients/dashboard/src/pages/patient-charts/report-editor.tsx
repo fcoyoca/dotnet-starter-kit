@@ -299,7 +299,7 @@ export function ReportEditorPage() {
     : "";
 
   if (reportQuery.isLoading) {
-    return <div className="h-64 animate-pulse rounded-xl bg-[var(--color-muted)]" />;
+    return <div className="skeleton h-64 rounded-xl" />;
   }
 
   if (!report) {
@@ -431,7 +431,7 @@ export function ReportEditorPage() {
 
       {/* Field sections grouped by category */}
       {fieldsQuery.isLoading ? (
-        <div className="h-40 animate-pulse rounded-xl bg-[var(--color-muted)]" />
+        <div className="skeleton h-40 rounded-xl" />
       ) : (
         groups.map((group) => (
           <div key={group.category} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
@@ -495,7 +495,7 @@ export function ReportEditorPage() {
           Associated Problems
         </h3>
         {problemsQuery.isLoading ? (
-          <div className="h-12 animate-pulse rounded-lg bg-[var(--color-muted)]" />
+          <div className="skeleton h-12 rounded-lg" />
         ) : patientProblems.length === 0 ? (
           <p className="text-[12px] text-[var(--color-muted-foreground)]">
             This patient has no problems to associate.

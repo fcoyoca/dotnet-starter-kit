@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { CalendarClock } from "lucide-react";
 import { listPatientAppointments, type AppointmentDto } from "@/api/scheduling";
 import { useProviderOptions } from "@/api/administration";
+import { useMinLoading } from "@/lib/use-min-loading";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,6 +92,9 @@ export function SelectAppointmentDialog({
     [appointmentsQuery.data],
   );
 
+  // Hold the skeleton for a short minimum so a fast response doesn't flash it.
+  const showLoading = useMinLoading(appointmentsQuery.isLoading);
+
   const useAppointment = (appt: AppointmentDto) => {
     onConfirm({
       reportDate: appt.startUtc.slice(0, 10),
@@ -138,8 +142,8 @@ export function SelectAppointmentDialog({
                 className="h-9 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-[13px]"
               />
             </div>
-          ) : appointmentsQuery.isLoading ? (
-            <div className="h-24 animate-pulse rounded-lg bg-[var(--color-muted)]" />
+          ) : showLoading ? (
+            <div className="skeleton h-24 rounded-lg" />
           ) : appointments.length === 0 ? (
             <p className="text-[13px] text-[var(--color-muted-foreground)]">
               No appointments found for this patient. Use “Manually Enter Date” to set the report date.
