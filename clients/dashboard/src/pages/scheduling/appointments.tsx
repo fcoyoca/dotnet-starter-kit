@@ -10,19 +10,25 @@ import { endOfWeek } from "date-fns/endOfWeek";
 import { getDay } from "date-fns/getDay";
 import { enUS } from "date-fns/locale/en-US";
 import { CalendarClock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import {
   cancelAppointment,
   checkInAppointment,
   checkOutAppointment,
+  confirmAppointment,
   createAppointment,
+  createRecurringReservation,
   deleteAppointment,
+  deleteReservationSeries,
   noShowAppointment,
   listAppointments,
+  rescheduleAppointment,
   updateAppointment,
   type AppointmentChangedEvent,
   type AppointmentDto,
+  type ReservationOccurrence,
 } from "@/api/scheduling";
 import {
   getScheduleConfig,
@@ -148,9 +154,90 @@ function addMinutesToHhmm(hhmm: string, minutes: number): string {
   return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
 }
 
+/** Inclusive list of calendar dates (YYYY-MM-DD) from `fromYmd` to `toYmd`. */
+function eachDateYmd(fromYmd: string, toYmd: string): string[] {
+  const out: string[] = [];
+  const [fy, fm, fd] = fromYmd.split("-").map(Number);
+  const [ty, tm, td] = toYmd.split("-").map(Number);
+  const cur = new Date(fy, fm - 1, fd);
+  const end = new Date(ty, tm - 1, td);
+  while (cur <= end) {
+    out.push(localYmd(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+/** Weekday (0=Sun…6=Sat) of a calendar date, independent of timezone. */
+function weekdayOfYmd(ymd: string): number {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
+
+// ─── tooltip (mirrors BackChart AppointmentTooltip.razor) ────────────────
+
+/** Clinic-local time label, e.g. "2:00 PM". */
+function clinicTimeLabel(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(iso));
+}
+
+/** Clinic-local short date label, e.g. "6/30/2026". */
+function clinicDateLabel(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).format(new Date(iso));
+}
+
+/** Multi-line hover text matching BackChart's tooltip format (banners → subject → time → type → notes). */
+function tooltipText(
+  a: AppointmentDto,
+  subject: string,
+  typeName: string | undefined,
+  timeZone: string,
+): string {
+  const notes = a.notes && a.notes.trim().length > 0 ? a.notes : "None";
+
+  if (a.isReservation) {
+    return `${a.reservationTitle || "Reserved"}\nNotes: ${notes}`;
+  }
+
+  const lines: string[] = [];
+  const confirmed = Boolean(a.confirmedAtUtc);
+  const isLate = !confirmed && new Date(a.startUtc) < new Date() && a.status === "Scheduled" && !a.cancelled && !a.noShow;
+
+  if (isLate) {
+    lines.push("!!    LATE    !!");
+  } else if (confirmed) {
+    lines.push("!!    CONFIRMED    !!");
+    lines.push(`Confirmed: ${clinicDateLabel(a.confirmedAtUtc!, timeZone)}`);
+  }
+  if (a.rescheduledToAppointmentId) lines.push("!!    RESCHEDULED    !!");
+  if (a.noShow) lines.push("!!    NO SHOW    !!");
+  if (a.cancelled) lines.push("!!    CANCELLED    !!");
+  if (a.status === "CheckedIn") lines.push("!!    CHECKED IN    !!");
+  else if (a.status === "CheckedOut") lines.push("!!    CHECKED OUT    !!");
+
+  lines.push(subject);
+  lines.push(`${clinicTimeLabel(a.startUtc, timeZone)} - ${clinicTimeLabel(a.endUtc, timeZone)}`);
+  if (typeName) lines.push(`Type: ${typeName}`);
+  lines.push(`Notes: ${notes}`);
+  return lines.join("\n");
+}
+
 // ─── colors ─────────────────────────────────────────────────────────────
 
 function eventColor(a: AppointmentDto, typeColor: string | null | undefined): string {
+  if (a.rescheduledToAppointmentId) return "#9aa0a6"; // muted gray — moved away
   if (a.isReservation) return "#8E8A7F"; // taupe
   if (a.cancelled) return "#ffa41b"; // orange
   if (a.noShow) return "#dd2c00"; // red
@@ -167,6 +254,17 @@ type CalEvent = {
   resourceId: string;
   appt: AppointmentDto;
 };
+
+/** Calendar event label: ✓ prefix when the patient confirmed; title strikes through when rescheduled. */
+function EventLabel({ event }: { event: CalEvent }) {
+  const { appt, title } = event;
+  return (
+    <span>
+      {appt.confirmedAtUtc && !appt.isReservation ? "✓ " : ""}
+      {title}
+    </span>
+  );
+}
 
 // ─── page ───────────────────────────────────────────────────────────────
 
@@ -410,6 +508,15 @@ export function AppointmentsPage() {
             resources={view === "day" ? resources : undefined}
             resourceIdAccessor="id"
             resourceTitleAccessor="title"
+            components={{ event: EventLabel }}
+            tooltipAccessor={(event) =>
+              tooltipText(
+                event.appt,
+                event.title,
+                event.appt.appointmentTypeId ? typesById.get(event.appt.appointmentTypeId)?.name : undefined,
+                timeZone,
+              )
+            }
             eventPropGetter={(event) => ({
               style: {
                 backgroundColor: eventColor(
@@ -417,6 +524,7 @@ export function AppointmentsPage() {
                   event.appt.appointmentTypeId ? typesById.get(event.appt.appointmentTypeId)?.color : undefined,
                 ),
                 border: "none",
+                textDecoration: event.appt.rescheduledToAppointmentId ? "line-through" : undefined,
               },
             })}
             onSelectSlot={(slot) => {
@@ -476,9 +584,11 @@ function AppointmentDialog({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const navigate = useNavigate();
   const editing = state.mode === "edit" ? state.appointment : null;
   const creating = state.mode === "create" ? state : null;
   const ymd = editing ? ymdInTz(editing.startUtc, timeZone) : creating!.ymd;
+  const readOnly = Boolean(editing?.rescheduledToAppointmentId);
 
   const [providerId, setProviderId] = useState(editing ? editing.providerId : creating!.providerId);
   const [isReservation, setIsReservation] = useState(editing?.isReservation ?? false);
@@ -490,6 +600,15 @@ function AppointmentDialog({
   );
   const [endTime, setEndTime] = useState(editing ? timeValueInTz(editing.endUtc, timeZone) : creating!.endTime);
   const [notes, setNotes] = useState(editing?.notes ?? "");
+
+  // Recurring reserve-time (create + reservation only).
+  const [repeat, setRepeat] = useState(false);
+  const [weekdays, setWeekdays] = useState<Set<number>>(() => new Set([weekdayOfYmd(ymd)]));
+  const [endYmd, setEndYmd] = useState(ymd);
+
+  // Reschedule mode (edit + non-reservation only).
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleYmd, setRescheduleYmd] = useState(ymd);
 
   const afterSuccess = (msg: string) => {
     toast.success(msg);
@@ -503,15 +622,30 @@ function AppointmentDialog({
     onSuccess: () => afterSuccess(isReservation ? "Reservation created" : "Appointment created"),
     onError: onError("Create"),
   });
+  const recurringMutation = useMutation({
+    mutationFn: createRecurringReservation,
+    onSuccess: (count) => afterSuccess(`Reserved ${count} day${count === 1 ? "" : "s"}`),
+    onError: onError("Reserve"),
+  });
   const updateMutation = useMutation({
     mutationFn: updateAppointment,
     onSuccess: () => afterSuccess("Saved"),
     onError: onError("Update"),
   });
+  const rescheduleMutation = useMutation({
+    mutationFn: rescheduleAppointment,
+    onSuccess: () => afterSuccess("Appointment rescheduled"),
+    onError: onError("Reschedule"),
+  });
   const deleteMutation = useMutation({
     mutationFn: deleteAppointment,
     onSuccess: () => afterSuccess("Deleted"),
     onError: onError("Delete"),
+  });
+  const deleteSeriesMutation = useMutation({
+    mutationFn: deleteReservationSeries,
+    onSuccess: (count) => afterSuccess(`Deleted series (${count})`),
+    onError: onError("Delete series"),
   });
   const lifecycleMutation = useMutation({
     mutationFn: ({ id, fn }: { id: string; fn: (id: string) => Promise<void>; label: string }) => fn(id),
@@ -520,13 +654,25 @@ function AppointmentDialog({
   });
 
   const isPending =
-    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending || lifecycleMutation.isPending;
-  const valid =
-    Boolean(providerId) &&
-    Boolean(startTime) &&
-    Boolean(endTime) &&
-    endTime > startTime &&
-    (!isReservation || reservationTitle.trim().length > 0);
+    createMutation.isPending ||
+    recurringMutation.isPending ||
+    updateMutation.isPending ||
+    rescheduleMutation.isPending ||
+    deleteMutation.isPending ||
+    deleteSeriesMutation.isPending ||
+    lifecycleMutation.isPending;
+
+  const baseTimeValid =
+    Boolean(providerId) && Boolean(startTime) && Boolean(endTime) && endTime > startTime;
+  let valid = baseTimeValid;
+  if (rescheduling) {
+    valid = baseTimeValid && Boolean(rescheduleYmd);
+  } else if (isReservation) {
+    valid =
+      baseTimeValid &&
+      reservationTitle.trim().length > 0 &&
+      (!repeat || (weekdays.size > 0 && endYmd >= ymd));
+  }
 
   const onPickType = (id: string) => {
     setAppointmentTypeId(id);
@@ -536,9 +682,52 @@ function AppointmentDialog({
     }
   };
 
+  const toggleWeekday = (n: number) =>
+    setWeekdays((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+
+  const buildOccurrences = (): ReservationOccurrence[] =>
+    eachDateYmd(ymd, endYmd)
+      .filter((d) => weekdays.has(weekdayOfYmd(d)))
+      .map((d) => ({
+        startUtc: zonedWallToUtc(d, startTime, timeZone).toISOString(),
+        endUtc: zonedWallToUtc(d, endTime, timeZone).toISOString(),
+      }));
+
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!valid) return;
+    if (!valid || readOnly) return;
+
+    if (rescheduling && editing) {
+      rescheduleMutation.mutate({
+        id: editing.id,
+        providerId,
+        startUtc: zonedWallToUtc(rescheduleYmd, startTime, timeZone).toISOString(),
+        endUtc: zonedWallToUtc(rescheduleYmd, endTime, timeZone).toISOString(),
+      });
+      return;
+    }
+
+    if (creating && isReservation && repeat) {
+      const occurrences = buildOccurrences();
+      if (occurrences.length === 0) {
+        toast.error("No dates match the selected weekdays.");
+        return;
+      }
+      recurringMutation.mutate({
+        clinicId,
+        providerId,
+        title: reservationTitle.trim(),
+        notes: notes.trim() || null,
+        occurrences,
+      });
+      return;
+    }
+
     const startUtc = zonedWallToUtc(ymd, startTime, timeZone).toISOString();
     const endUtc = zonedWallToUtc(ymd, endTime, timeZone).toISOString();
     const payload = {
@@ -560,34 +749,64 @@ function AppointmentDialog({
     if (editing) lifecycleMutation.mutate({ id: editing.id, fn, label });
   };
 
+  const title = rescheduling ? "Reschedule appointment" : editing ? "Edit appointment" : "New appointment";
+  const submitLabel = rescheduling
+    ? "Reschedule"
+    : editing
+      ? "Save"
+      : isReservation && repeat
+        ? "Reserve series"
+        : "Create";
+
   return (
     <Dialog open onOpenChange={(o) => (!o ? onClose() : undefined)}>
       <DialogContent className="!max-w-md">
         <form onSubmit={onSubmit}>
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit appointment" : "New appointment"}</DialogTitle>
+            <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
               {providerName(providerId)} · times are in the clinic's local zone.
             </DialogDescription>
           </DialogHeader>
 
           <DialogBody className="space-y-3">
-            <div className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2.5">
-              <div>
-                <p className="text-[13px] font-medium text-[var(--color-foreground)]">Reserve time</p>
-                <p className="text-[12px] text-[var(--color-muted-foreground)]">
-                  Block the slot without a patient (e.g. lunch, admin).
-                </p>
+            {readOnly && (
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-muted)] px-3 py-2 text-[12px] text-[var(--color-muted-foreground)]">
+                This appointment was rescheduled to a new slot. It is kept for history and is read-only.
               </div>
-              <Switch checked={isReservation} onCheckedChange={setIsReservation} aria-label="Reserve time" />
-            </div>
+            )}
+
+            {editing?.patientId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => navigate(`/patient-charts/${editing.patientId}`)}
+              >
+                Open patient chart
+              </Button>
+            )}
+
+            {!rescheduling && !readOnly && (
+              <div className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2.5">
+                <div>
+                  <p className="text-[13px] font-medium text-[var(--color-foreground)]">Reserve time</p>
+                  <p className="text-[12px] text-[var(--color-muted-foreground)]">
+                    Block the slot without a patient (e.g. lunch, admin).
+                  </p>
+                </div>
+                <Switch checked={isReservation} onCheckedChange={setIsReservation} aria-label="Reserve time" />
+              </div>
+            )}
 
             <Field id="appt-provider" label="Provider">
               <select
                 id="appt-provider"
                 value={providerId}
                 onChange={(e) => setProviderId(e.target.value)}
-                className="h-9 w-full rounded-lg border border-[var(--color-input)] bg-transparent px-2 text-[13px]"
+                disabled={readOnly}
+                className="h-9 w-full rounded-lg border border-[var(--color-input)] bg-transparent px-2 text-[13px] disabled:opacity-60"
               >
                 {providers.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -597,16 +816,77 @@ function AppointmentDialog({
               </select>
             </Field>
 
-            {isReservation ? (
-              <Field id="appt-title" label="Title">
+            {rescheduling ? (
+              <Field id="appt-resched-date" label="New date">
                 <Input
-                  id="appt-title"
-                  value={reservationTitle}
-                  onChange={(e) => setReservationTitle(e.target.value)}
-                  placeholder="Lunch, meeting, admin…"
-                  maxLength={200}
+                  id="appt-resched-date"
+                  type="date"
+                  value={rescheduleYmd}
+                  onChange={(e) => setRescheduleYmd(e.target.value)}
                 />
               </Field>
+            ) : isReservation ? (
+              <>
+                <Field id="appt-title" label="Title">
+                  <Input
+                    id="appt-title"
+                    value={reservationTitle}
+                    onChange={(e) => setReservationTitle(e.target.value)}
+                    placeholder="Lunch, meeting, admin…"
+                    maxLength={200}
+                    disabled={readOnly}
+                  />
+                </Field>
+
+                {creating && (
+                  <div className="rounded-lg border border-[var(--color-border)] px-3 py-2.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[13px] font-medium text-[var(--color-foreground)]">Repeat</p>
+                        <p className="text-[12px] text-[var(--color-muted-foreground)]">
+                          Block these weekdays through an end date.
+                        </p>
+                      </div>
+                      <Switch checked={repeat} onCheckedChange={setRepeat} aria-label="Repeat reservation" />
+                    </div>
+
+                    {repeat && (
+                      <>
+                        <div className="flex flex-wrap gap-1">
+                          {WEEKDAYS.map((label, n) => {
+                            const on = weekdays.has(n);
+                            return (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => toggleWeekday(n)}
+                                className={cn(
+                                  "h-7 w-9 rounded-md border text-[12px] transition-colors",
+                                  on
+                                    ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                                    : "border-[var(--color-border)] text-[var(--color-muted-foreground)]",
+                                )}
+                                aria-pressed={on}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <Field id="appt-end-date" label="End date">
+                          <Input
+                            id="appt-end-date"
+                            type="date"
+                            value={endYmd}
+                            min={ymd}
+                            onChange={(e) => setEndYmd(e.target.value)}
+                          />
+                        </Field>
+                      </>
+                    )}
+                  </div>
+                )}
+              </>
             ) : (
               <>
                 <Field id="appt-patient" label="Patient" hint="Optional — leave empty for a walk-in / hold.">
@@ -640,25 +920,60 @@ function AppointmentDialog({
 
             <div className="grid grid-cols-2 gap-3">
               <Field id="appt-start" label="Start">
-                <Input id="appt-start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                <Input
+                  id="appt-start"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  disabled={readOnly}
+                />
               </Field>
               <Field id="appt-end" label="End">
-                <Input id="appt-end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                <Input
+                  id="appt-end"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  disabled={readOnly}
+                />
               </Field>
             </div>
 
-            <Field id="appt-notes" label="Notes">
-              <Input
-                id="appt-notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Reason for visit"
-                maxLength={4000}
-              />
-            </Field>
+            {!rescheduling && (
+              <Field id="appt-notes" label="Notes">
+                <Input
+                  id="appt-notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Reason for visit"
+                  maxLength={4000}
+                  disabled={readOnly}
+                />
+              </Field>
+            )}
 
-            {editing && !editing.isReservation && (
-              <div className="flex flex-wrap gap-1.5 border-t border-[var(--color-border)] pt-3">
+            {editing && !editing.isReservation && !rescheduling && !readOnly && (
+              <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--color-border)] pt-3">
+                {editing.confirmedAtUtc ? (
+                  <span className="text-[12px] text-[var(--color-muted-foreground)]">
+                    Confirmed {clinicDateLabel(editing.confirmedAtUtc, timeZone)}
+                  </span>
+                ) : (
+                  <Button type="button" variant="outline" size="sm" onClick={() => runLifecycle(confirmAppointment, "Confirmed")}>
+                    Confirm
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setRescheduleYmd(ymd);
+                    setRescheduling(true);
+                  }}
+                >
+                  Reschedule
+                </Button>
                 <Button type="button" variant="outline" size="sm" onClick={() => runLifecycle(checkInAppointment, "Checked in")}>
                   Check in
                 </Button>
@@ -676,28 +991,59 @@ function AppointmentDialog({
           </DialogBody>
 
           <DialogFooter className="justify-between">
-            {editing ? (
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={isPending}
-                onClick={() => deleteMutation.mutate(editing.id)}
-              >
-                Delete
-              </Button>
+            {editing && !rescheduling ? (
+              editing.isReservation && editing.reservationSeriesId ? (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => deleteMutation.mutate(editing.id)}
+                  >
+                    Delete occurrence
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={isPending}
+                    onClick={() => deleteSeriesMutation.mutate(editing.reservationSeriesId!)}
+                  >
+                    Delete series
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => deleteMutation.mutate(editing.id)}
+                >
+                  Delete
+                </Button>
+              )
             ) : (
               <span />
             )}
             <div className="flex gap-2">
-              <DialogClose asChild>
-                <Button type="button" variant="outline" size="sm">
-                  Close
+              {rescheduling ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => setRescheduling(false)}>
+                  Back
                 </Button>
-              </DialogClose>
-              <Button type="submit" size="sm" disabled={!valid || isPending}>
-                {editing ? "Save" : "Create"}
-              </Button>
+              ) : (
+                <DialogClose asChild>
+                  <Button type="button" variant="outline" size="sm">
+                    Close
+                  </Button>
+                </DialogClose>
+              )}
+              {!readOnly && (
+                <Button type="submit" size="sm" disabled={!valid || isPending}>
+                  {submitLabel}
+                </Button>
+              )}
             </div>
           </DialogFooter>
         </form>

@@ -18,6 +18,12 @@ export type AppointmentDto = {
   noShow: boolean;
   isReservation: boolean;
   reservationTitle?: string | null;
+  /** Groups materialized occurrences of a recurring reserve-time series. */
+  reservationSeriesId?: string | null;
+  /** When the patient confirmed; null/absent = unconfirmed. */
+  confirmedAtUtc?: string | null;
+  /** Replacement appointment id; non-null = this slot was rescheduled away (read-only). */
+  rescheduledToAppointmentId?: string | null;
 };
 
 export type ListAppointmentsParams = {
@@ -83,7 +89,10 @@ export async function deleteAppointment(id: string): Promise<void> {
   });
 }
 
-async function lifecycle(id: string, action: "check-in" | "check-out" | "cancel" | "no-show"): Promise<void> {
+async function lifecycle(
+  id: string,
+  action: "check-in" | "check-out" | "cancel" | "no-show" | "confirm",
+): Promise<void> {
   await apiFetch<void>(`/api/v1/scheduling/appointments/${encodeURIComponent(id)}/${action}`, {
     method: "POST",
   });
@@ -93,6 +102,55 @@ export const checkInAppointment = (id: string): Promise<void> => lifecycle(id, "
 export const checkOutAppointment = (id: string): Promise<void> => lifecycle(id, "check-out");
 export const cancelAppointment = (id: string): Promise<void> => lifecycle(id, "cancel");
 export const noShowAppointment = (id: string): Promise<void> => lifecycle(id, "no-show");
+export const confirmAppointment = (id: string): Promise<void> => lifecycle(id, "confirm");
+
+export type RescheduleAppointmentInput = {
+  id: string;
+  providerId: string;
+  startUtc: string;
+  endUtc: string;
+};
+
+/** Reschedules an appointment (creates a replacement, links the original). Returns the new appointment id. */
+export function rescheduleAppointment(input: RescheduleAppointmentInput): Promise<string> {
+  return apiFetch<string>(
+    `/api/v1/scheduling/appointments/${encodeURIComponent(input.id)}/reschedule`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        providerId: input.providerId,
+        startUtc: input.startUtc,
+        endUtc: input.endUtc,
+      }),
+    },
+  );
+}
+
+export type ReservationOccurrence = { startUtc: string; endUtc: string };
+
+export type CreateRecurringReservationInput = {
+  clinicId: string;
+  providerId: string;
+  title: string;
+  notes?: string | null;
+  occurrences: ReservationOccurrence[];
+};
+
+/** Creates a recurring reserve-time series (one block per occurrence). Returns the count created. */
+export function createRecurringReservation(input: CreateRecurringReservationInput): Promise<number> {
+  return apiFetch<number>("/api/v1/scheduling/appointments/reserve-recurring", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/** Deletes an entire recurring reserve-time series. Returns the count deleted. */
+export function deleteReservationSeries(seriesId: string): Promise<number> {
+  return apiFetch<number>(
+    `/api/v1/scheduling/appointments/series/${encodeURIComponent(seriesId)}`,
+    { method: "DELETE" },
+  );
+}
 
 /** Realtime broadcast payload (group `tenant:{tenantId}`, event `AppointmentChanged`). */
 export type AppointmentChangedEvent = {
@@ -100,7 +158,16 @@ export type AppointmentChangedEvent = {
   providerId: string;
   startUtc: string;
   endUtc: string;
-  action: "created" | "updated" | "deleted" | "checked-in" | "checked-out" | "cancelled" | "no-show";
+  action:
+    | "created"
+    | "updated"
+    | "deleted"
+    | "checked-in"
+    | "checked-out"
+    | "cancelled"
+    | "no-show"
+    | "confirmed"
+    | "rescheduled";
 };
 
 export const SCHEDULING_PERMISSIONS = {
