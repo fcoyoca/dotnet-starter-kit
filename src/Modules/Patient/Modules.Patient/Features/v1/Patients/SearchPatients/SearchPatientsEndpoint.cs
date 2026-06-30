@@ -21,10 +21,14 @@ public static class SearchPatientsEndpoint
                     int pageSize,
                     string? sortBy,
                     string? sortDir,
+                    Guid? providerId,
+                    Guid? clinicId,
                     IMediator mediator,
                     CancellationToken ct) =>
                     Results.Ok(await mediator.Send(
-                        new SearchPatientsQuery(search, ssnHash, isActive, pageNumber, pageSize, sortBy, sortDir), ct)))
+                        new SearchPatientsQuery(
+                            search, ssnHash, isActive, pageNumber, pageSize,
+                            sortBy, sortDir, providerId, clinicId), ct)))
             .WithName("SearchPatients")
             .WithSummary("Search and list patients (no PHI in response)")
             .RequirePermission(PatientPermissions.Patients.View);

@@ -43,6 +43,18 @@ public sealed class SearchPatientsQueryHandler(PatientDbContext dbContext)
             q = q.Where(p => p.IsActive == query.IsActive.Value);
         }
 
+        if (query.ProviderId is { } providerId)
+        {
+            q = q.Where(p => dbContext.PatientReports.Any(r =>
+                r.PatientId == p.Id && !r.IsDeleted && r.ProviderId == providerId));
+        }
+
+        if (query.ClinicId is { } clinicId)
+        {
+            q = q.Where(p => dbContext.PatientReports.Any(r =>
+                r.PatientId == p.Id && !r.IsDeleted && r.ClinicId == clinicId));
+        }
+
         q = ApplySort(q, query.SortBy, query.SortDir);
 
         long total = await q.LongCountAsync(cancellationToken).ConfigureAwait(false);

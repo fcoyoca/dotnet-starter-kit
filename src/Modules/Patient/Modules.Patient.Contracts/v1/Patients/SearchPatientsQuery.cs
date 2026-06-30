@@ -11,4 +11,6 @@ public sealed record SearchPatientsQuery(
     int PageNumber = 1,
     int PageSize = 20,
     string? SortBy = null,
-    string? SortDir = null) : IQuery<PagedResponse<PatientListItemDto>>;
+    string? SortDir = null,
+    Guid? ProviderId = null,
+    Guid? ClinicId = null) : IQuery<PagedResponse<PatientListItemDto>>;
