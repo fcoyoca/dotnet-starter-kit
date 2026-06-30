@@ -7,6 +7,18 @@ plus `Macro`s). A clinician fills templated fields and vitals, signs the report
 image), can request a peer review, append addendums after signing, and search a
 report's text.
 
+## Select Appointment (on create)
+
+Adding a report from the chart opens a **Select Appointment** dialog *before* the
+report is created (BackChart parity — legacy created the report first, then prompted).
+It lists the patient's appointments (newest first; cancelled ones and clinic
+reservations excluded) via `GET /api/v1/scheduling/appointments/by-patient/{patientId}`
+(requires `Scheduling.Appointments.View`). Choosing one stamps the report's
+**date, clinic, provider, and `AppointmentId`** (legacy `RAppointmentID` — a bare
+Guid, no FK to the Scheduling schema). **Manually Enter Date** skips the link and
+just sets the date; users without scheduling access see only that path. This applies
+to **all report types**. Cancelling the dialog creates nothing.
+
 ## Workflow
 
 `Draft → Signed → ReviewRequested → Reviewed`
@@ -42,7 +54,8 @@ Permissions: `Patient.Reports.{View,Create,Update,Sign,Review,Delete}`.
 
 `ReportTypeId`/`ReportFieldId` are stored as **bare ints** (no FK to the
 Administration schema), mirroring `PatientIncidentDiagnostic`; the editor resolves
-names via the admin list APIs.
+names via the admin list APIs. `AppointmentId` (optional) is likewise a **bare Guid**
+into the Scheduling schema — set from the Select Appointment dialog.
 
 ## Import Dx Codes
 
@@ -69,6 +82,9 @@ Associated Problems panel.
 - **Added** — Patient Reports: template-driven clinical reports per incident, with
   vitals, provider-signature attestation, peer review, addendums, and report text
   search.
+- **Added** — Select Appointment dialog on report creation: links a report to a
+  scheduling appointment (stamps date/clinic/provider/`AppointmentId`) or a manual
+  date, for all report types.
 
 > Mirror this entry into the separate docs site
 > (`github.com/fullstackhero/docs` → `src/content/docs/changelog/`) per golden

@@ -9,6 +9,7 @@ public sealed record PatientReportDetailDto(
     int Version,
     Guid? ProviderId,
     Guid? ClinicId,
+    Guid? AppointmentId,
     bool IsNoShow,
     ReportVitalsDto Vitals,
     ReportWorkflowStatus WorkflowStatus,

@@ -41,6 +41,7 @@ public sealed class PatientReportConfiguration : IEntityTypeConfiguration<Patien
 
         builder.HasIndex(x => x.IncidentId);
         builder.HasIndex(x => x.PatientId);
+        builder.HasIndex(x => x.AppointmentId);
         builder.HasIndex(x => x.IsDeleted);
         builder.HasIndex(x => new { x.IncidentId, x.IsDeleted });
 

@@ -9,4 +9,5 @@ public sealed record CreatePatientReportCommand(
     DateTime ReportDate,
     Guid? ProviderId,
     Guid? ClinicId,
-    bool IsNoShow) : ICommand<Guid>;
+    bool IsNoShow,
+    Guid? AppointmentId = null) : ICommand<Guid>;

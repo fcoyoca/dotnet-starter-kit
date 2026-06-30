@@ -29,7 +29,8 @@ public sealed class CreatePatientReportCommandHandler(PatientDbContext dbContext
             command.ReportDate,
             command.ProviderId,
             command.ClinicId,
-            command.IsNoShow);
+            command.IsNoShow,
+            command.AppointmentId);
 
         dbContext.PatientReports.Add(report);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

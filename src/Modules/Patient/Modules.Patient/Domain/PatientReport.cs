@@ -12,6 +12,9 @@ public sealed class PatientReport : AggregateRoot<Guid>, ISoftDeletable
     public int Version { get; private set; }
     public Guid? ProviderId { get; private set; }
     public Guid? ClinicId { get; private set; }
+    /// <summary>Optional link to the scheduling appointment this report documents
+    /// (legacy BackChart <c>RAppointmentID</c>). Bare id — no FK to the Scheduling schema.</summary>
+    public Guid? AppointmentId { get; private set; }
     public bool IsNoShow { get; private set; }
 
     public PatientReportVitals Vitals { get; private set; } = new();
@@ -48,7 +51,7 @@ public sealed class PatientReport : AggregateRoot<Guid>, ISoftDeletable
 
     public static PatientReport Create(
         Guid incidentId, Guid patientId, int reportTypeId, DateTime reportDate,
-        Guid? providerId, Guid? clinicId, bool isNoShow)
+        Guid? providerId, Guid? clinicId, bool isNoShow, Guid? appointmentId = null)
     {
         return new PatientReport
         {
@@ -60,6 +63,7 @@ public sealed class PatientReport : AggregateRoot<Guid>, ISoftDeletable
             Version = 1,
             ProviderId = providerId,
             ClinicId = clinicId,
+            AppointmentId = appointmentId,
             IsNoShow = isNoShow,
             Vitals = new PatientReportVitals(),
             WorkflowStatus = ReportWorkflowStatus.Draft,

@@ -62,6 +62,10 @@ import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
 import { ReportSearchDialog } from "@/pages/patient-charts/report-search-dialog";
+import {
+  SelectAppointmentDialog,
+  type AppointmentSelection,
+} from "@/pages/patient-charts/select-appointment-dialog";
 
 type ClosedFilter = "all" | "open" | "closed";
 
@@ -145,6 +149,8 @@ export function PatientChartDetailPage() {
   const [editIncidentId, setEditIncidentId] = useState<string | null>(null);
   const [viewIncidentId, setViewIncidentId] = useState<string | null>(null);
   const [reportSearchOpen, setReportSearchOpen] = useState(false);
+  // Report type chosen from "Add Report", pending appointment selection before creation.
+  const [pendingReportType, setPendingReportType] = useState<{ id: number; name: string } | null>(null);
 
   const canCreate = user?.permissions?.includes(INCIDENT_PERMISSIONS.create) ?? false;
   const canUpdate = user?.permissions?.includes(INCIDENT_PERMISSIONS.update) ?? false;
@@ -223,6 +229,7 @@ export function PatientChartDetailPage() {
   const createReportMutation = useMutation({
     mutationFn: createReport,
     onSuccess: (reportId) => {
+      setPendingReportType(null);
       void queryClient.invalidateQueries({ queryKey: ["reports", activeIncidentId] });
       navigate(`/patient-charts/${patientId}/reports/${reportId}`);
     },
@@ -238,13 +245,23 @@ export function PatientChartDetailPage() {
     onError: (err) => toast.error("Failed to delete report.", { description: describe(err) }),
   });
 
+  // Adding a report opens the Select Appointment dialog first (BackChart parity);
+  // the report is created only once an appointment — or a manual date — is chosen.
   const onAddReport = (reportTypeId: number) => {
     if (!patientId || !activeIncidentId) return;
+    setPendingReportType({ id: reportTypeId, name: reportTypeLabel(reportTypeId) });
+  };
+
+  const onConfirmAppointment = (selection: AppointmentSelection) => {
+    if (!patientId || !activeIncidentId || !pendingReportType) return;
     createReportMutation.mutate({
       incidentId: activeIncidentId,
       patientId,
-      reportTypeId,
-      reportDate: new Date().toISOString().slice(0, 10),
+      reportTypeId: pendingReportType.id,
+      reportDate: selection.reportDate,
+      providerId: selection.providerId,
+      clinicId: selection.clinicId,
+      appointmentId: selection.appointmentId,
       isNoShow: false,
     });
   };
@@ -806,6 +823,17 @@ export function PatientChartDetailPage() {
         incident={activeIncident}
         incidentTypeLabel={resolveLabel(activeIncident?.incidentTypeId, incidentTypeOptions)}
       />
+
+      {patientId && pendingReportType && (
+        <SelectAppointmentDialog
+          patientId={patientId}
+          reportTypeName={pendingReportType.name}
+          open={!!pendingReportType}
+          creating={createReportMutation.isPending}
+          onCancel={() => setPendingReportType(null)}
+          onConfirm={onConfirmAppointment}
+        />
+      )}
     </div>
   );
 }

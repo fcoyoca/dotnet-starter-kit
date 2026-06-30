@@ -28,7 +28,7 @@ public sealed class GetPatientReportByIdQueryHandler(PatientDbContext dbContext,
 
         return new PatientReportDetailDto(
             report.Id, report.IncidentId, report.PatientId, report.ReportTypeId, report.ReportDate,
-            report.Version, report.ProviderId, report.ClinicId, report.IsNoShow,
+            report.Version, report.ProviderId, report.ClinicId, report.AppointmentId, report.IsNoShow,
             new ReportVitalsDto(
                 report.Vitals.HeightInches, report.Vitals.WeightLbs, report.Vitals.Bmi,
                 report.Vitals.Systolic, report.Vitals.Diastolic, report.Vitals.Pulse, report.Vitals.TemperatureF),

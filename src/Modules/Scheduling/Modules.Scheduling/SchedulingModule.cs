@@ -12,6 +12,7 @@ using FSH.Modules.Scheduling.Features.v1.Appointments.CreateAppointment;
 using FSH.Modules.Scheduling.Features.v1.Appointments.DeleteAppointment;
 using FSH.Modules.Scheduling.Features.v1.Appointments.GetAppointmentById;
 using FSH.Modules.Scheduling.Features.v1.Appointments.ListAppointments;
+using FSH.Modules.Scheduling.Features.v1.Appointments.ListPatientAppointments;
 using FSH.Modules.Scheduling.Features.v1.Appointments.NoShowAppointment;
 using FSH.Modules.Scheduling.Features.v1.Appointments.UpdateAppointment;
 using Microsoft.AspNetCore.Builder;
@@ -61,6 +62,7 @@ public sealed class SchedulingModule : IModule
             .RequireAuthorization();
 
         group.MapListAppointmentsEndpoint();
+        group.MapListPatientAppointmentsEndpoint();
         group.MapGetAppointmentByIdEndpoint();
         group.MapCreateAppointmentEndpoint();
         group.MapUpdateAppointmentEndpoint();

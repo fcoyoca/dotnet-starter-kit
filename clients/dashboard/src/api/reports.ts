@@ -50,6 +50,7 @@ export type PatientReportDetail = {
   version: number;
   providerId?: string | null;
   clinicId?: string | null;
+  appointmentId?: string | null;
   isNoShow: boolean;
   vitals: ReportVitals;
   workflowStatus: ReportWorkflowStatus;
@@ -109,6 +110,7 @@ export type CreateReportInput = {
   reportDate: string;
   providerId?: string | null;
   clinicId?: string | null;
+  appointmentId?: string | null;
   isNoShow: boolean;
 };
 
@@ -122,6 +124,7 @@ export async function createReport(input: CreateReportInput): Promise<string> {
       reportDate: input.reportDate,
       providerId: input.providerId ?? null,
       clinicId: input.clinicId ?? null,
+      appointmentId: input.appointmentId ?? null,
       isNoShow: input.isNoShow,
     }),
   });

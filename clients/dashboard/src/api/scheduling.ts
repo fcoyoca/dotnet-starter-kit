@@ -42,6 +42,13 @@ export function getAppointment(id: string): Promise<AppointmentDto> {
   return apiFetch<AppointmentDto>(`/api/v1/scheduling/appointments/${encodeURIComponent(id)}`);
 }
 
+/** A patient's appointments (newest first), for the report "Select Appointment" picker. */
+export function listPatientAppointments(patientId: string): Promise<AppointmentDto[]> {
+  return apiFetch<AppointmentDto[]>(
+    `/api/v1/scheduling/appointments/by-patient/${encodeURIComponent(patientId)}`,
+  );
+}
+
 export type AppointmentInput = {
   clinicId: string;
   providerId: string;
