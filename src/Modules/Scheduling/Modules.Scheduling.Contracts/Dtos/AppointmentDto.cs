@@ -13,4 +13,7 @@ public sealed record AppointmentDto(
     bool Cancelled,
     bool NoShow,
     bool IsReservation,
-    string? ReservationTitle);
+    string? ReservationTitle,
+    Guid? ReservationSeriesId,
+    DateTime? ConfirmedAtUtc,
+    Guid? RescheduledToAppointmentId);

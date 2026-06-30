@@ -19,12 +19,16 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
         builder.Property(x => x.IsReservation).IsRequired();
         builder.Property(x => x.ReservationTitle).HasMaxLength(200);
+        builder.Property(x => x.ReservationSeriesId);
+        builder.Property(x => x.ConfirmedAtUtc);
+        builder.Property(x => x.RescheduledToAppointmentId);
         builder.Property(x => x.DeletedBy).HasMaxLength(64);
         builder.Property(x => x.LegacyId);
 
         builder.HasIndex(x => new { x.ClinicId, x.StartUtc });
         builder.HasIndex(x => new { x.ProviderId, x.StartUtc });
         builder.HasIndex(x => x.PatientId);
+        builder.HasIndex(x => x.ReservationSeriesId);
         builder.HasIndex(x => x.IsDeleted);
         builder.HasIndex(x => x.LegacyId);
 

@@ -29,6 +29,21 @@ public sealed class Appointment : AggregateRoot<Guid>, ISoftDeletable
     /// <summary>Display title for a reservation block (required when <see cref="IsReservation"/>); null otherwise.</summary>
     public string? ReservationTitle { get; private set; }
 
+    /// <summary>
+    /// Groups materialized occurrences of a recurring reserve-time series so the whole series can be operated on
+    /// together (e.g. delete-all). Null for one-off appointments and single reservations.
+    /// </summary>
+    public Guid? ReservationSeriesId { get; private set; }
+
+    /// <summary>When the patient confirmed this appointment (legacy <c>apptReminderConfirmedDate</c>); null = unconfirmed.</summary>
+    public DateTime? ConfirmedAtUtc { get; private set; }
+
+    /// <summary>
+    /// Id of the replacement appointment this one was rescheduled to (legacy <c>apptRescheduledToID</c>). Non-null means
+    /// this slot was moved; it stays for history and is read-only.
+    /// </summary>
+    public Guid? RescheduledToAppointmentId { get; private set; }
+
     /// <summary>Legacy <c>apptID</c> of the source record; null for native records.</summary>
     public int? LegacyId { get; private set; }
 
@@ -43,7 +58,7 @@ public sealed class Appointment : AggregateRoot<Guid>, ISoftDeletable
     public static Appointment Create(
         Guid clinicId, Guid providerId, Guid? patientId, Guid? appointmentTypeId,
         DateTime startUtc, DateTime endUtc, string? notes, int? legacyId = null,
-        bool isReservation = false, string? reservationTitle = null)
+        bool isReservation = false, string? reservationTitle = null, Guid? reservationSeriesId = null)
     {
         Guard(clinicId, providerId, startUtc, endUtc);
         var title = NormalizeReservation(isReservation, reservationTitle);
@@ -60,6 +75,7 @@ public sealed class Appointment : AggregateRoot<Guid>, ISoftDeletable
             Status = AppointmentStatus.Scheduled,
             IsReservation = isReservation,
             ReservationTitle = title,
+            ReservationSeriesId = isReservation ? reservationSeriesId : null,
             LegacyId = legacyId,
             CreatedAtUtc = DateTime.UtcNow,
         };
@@ -87,6 +103,25 @@ public sealed class Appointment : AggregateRoot<Guid>, ISoftDeletable
     public void CheckOut() { Status = AppointmentStatus.CheckedOut; UpdatedAtUtc = DateTime.UtcNow; }
     public void Cancel() { Cancelled = true; UpdatedAtUtc = DateTime.UtcNow; }
     public void MarkNoShow() { NoShow = true; UpdatedAtUtc = DateTime.UtcNow; }
+
+    /// <summary>Records the patient's confirmation (idempotent — keeps the earliest confirmation timestamp).</summary>
+    public void Confirm()
+    {
+        ConfirmedAtUtc ??= DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>Links this slot to the replacement appointment it was rescheduled to.</summary>
+    public void MarkRescheduled(Guid newAppointmentId)
+    {
+        if (newAppointmentId == Guid.Empty)
+        {
+            throw new ArgumentException("Replacement appointment id is required.", nameof(newAppointmentId));
+        }
+
+        RescheduledToAppointmentId = newAppointmentId;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
 
     public void Delete(string? deletedBy)
     {

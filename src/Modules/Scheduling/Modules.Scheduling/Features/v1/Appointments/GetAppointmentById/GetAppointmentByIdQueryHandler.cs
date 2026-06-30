@@ -21,6 +21,7 @@ public sealed class GetAppointmentByIdQueryHandler(SchedulingDbContext dbContext
 
         return new AppointmentDto(entity.Id, entity.ClinicId, entity.ProviderId, entity.PatientId,
             entity.AppointmentTypeId, entity.StartUtc, entity.EndUtc, entity.Notes, entity.Status.ToString(),
-            entity.Cancelled, entity.NoShow, entity.IsReservation, entity.ReservationTitle);
+            entity.Cancelled, entity.NoShow, entity.IsReservation, entity.ReservationTitle,
+            entity.ReservationSeriesId, entity.ConfirmedAtUtc, entity.RescheduledToAppointmentId);
     }
 }

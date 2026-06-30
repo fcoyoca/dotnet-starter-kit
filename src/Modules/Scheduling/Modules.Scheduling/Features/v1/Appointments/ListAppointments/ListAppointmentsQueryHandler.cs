@@ -26,7 +26,8 @@ public sealed class ListAppointmentsQueryHandler(SchedulingDbContext dbContext)
         return await q.OrderBy(a => a.StartUtc)
             .Select(a => new AppointmentDto(a.Id, a.ClinicId, a.ProviderId, a.PatientId, a.AppointmentTypeId,
                 a.StartUtc, a.EndUtc, a.Notes, a.Status.ToString(), a.Cancelled, a.NoShow,
-                a.IsReservation, a.ReservationTitle))
+                a.IsReservation, a.ReservationTitle, a.ReservationSeriesId, a.ConfirmedAtUtc,
+                a.RescheduledToAppointmentId))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }
