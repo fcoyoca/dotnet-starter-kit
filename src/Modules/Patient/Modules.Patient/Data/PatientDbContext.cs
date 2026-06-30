@@ -27,6 +27,33 @@ public sealed class PatientDbContext : BaseDbContext
         _phi = phi;
     }
 
+    /// <summary>
+    /// Canonical <see cref="BaseDbContext"/> constructor (no <see cref="IPhiEncryptor"/>),
+    /// present so design-time tooling and <c>Architecture.Tests</c>'
+    /// <c>TenantIsolationTests</c> can construct the context to inspect its model.
+    /// Production never selects this overload: the .NET DI container greedily binds
+    /// the 5-arg constructor above (a strict superset whose every parameter is
+    /// registered), so the real encryptor is always used. The no-op encryptor here
+    /// only ever participates in model-metadata inspection, never PHI read/write.
+    /// </summary>
+    public PatientDbContext(
+        IMultiTenantContextAccessor<AppTenantInfo> multiTenantContextAccessor,
+        DbContextOptions<PatientDbContext> options,
+        IOptions<DatabaseOptions> settings,
+        IHostEnvironment environment)
+        : this(multiTenantContextAccessor, options, settings, environment, NoOpPhiEncryptor.Instance)
+    {
+    }
+
+    /// <summary>Identity encryptor used only by the design-time/test constructor above.</summary>
+    private sealed class NoOpPhiEncryptor : IPhiEncryptor
+    {
+        public static readonly NoOpPhiEncryptor Instance = new();
+        public string? Encrypt(string? plaintext) => plaintext;
+        public string? Decrypt(string? ciphertext) => ciphertext;
+        public string? HashForSearch(string? value) => value;
+    }
+
     public DbSet<Domain.Patient> Patients => Set<Domain.Patient>();
     public DbSet<Domain.PatientIncident> PatientIncidents => Set<Domain.PatientIncident>();
     public DbSet<Domain.PatientReport> PatientReports => Set<Domain.PatientReport>();
