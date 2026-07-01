@@ -260,7 +260,7 @@ test.describe("patients/:patientId — detail", () => {
     await page.goto(`/patients/${PATIENT_ADULT_ID}`);
 
     await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
-    await expect(page.getByRole("link", { name: /back to patients/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /back to chart/i })).toBeVisible();
 
     const kinSection = page.locator("section", {
       has: page.getByRole("heading", { name: "Next of kin" }),

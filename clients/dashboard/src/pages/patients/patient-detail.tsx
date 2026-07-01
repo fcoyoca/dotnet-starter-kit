@@ -130,7 +130,7 @@ export function PatientDetailPage() {
 
   return (
     <div className="pb-12">
-      <EntityDetailBack to="/patients" label="Back to patients" />
+      <EntityDetailBack to={`/patient-charts/${patientId}`} label="Back to chart" />
 
       {patientQuery.isError && (
         <div className="mb-5">
@@ -358,7 +358,7 @@ export function PatientDetailPage() {
             open={dialog.mode === "delete"}
             patient={patient}
             onClose={() => setDialog({ mode: "closed" })}
-            onDeleted={() => navigate("/patients")}
+            onDeleted={() => navigate("/patient-charts")}
           />
         </>
       ) : (
@@ -808,7 +808,7 @@ function NotFoundPanel() {
         It may have been deleted, or the link may be wrong.
       </p>
       <Button asChild variant="outline" size="sm">
-        <Link to="/patients">Back to patients</Link>
+        <Link to="/patient-charts">Back to Patient Chart</Link>
       </Button>
     </div>
   );
