@@ -382,9 +382,19 @@ export function PatientChartDetailPage() {
                 <h2 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
                   Patient Info
                 </h2>
-                <EntityStatusBadge tone={patient.isActive ? "success" : "default"}>
-                  {patient.isActive ? "Active" : "Inactive"}
-                </EntityStatusBadge>
+                <div className="flex items-center gap-2">
+                  <EntityStatusBadge tone={patient.isActive ? "success" : "default"}>
+                    {patient.isActive ? "Active" : "Inactive"}
+                  </EntityStatusBadge>
+                  <Link
+                    to={`/patients/${patientId}`}
+                    title="Edit patient info"
+                    aria-label="Edit patient info"
+                    className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-accent)]"
+                  >
+                    <Pencil className="size-4" />
+                  </Link>
+                </div>
               </div>
 
               <p className="text-[15px] font-semibold leading-tight">{fullName}</p>

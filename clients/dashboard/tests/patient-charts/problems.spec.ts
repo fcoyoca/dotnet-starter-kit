@@ -84,6 +84,12 @@ test.describe("patient problem list", () => {
     await expect(page.getByText("Medical Alerts")).toBeVisible();
     await expect(page.getByText("M99.01").first()).toBeVisible();
 
+    // Patient Info card links out to the demographics edit page.
+    await expect(page.getByRole("link", { name: /edit patient info/i })).toHaveAttribute(
+      "href",
+      new RegExp(`/patients/${PATIENT_ID}$`),
+    );
+
     // The list lives behind a Problem List button (BackChart chart-card pattern).
     await page.getByRole("button", { name: "Problem List" }).click();
     const dialog = page.getByRole("dialog").filter({ hasText: "Show resolved" });
