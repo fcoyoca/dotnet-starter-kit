@@ -1,6 +1,8 @@
-// E2E coverage for the Patients pages: list + create dialog, detail page
-// (including the Guardian section's isMinor gating and the Next of
-// Kin → Relation Role Code coupling), and the not-found state.
+// E2E coverage for the Patients detail page (including the Guardian
+// section's isMinor gating and the Next of Kin → Relation Role Code
+// coupling) and the not-found state. List-page coverage lives in
+// tests/patient-charts/search.spec.ts (search) and the create-patient
+// dialog tests.
 //
 // Gotcha: getPatientById (GET) and updatePatient (PUT) hit the identical
 // URL `**/api/v1/patient/patients/{id}` — see tests/settings/profile.spec.ts
@@ -12,7 +14,7 @@
 import { expect, test } from "@playwright/test";
 import { mockJsonResponse } from "../helpers/api-mocks";
 import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
-import { installShellMocks, paged } from "../helpers/shell-mocks";
+import { installShellMocks } from "../helpers/shell-mocks";
 
 // ─── Administration lookup fixtures ──────────────────────────────────────
 
@@ -51,22 +53,6 @@ async function mockAdministrationLookups(page: Parameters<typeof mockJsonRespons
 }
 
 // ─── Fixtures ────────────────────────────────────────────────────────────
-
-const PATIENT_LIST_ALICE = {
-  id: "00000000-0000-0000-0000-0000000a1111",
-  patientCode: "P-10293",
-  firstName: "Alice",
-  lastName: "Vance",
-  middleInitial: "Q",
-  dateOfBirth: "1990-04-12",
-  gender: "F",
-  email: "alice.vance@example.com",
-  phone: "555-0101",
-  isActive: true,
-  lastVisitDate: "2026-05-01",
-  createdAtUtc: "2026-01-10T10:00:00Z",
-  updatedAtUtc: null,
-};
 
 const PATIENT_ADULT_ID = "00000000-0000-0000-0000-0000000a1111";
 
@@ -197,51 +183,6 @@ const PATIENT_MINOR = {
 // Same patient as PATIENT_ADULT but with no next-of-kin yet, so the
 // coupling test starts from a clean Combobox.
 const PATIENT_NO_KIN = { ...PATIENT_ADULT, nextOfKin: null };
-
-// ─── List ────────────────────────────────────────────────────────────────
-
-test.describe("patients — list", () => {
-  test.beforeEach(async ({ page }) => {
-    await seedAuthedSession(page, TEST_USER);
-    await installShellMocks(page);
-  });
-
-  test("renders the heading and a patient row from the mock data", async ({ page }) => {
-    await mockJsonResponse(page, "**/api/v1/patient/patients**", paged([PATIENT_LIST_ALICE]));
-
-    await page.goto("/patients");
-
-    await expect(page.getByRole("heading", { name: "Patients", level: 1 })).toBeVisible();
-    // Mobile card renders first in the DOM, desktop row last.
-    await expect(page.getByText("Alice Q Vance").last()).toBeVisible();
-    await expect(page.getByText("P-10293").last()).toBeVisible();
-  });
-
-  test("shows the empty state when no patients match", async ({ page }) => {
-    await mockJsonResponse(page, "**/api/v1/patient/patients**", paged([]));
-
-    await page.goto("/patients");
-
-    await expect(page.getByRole("heading", { name: "No patients yet", level: 2 })).toBeVisible();
-    await expect(page.getByText(/register the first patient to get started/i)).toBeVisible();
-  });
-
-  test("opens the Register a patient dialog with its key fields", async ({ page }) => {
-    await mockJsonResponse(page, "**/api/v1/patient/patients**", paged([PATIENT_LIST_ALICE]));
-
-    await page.goto("/patients");
-    await page.getByRole("button", { name: /new patient/i }).first().click();
-
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("heading", { name: /register a patient/i })).toBeVisible();
-    await expect(dialog.getByLabel("Patient code")).toBeVisible();
-    await expect(dialog.getByLabel("First name")).toBeVisible();
-    await expect(dialog.getByLabel("Last name")).toBeVisible();
-    await expect(dialog.getByLabel("Gender")).toBeVisible();
-    await expect(dialog.getByLabel("Marital status")).toBeVisible();
-  });
-});
 
 // ─── Detail ──────────────────────────────────────────────────────────────
 

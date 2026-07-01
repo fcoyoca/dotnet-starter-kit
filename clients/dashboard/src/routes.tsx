@@ -173,7 +173,6 @@ const CodeSourcesPage = lazyNamed(
   () => import("@/pages/administration/code-sources"),
   "CodeSourcesPage",
 );
-const PatientsListPage = lazyNamed(() => import("@/pages/patients/list"), "PatientsListPage");
 const PatientDetailPage = lazyNamed(
   () => import("@/pages/patients/patient-detail"),
   "PatientDetailPage",
@@ -292,7 +291,6 @@ export const router = createBrowserRouter([
           { path: "chat/:channelId", element: withSuspense(<ChatPage />) },
           { path: "tickets", element: withSuspense(<TicketsPage />) },
           { path: "tickets/:ticketId", element: withSuspense(<TicketDetailPage />) },
-          { path: "patients", element: withSuspense(<PatientsListPage />) },
           { path: "patients/:patientId", element: withSuspense(<PatientDetailPage />) },
           { path: "patient-charts", element: withSuspense(<PatientChartListPage />) },
           { path: "patient-charts/:patientId", element: withSuspense(<PatientChartDetailPage />) },
