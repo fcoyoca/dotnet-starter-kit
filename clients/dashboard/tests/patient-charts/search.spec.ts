@@ -57,4 +57,23 @@ test.describe("patient chart — search-first", () => {
 
     await expect(page).toHaveURL(new RegExp(`/patient-charts/${ALICE.id}$`));
   });
+
+  test("opens the Register a patient dialog with its key fields", async ({ page }) => {
+    await mockJsonResponse(page, "**/api/v1/patient/patients**", paged([ALICE]));
+    await mockJsonResponse(page, "**/api/v1/patient/patients/next-code-preview", { preview: "P-100007" });
+
+    await page.goto("/patient-charts");
+    await page.getByRole("button", { name: /new patient/i }).first().click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: /register a patient/i })).toBeVisible();
+    const codeField = dialog.getByLabel("Patient code");
+    await expect(codeField).toHaveValue("P-100007");
+    await expect(codeField).toBeDisabled();
+    await expect(dialog.getByLabel("First name")).toBeVisible();
+    await expect(dialog.getByLabel("Last name")).toBeVisible();
+    await expect(dialog.getByLabel("Gender")).toBeVisible();
+    await expect(dialog.getByLabel("Marital status")).toBeVisible();
+  });
 });

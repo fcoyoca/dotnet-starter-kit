@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import {
   createPatient,
+  getNextPatientCodePreview,
   type CreatePatientInput,
 } from "@/api/patients";
 import { emptyPatientFields } from "@/pages/patients/patient-mappers";
@@ -33,7 +34,6 @@ export function CreatePatientDialog({
   onCreated?: (patientId: string) => void;
 }) {
   const queryClient = useQueryClient();
-  const [patientCode, setPatientCode] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [middleInitial, setMiddleInitial] = useState("");
@@ -43,7 +43,6 @@ export function CreatePatientDialog({
 
   useEffect(() => {
     if (!open) {
-      setPatientCode("");
       setFirstName("");
       setLastName("");
       setMiddleInitial("");
@@ -52,6 +51,13 @@ export function CreatePatientDialog({
       setMaritalStatus(null);
     }
   }, [open]);
+
+  const previewQuery = useQuery({
+    queryKey: ["patients", "next-code-preview"],
+    queryFn: getNextPatientCodePreview,
+    enabled: open,
+    staleTime: 0,
+  });
 
   const mutation = useMutation({
     mutationFn: (input: CreatePatientInput) => createPatient(input),
@@ -70,7 +76,7 @@ export function CreatePatientDialog({
     if (!gender) return;
     mutation.mutate({
       ...emptyPatientFields(),
-      patientCode: patientCode.trim(),
+      patientCode: undefined,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       middleInitial: middleInitial.trim() || null,
@@ -93,14 +99,12 @@ export function CreatePatientDialog({
           </DialogHeader>
 
           <DialogBody className="space-y-4">
-            <Field id="pat-code" label="Patient code" required>
+            <Field id="pat-code" label="Patient code">
               <Input
                 id="pat-code"
-                value={patientCode}
-                onChange={(e) => setPatientCode(e.target.value)}
-                placeholder="P-10293"
-                autoFocus
-                required
+                value={previewQuery.data ?? (previewQuery.isLoading ? "Generating…" : "")}
+                disabled
+                readOnly
               />
             </Field>
 
@@ -111,6 +115,7 @@ export function CreatePatientDialog({
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Ada"
+                  autoFocus
                   required
                 />
               </Field>
