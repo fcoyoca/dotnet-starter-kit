@@ -252,7 +252,7 @@ export type PatientFields = {
   nextVisitDate?: string | null;
 };
 
-export type CreatePatientInput = PatientFields;
+export type CreatePatientInput = Omit<PatientFields, "patientCode"> & { patientCode?: string };
 export type UpdatePatientInput = PatientFields & { patientId: string };
 
 export async function createPatient(input: CreatePatientInput): Promise<string> {
@@ -260,6 +260,13 @@ export async function createPatient(input: CreatePatientInput): Promise<string> 
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export async function getNextPatientCodePreview(): Promise<string> {
+  const result = await apiFetch<{ preview: string }>(
+    "/api/v1/patient/patients/next-code-preview",
+  );
+  return result.preview;
 }
 
 export async function updatePatient(input: UpdatePatientInput): Promise<string> {
