@@ -63,6 +63,9 @@ public sealed class PatientDbContext : BaseDbContext
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
         modelBuilder.HasDefaultSchema(Schema);
+        modelBuilder.HasSequence<long>("PatientCodeSequence", schema: Schema)
+            .StartsAt(100_000)
+            .IncrementsBy(1);
         // PatientConfiguration requires IPhiEncryptor — apply it directly instead of via reflection
         modelBuilder.ApplyConfiguration(new PatientConfiguration(_phi));
         modelBuilder.ApplyConfiguration(new PatientIncidentConfiguration());
