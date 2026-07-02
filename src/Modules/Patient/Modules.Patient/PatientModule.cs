@@ -45,6 +45,8 @@ using FSH.Modules.Patient.Features.v1.Patients.GetPatientById;
 using FSH.Modules.Patient.Features.v1.Patients.NextPatientCodePreview;
 using FSH.Modules.Patient.Features.v1.Patients.RestorePatient;
 using FSH.Modules.Patient.Features.v1.Patients.SearchPatients;
+using FSH.Modules.Patient.Features.v1.Patients.SetPatientNoKnownAllergies;
+using FSH.Modules.Patient.Features.v1.Patients.SetPatientNoKnownMedications;
 using FSH.Modules.Patient.Features.v1.Patients.UpdatePatient;
 using FSH.Modules.Patient.Infrastructure;
 using Microsoft.Extensions.Options;
@@ -106,6 +108,8 @@ public sealed class PatientModule : IModule
         group.MapCreatePatientEndpoint();
         group.MapUpdatePatientEndpoint();
         group.MapDeletePatientEndpoint();
+        group.MapSetPatientNoKnownAllergiesEndpoint();
+        group.MapSetPatientNoKnownMedicationsEndpoint();
         group.MapGetPatientByIdEndpoint();
         group.MapSearchPatientsEndpoint();
         group.MapGetNextPatientCodePreviewEndpoint();
