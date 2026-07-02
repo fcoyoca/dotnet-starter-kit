@@ -9,20 +9,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FSH.Modules.Patient.Features.v1.Patients.CreatePatient;
 
-public sealed class CreatePatientCommandHandler(PatientDbContext dbContext, IPhiEncryptor phi)
+public sealed class CreatePatientCommandHandler(
+    PatientDbContext dbContext, IPhiEncryptor phi, IPatientCodeGenerator codeGenerator)
     : ICommandHandler<CreatePatientCommand, Guid>
 {
     public async ValueTask<Guid> Handle(CreatePatientCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
 
+        string patientCode = string.IsNullOrWhiteSpace(command.PatientCode)
+            ? await codeGenerator.GenerateNextCodeAsync(cancellationToken).ConfigureAwait(false)
+            : command.PatientCode;
+
         bool codeTaken = await dbContext.Patients
-            .AnyAsync(p => p.PatientCode == command.PatientCode, cancellationToken)
+            .AnyAsync(p => p.PatientCode == patientCode, cancellationToken)
             .ConfigureAwait(false);
         if (codeTaken)
         {
             throw new CustomException(
-                $"A patient with code '{command.PatientCode}' already exists.",
+                $"A patient with code '{patientCode}' already exists.",
                 (IEnumerable<string>?)null,
                 HttpStatusCode.Conflict);
         }
@@ -76,7 +81,7 @@ public sealed class CreatePatientCommandHandler(PatientDbContext dbContext, IPhi
             : null;
 
         var patient = Domain.Patient.Create(
-            command.PatientCode, command.IsActive,
+            patientCode, command.IsActive,
             demographics, contact, phiValue,
             employment, guardian, nextOfKin, insurance,
             command.HasNoKnownProblems, command.HasNoKnownMedications, command.HasNoKnownAllergies,

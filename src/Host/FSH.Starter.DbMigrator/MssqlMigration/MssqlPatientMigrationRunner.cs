@@ -165,8 +165,10 @@ internal sealed class MssqlPatientMigrationRunner(
 
         if (fieldErrors.Count > 0)
         {
+            // MssqlPatientMapper always sets PatientCode to "P-{pId}"; never null here even
+            // though CreatePatientCommand.PatientCode is nullable for the dashboard's create flow.
             errors.Add(new MigrationError(
-                pId, cmd.PatientCode, "ValidationFailed", string.Join("; ", fieldErrors)));
+                pId, cmd.PatientCode!, "ValidationFailed", string.Join("; ", fieldErrors)));
         }
     }
 
@@ -202,7 +204,7 @@ internal sealed class MssqlPatientMigrationRunner(
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            errors.Add(new MigrationError(pId, cmd.PatientCode, ex.GetType().Name, ex.Message));
+            errors.Add(new MigrationError(pId, cmd.PatientCode!, ex.GetType().Name, ex.Message));
             logger.LogWarning(ex,
                 "[mssql-migration] row pID={PId} PatientCode={PatientCode} failed: {Message}",
                 pId, cmd.PatientCode, ex.Message);

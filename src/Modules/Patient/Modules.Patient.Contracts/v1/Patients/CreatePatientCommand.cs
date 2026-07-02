@@ -3,7 +3,6 @@ using Mediator;
 namespace FSH.Modules.Patient.Contracts.v1.Patients;
 
 public sealed record CreatePatientCommand(
-    string PatientCode,
     bool IsActive,
     // Demographics
     string FirstName,
@@ -83,4 +82,8 @@ public sealed record CreatePatientCommand(
     DateTime? LastVisitDate = null,
     DateTime? NextVisitDate = null,
     // Legacy linkage — source pUniqueID when migrated from BackChart/BronstonChiro; null otherwise.
-    long? LegacyUniqueId = null) : ICommand<Guid>;
+    long? LegacyUniqueId = null,
+    // Patient code. Null/blank on the dashboard's create flow -> the handler
+    // auto-generates via IPatientCodeGenerator. The MSSQL migration importer
+    // always supplies its own "P-{legacyPId}" value here, which is used as-is.
+    string? PatientCode = null) : ICommand<Guid>;

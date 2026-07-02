@@ -49,13 +49,20 @@ public sealed class CreatePatientCommandValidatorTests
         _sut.TestValidate(Valid()).ShouldNotHaveAnyValidationErrors();
     }
 
+    [Fact]
+    public void Validate_Should_Pass_When_PatientCodeIsNull()
+    {
+        _sut.TestValidate(Valid() with { PatientCode = null })
+            .ShouldNotHaveValidationErrorFor(x => x.PatientCode);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Validate_Should_Fail_When_PatientCodeIsBlank(string code)
+    public void Validate_Should_Pass_When_PatientCodeIsBlank(string code)
     {
         _sut.TestValidate(Valid() with { PatientCode = code })
-            .ShouldHaveValidationErrorFor(x => x.PatientCode);
+            .ShouldNotHaveValidationErrorFor(x => x.PatientCode);
     }
 
     [Fact]
