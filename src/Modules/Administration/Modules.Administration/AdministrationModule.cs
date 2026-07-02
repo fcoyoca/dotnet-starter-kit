@@ -129,6 +129,16 @@ using FSH.Modules.Administration.Features.v1.SmokingStatuses.DeleteSmokingStatus
 using FSH.Modules.Administration.Features.v1.SmokingStatuses.GetSmokingStatusById;
 using FSH.Modules.Administration.Features.v1.SmokingStatuses.ListSmokingStatuses;
 using FSH.Modules.Administration.Features.v1.SmokingStatuses.UpdateSmokingStatus;
+using FSH.Modules.Administration.Features.v1.AllergyReactions.CreateAllergyReaction;
+using FSH.Modules.Administration.Features.v1.AllergyReactions.DeleteAllergyReaction;
+using FSH.Modules.Administration.Features.v1.AllergyReactions.GetAllergyReactionById;
+using FSH.Modules.Administration.Features.v1.AllergyReactions.ListAllergyReactions;
+using FSH.Modules.Administration.Features.v1.AllergyReactions.UpdateAllergyReaction;
+using FSH.Modules.Administration.Features.v1.MedicationDoseUnits.CreateMedicationDoseUnit;
+using FSH.Modules.Administration.Features.v1.MedicationDoseUnits.DeleteMedicationDoseUnit;
+using FSH.Modules.Administration.Features.v1.MedicationDoseUnits.GetMedicationDoseUnitById;
+using FSH.Modules.Administration.Features.v1.MedicationDoseUnits.ListMedicationDoseUnits;
+using FSH.Modules.Administration.Features.v1.MedicationDoseUnits.UpdateMedicationDoseUnit;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -324,5 +334,17 @@ public sealed class AdministrationModule : IModule
         group.MapGetReferralTypeByIdEndpoint();
         group.MapUpdateReferralTypeEndpoint();
         group.MapDeleteReferralTypeEndpoint();
+
+        group.MapCreateAllergyReactionEndpoint();
+        group.MapListAllergyReactionsEndpoint();
+        group.MapGetAllergyReactionByIdEndpoint();
+        group.MapUpdateAllergyReactionEndpoint();
+        group.MapDeleteAllergyReactionEndpoint();
+
+        group.MapCreateMedicationDoseUnitEndpoint();
+        group.MapListMedicationDoseUnitsEndpoint();
+        group.MapGetMedicationDoseUnitByIdEndpoint();
+        group.MapUpdateMedicationDoseUnitEndpoint();
+        group.MapDeleteMedicationDoseUnitEndpoint();
     }
 }

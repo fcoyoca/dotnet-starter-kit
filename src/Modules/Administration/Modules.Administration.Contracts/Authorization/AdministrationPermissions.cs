@@ -229,6 +229,24 @@ public static class AdministrationPermissions
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
+    public static class AllergyReactions
+    {
+        public const string Resource = "Administration.AllergyReactions";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
+    public static class MedicationDoseUnits
+    {
+        public const string Resource = "Administration.MedicationDoseUnits";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
     public static IReadOnlyList<FshPermission> All { get; } =
     [
         new("View Clinics",   ActionConstants.View,   Clinics.Resource, IsBasic: true),
@@ -351,5 +369,15 @@ public static class AdministrationPermissions
         new("Create Referral Types", ActionConstants.Create, ReferralTypes.Resource),
         new("Update Referral Types", ActionConstants.Update, ReferralTypes.Resource),
         new("Delete Referral Types", ActionConstants.Delete, ReferralTypes.Resource),
+
+        new("View Allergy Reactions",   ActionConstants.View,   AllergyReactions.Resource, IsBasic: true),
+        new("Create Allergy Reactions", ActionConstants.Create, AllergyReactions.Resource),
+        new("Update Allergy Reactions", ActionConstants.Update, AllergyReactions.Resource),
+        new("Delete Allergy Reactions", ActionConstants.Delete, AllergyReactions.Resource),
+
+        new("View Medication Dose Units",   ActionConstants.View,   MedicationDoseUnits.Resource, IsBasic: true),
+        new("Create Medication Dose Units", ActionConstants.Create, MedicationDoseUnits.Resource),
+        new("Update Medication Dose Units", ActionConstants.Update, MedicationDoseUnits.Resource),
+        new("Delete Medication Dose Units", ActionConstants.Delete, MedicationDoseUnits.Resource),
     ];
 }

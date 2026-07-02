@@ -46,6 +46,8 @@ public sealed class AdministrationDbContext : BaseDbContext
     public DbSet<SmokingStatus> SmokingStatuses => Set<SmokingStatus>();
     public DbSet<PreferredContactMethod> PreferredContactMethods => Set<PreferredContactMethod>();
     public DbSet<ReferralType> ReferralTypes => Set<ReferralType>();
+    public DbSet<AllergyReaction> AllergyReactions => Set<AllergyReaction>();
+    public DbSet<MedicationDoseUnit> MedicationDoseUnits => Set<MedicationDoseUnit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
