@@ -61,6 +61,7 @@ public sealed class PatientModule : IModule
         builder.Services.AddHeroDbContext<PatientDbContext>();
         builder.Services.AddScoped<IDbInitializer, PatientDbInitializer>();
         builder.Services.AddScoped<IPhiEncryptor, PhiEncryptor>();
+        builder.Services.AddScoped<IPatientCodeGenerator, SequentialPatientCodeGenerator>();
 
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<PatientDbContext>(
