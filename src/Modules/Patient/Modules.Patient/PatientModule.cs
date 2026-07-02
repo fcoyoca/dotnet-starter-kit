@@ -28,6 +28,7 @@ using FSH.Modules.Patient.Features.v1.PatientProblems.UpdatePatientProblem;
 using FSH.Modules.Patient.Features.v1.Patients.CreatePatient;
 using FSH.Modules.Patient.Features.v1.Patients.DeletePatient;
 using FSH.Modules.Patient.Features.v1.Patients.GetPatientById;
+using FSH.Modules.Patient.Features.v1.Patients.NextPatientCodePreview;
 using FSH.Modules.Patient.Features.v1.Patients.RestorePatient;
 using FSH.Modules.Patient.Features.v1.Patients.SearchPatients;
 using FSH.Modules.Patient.Features.v1.Patients.UpdatePatient;
@@ -93,6 +94,7 @@ public sealed class PatientModule : IModule
         group.MapDeletePatientEndpoint();
         group.MapGetPatientByIdEndpoint();
         group.MapSearchPatientsEndpoint();
+        group.MapGetNextPatientCodePreviewEndpoint();
 
         // Incident endpoints — /incidents/{id:guid}/close before /{id:guid} so the literal wins
         group.MapClosePatientIncidentEndpoint();
