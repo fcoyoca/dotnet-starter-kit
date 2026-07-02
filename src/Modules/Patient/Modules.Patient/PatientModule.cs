@@ -8,6 +8,10 @@ using FSH.Modules.Patient.Features.v1.PatientAllergies.CreatePatientAllergy;
 using FSH.Modules.Patient.Features.v1.PatientAllergies.GetPatientAllergyById;
 using FSH.Modules.Patient.Features.v1.PatientAllergies.SearchPatientAllergies;
 using FSH.Modules.Patient.Features.v1.PatientAllergies.UpdatePatientAllergy;
+using FSH.Modules.Patient.Features.v1.PatientMedications.CreatePatientMedication;
+using FSH.Modules.Patient.Features.v1.PatientMedications.GetPatientMedicationById;
+using FSH.Modules.Patient.Features.v1.PatientMedications.SearchPatientMedications;
+using FSH.Modules.Patient.Features.v1.PatientMedications.UpdatePatientMedication;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.ClosePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.CreatePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.DeletePatientIncident;
@@ -133,5 +137,11 @@ public sealed class PatientModule : IModule
         group.MapCreatePatientAllergyEndpoint();
         group.MapGetPatientAllergyByIdEndpoint();
         group.MapUpdatePatientAllergyEndpoint();
+
+        // Medication endpoints — literal /medications collection route before /medications/{id:guid}
+        group.MapSearchPatientMedicationsEndpoint();
+        group.MapCreatePatientMedicationEndpoint();
+        group.MapGetPatientMedicationByIdEndpoint();
+        group.MapUpdatePatientMedicationEndpoint();
     }
 }
