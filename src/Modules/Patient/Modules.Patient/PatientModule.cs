@@ -9,7 +9,9 @@ using FSH.Modules.Patient.Features.v1.PatientAllergies.GetPatientAllergyById;
 using FSH.Modules.Patient.Features.v1.PatientAllergies.SearchPatientAllergies;
 using FSH.Modules.Patient.Features.v1.PatientAllergies.UpdatePatientAllergy;
 using FSH.Modules.Patient.Features.v1.PatientMedications.CreatePatientMedication;
+using FSH.Modules.Patient.Features.v1.PatientMedications.GetMedicationReconciledDates;
 using FSH.Modules.Patient.Features.v1.PatientMedications.GetPatientMedicationById;
+using FSH.Modules.Patient.Features.v1.PatientMedications.MarkMedicationsReconciled;
 using FSH.Modules.Patient.Features.v1.PatientMedications.SearchPatientMedications;
 using FSH.Modules.Patient.Features.v1.PatientMedications.UpdatePatientMedication;
 using FSH.Modules.Patient.Features.v1.PatientNotes.CreatePatientNote;
@@ -147,6 +149,10 @@ public sealed class PatientModule : IModule
         group.MapCreatePatientMedicationEndpoint();
         group.MapGetPatientMedicationByIdEndpoint();
         group.MapUpdatePatientMedicationEndpoint();
+
+        // Medication reconciliation
+        group.MapGetMedicationReconciledDatesEndpoint();
+        group.MapMarkMedicationsReconciledEndpoint();
 
         // Note endpoints
         group.MapSearchPatientNotesEndpoint();
