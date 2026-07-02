@@ -4,6 +4,10 @@ using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Patient.Contracts.Authorization;
 using FSH.Modules.Patient.Data;
+using FSH.Modules.Patient.Features.v1.PatientAllergies.CreatePatientAllergy;
+using FSH.Modules.Patient.Features.v1.PatientAllergies.GetPatientAllergyById;
+using FSH.Modules.Patient.Features.v1.PatientAllergies.SearchPatientAllergies;
+using FSH.Modules.Patient.Features.v1.PatientAllergies.UpdatePatientAllergy;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.ClosePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.CreatePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.DeletePatientIncident;
@@ -123,5 +127,11 @@ public sealed class PatientModule : IModule
         group.MapGetPatientProblemByIdEndpoint();
         group.MapUpdatePatientProblemEndpoint();
         group.MapDeletePatientProblemEndpoint();
+
+        // Allergy endpoints — literal /allergies collection route before /allergies/{id:guid}
+        group.MapSearchPatientAllergiesEndpoint();
+        group.MapCreatePatientAllergyEndpoint();
+        group.MapGetPatientAllergyByIdEndpoint();
+        group.MapUpdatePatientAllergyEndpoint();
     }
 }

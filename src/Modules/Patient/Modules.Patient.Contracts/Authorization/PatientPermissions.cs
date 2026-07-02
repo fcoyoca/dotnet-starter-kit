@@ -44,6 +44,15 @@ public static class PatientPermissions
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
+    public static class Allergies
+    {
+        public const string Resource = "Patient.Allergies";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
     public static IReadOnlyList<FshPermission> All { get; } =
     [
         new("View Patients",    ActionConstants.View,   Patients.Resource, IsBasic: true),
@@ -66,5 +75,9 @@ public static class PatientPermissions
         new("Create Problems", ActionConstants.Create, Problems.Resource),
         new("Update Problems", ActionConstants.Update, Problems.Resource),
         new("Delete Problems", ActionConstants.Delete, Problems.Resource),
+        new("View Allergies",   ActionConstants.View,   Allergies.Resource, IsBasic: true),
+        new("Create Allergies", ActionConstants.Create, Allergies.Resource),
+        new("Update Allergies", ActionConstants.Update, Allergies.Resource),
+        new("Delete Allergies", ActionConstants.Delete, Allergies.Resource),
     ];
 }

@@ -151,4 +151,18 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
         DeletedBy = null;
         UpdatedAtUtc = DateTime.UtcNow;
     }
+
+    /// <summary>Chart "Set No Allergies" checkbox; auto-cleared when an active allergy is saved.</summary>
+    public void SetNoKnownAllergies(bool value)
+    {
+        HasNoKnownAllergies = value;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>Chart "Set No Medications" checkbox; auto-cleared when an active medication is saved.</summary>
+    public void SetNoKnownMedications(bool value)
+    {
+        HasNoKnownMedications = value;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
 }
