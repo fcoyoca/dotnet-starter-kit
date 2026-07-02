@@ -99,6 +99,11 @@ using FSH.Modules.Administration.Features.v1.Diagnostics.DeleteDiagnostic;
 using FSH.Modules.Administration.Features.v1.Diagnostics.GetDiagnosticById;
 using FSH.Modules.Administration.Features.v1.Diagnostics.ListDiagnostics;
 using FSH.Modules.Administration.Features.v1.Diagnostics.UpdateDiagnostic;
+using FSH.Modules.Administration.Features.v1.Drugs.CreateDrug;
+using FSH.Modules.Administration.Features.v1.Drugs.DeleteDrug;
+using FSH.Modules.Administration.Features.v1.Drugs.GetDrugById;
+using FSH.Modules.Administration.Features.v1.Drugs.ListDrugs;
+using FSH.Modules.Administration.Features.v1.Drugs.UpdateDrug;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.CreateDiagnosticCategory;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.DeleteDiagnosticCategory;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.GetDiagnosticCategoryById;
@@ -221,6 +226,12 @@ public sealed class AdministrationModule : IModule
         group.MapGetDiagnosticByIdEndpoint();
         group.MapUpdateDiagnosticEndpoint();
         group.MapDeleteDiagnosticEndpoint();
+
+        group.MapListDrugsEndpoint();
+        group.MapGetDrugByIdEndpoint();
+        group.MapCreateDrugEndpoint();
+        group.MapUpdateDrugEndpoint();
+        group.MapDeleteDrugEndpoint();
 
         group.MapCreateProcedureCategoryEndpoint();
         group.MapListProcedureCategoriesEndpoint();

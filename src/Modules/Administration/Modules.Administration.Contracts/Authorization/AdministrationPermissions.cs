@@ -77,6 +77,16 @@ public static class AdministrationPermissions
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
+    /// <summary>The global drug catalog (legacy RxNorm RXNCONSO subset) searched by allergy/medication pickers.</summary>
+    public static class Drugs
+    {
+        public const string Resource = "Administration.Drugs";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
     public static class ProcedureCategories
     {
         public const string Resource = "Administration.ProcedureCategories";
@@ -260,6 +270,11 @@ public static class AdministrationPermissions
         new("Create Diagnostics", ActionConstants.Create, Diagnostics.Resource),
         new("Update Diagnostics", ActionConstants.Update, Diagnostics.Resource),
         new("Delete Diagnostics", ActionConstants.Delete, Diagnostics.Resource),
+
+        new("View Drugs",   ActionConstants.View,   Drugs.Resource, IsBasic: true),
+        new("Create Drugs", ActionConstants.Create, Drugs.Resource),
+        new("Update Drugs", ActionConstants.Update, Drugs.Resource),
+        new("Delete Drugs", ActionConstants.Delete, Drugs.Resource),
 
         new("View Procedure Categories",   ActionConstants.View,   ProcedureCategories.Resource, IsBasic: true),
         new("Create Procedure Categories", ActionConstants.Create, ProcedureCategories.Resource),
