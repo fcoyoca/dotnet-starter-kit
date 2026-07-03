@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Constants;
+using FSH.Framework.Web.HttpResilience;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Administration.Contracts.Authorization;
 using FSH.Modules.Administration.Data;
@@ -102,7 +103,9 @@ using FSH.Modules.Administration.Features.v1.Diagnostics.UpdateDiagnostic;
 using FSH.Modules.Administration.Features.v1.Drugs.CreateDrug;
 using FSH.Modules.Administration.Features.v1.Drugs.DeleteDrug;
 using FSH.Modules.Administration.Features.v1.Drugs.GetDrugById;
+using FSH.Modules.Administration.Features.v1.Drugs.ImportDrugs;
 using FSH.Modules.Administration.Features.v1.Drugs.ListDrugs;
+using FSH.Modules.Administration.Features.v1.Drugs.SearchRxNav;
 using FSH.Modules.Administration.Features.v1.Drugs.UpdateDrug;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.CreateDiagnosticCategory;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.DeleteDiagnosticCategory;
@@ -165,6 +168,14 @@ public sealed class AdministrationModule : IModule
             .AddDbContextCheck<AdministrationDbContext>(
                 name: "db:administration",
                 failureStatus: HealthStatus.Unhealthy);
+
+#pragma warning disable S1075 // NIH RxNav is a fixed public API endpoint, not a user-configurable path.
+        builder.Services.AddHttpClient("RxNav", client =>
+        {
+            client.BaseAddress = new Uri("https://rxnav.nlm.nih.gov/");
+            client.Timeout = TimeSpan.FromSeconds(30);
+        }).AddHeroResilience(builder.Configuration);
+#pragma warning restore S1075
     }
 
     public void ConfigureMiddleware(IApplicationBuilder app) { }
@@ -237,6 +248,8 @@ public sealed class AdministrationModule : IModule
         group.MapUpdateDiagnosticEndpoint();
         group.MapDeleteDiagnosticEndpoint();
 
+        group.MapSearchRxNavEndpoint();   // literal /drugs/rxnav before /drugs/{id:int}
+        group.MapImportDrugsEndpoint();   // literal /drugs/import before /drugs/{id:int}
         group.MapListDrugsEndpoint();
         group.MapGetDrugByIdEndpoint();
         group.MapCreateDrugEndpoint();
