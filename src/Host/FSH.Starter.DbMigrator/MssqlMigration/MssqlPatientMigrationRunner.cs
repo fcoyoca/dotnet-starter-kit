@@ -311,35 +311,49 @@ internal sealed class MssqlPatientMigrationRunner(
         }
 
         var patientIds = resolved.Select(r => r.PatientId).Distinct().ToArray();
-        await DeleteExistingForPatientsAsync(dbContext, TargetTable, patientIds, ct).ConfigureAwait(false);
 
-        var added = 0;
-        foreach (var (row, patientId) in resolved)
+        try
         {
-            var drugName = string.IsNullOrWhiteSpace(row.DrugName) ? "(unknown)" : row.DrugName;
-            dbContext.PatientAllergies.Add(PatientAllergy.Create(
-                patientId,
-                drugName,
-                row.RxAui,
-                row.Reaction,
-                row.Comments,
-                row.DateNoted ?? row.CreatedDate ?? DateTime.UtcNow,
-                row.Active,
-                createdByUserId: null,
-                createdByName: "BackChart migration"));
-            added++;
-            if (added % 500 == 0)
-            {
-                await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
-                dbContext.ChangeTracker.Clear();
-            }
-        }
-        await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
-        dbContext.ChangeTracker.Clear();
+            await DeleteExistingForPatientsAsync(dbContext, TargetTable, patientIds, ct).ConfigureAwait(false);
 
-        await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
-            $"[mssql-migration] {TargetTable}: migrated {added} row(s), {skipped} skipped (no matching patient)"))
-            .ConfigureAwait(false);
+            var added = 0;
+            foreach (var (row, patientId) in resolved)
+            {
+                var drugName = string.IsNullOrWhiteSpace(row.DrugName) ? "(unknown)" : row.DrugName;
+                dbContext.PatientAllergies.Add(PatientAllergy.Create(
+                    patientId,
+                    drugName,
+                    row.RxAui,
+                    row.Reaction,
+                    row.Comments,
+                    row.DateNoted ?? row.CreatedDate ?? DateTime.UtcNow,
+                    row.Active,
+                    createdByUserId: null,
+                    createdByName: "BackChart migration"));
+                added++;
+                if (added % 500 == 0)
+                {
+                    await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+                    dbContext.ChangeTracker.Clear();
+                }
+            }
+            await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+            dbContext.ChangeTracker.Clear();
+
+            await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+                $"[mssql-migration] {TargetTable}: migrated {added} row(s), {skipped} skipped (no matching patient)"))
+                .ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // Per-table isolation: a write failure must not abort the rest of the migration.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            dbContext.ChangeTracker.Clear();
+            await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+                $"[mssql-migration] {TargetTable}: write failed ({ex.Message}) — TABLE NOT MIGRATED"))
+                .ConfigureAwait(false);
+            logger.LogWarning(ex, "[mssql-migration] {Table} write failed: {Message}", TargetTable, ex.Message);
+        }
     }
 
     private async Task MigrateMedicationsAsync(
@@ -390,43 +404,57 @@ internal sealed class MssqlPatientMigrationRunner(
         }
 
         var patientIds = resolved.Select(r => r.PatientId).Distinct().ToArray();
-        await DeleteExistingForPatientsAsync(dbContext, TargetTable, patientIds, ct).ConfigureAwait(false);
 
-        var added = 0;
-        foreach (var (row, patientId) in resolved)
+        try
         {
-            var drugName = string.IsNullOrWhiteSpace(row.DrugName) ? "(unknown)" : row.DrugName;
-            dbContext.PatientMedications.Add(PatientMedication.Create(
-                patientId,
-                drugName,
-                row.RxAui,
-                rxCode: null, // legacy PatientMedications has no RXCUI column — always null for migrated rows.
-                row.Ndc,
-                row.Prescriber,
-                row.StartDate ?? row.CreatedDate ?? DateTime.UtcNow,
-                row.EndDate,
-                row.DoseValue,
-                row.DoseUnitId,
-                row.DosePeriodValue,
-                row.DosePeriodUnit,
-                row.Instructions,
-                row.Indication,
-                row.Active,
-                createdByUserId: null,
-                createdByName: "BackChart migration"));
-            added++;
-            if (added % 500 == 0)
-            {
-                await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
-                dbContext.ChangeTracker.Clear();
-            }
-        }
-        await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
-        dbContext.ChangeTracker.Clear();
+            await DeleteExistingForPatientsAsync(dbContext, TargetTable, patientIds, ct).ConfigureAwait(false);
 
-        await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
-            $"[mssql-migration] {TargetTable}: migrated {added} row(s), {skipped} skipped (no matching patient)"))
-            .ConfigureAwait(false);
+            var added = 0;
+            foreach (var (row, patientId) in resolved)
+            {
+                var drugName = string.IsNullOrWhiteSpace(row.DrugName) ? "(unknown)" : row.DrugName;
+                dbContext.PatientMedications.Add(PatientMedication.Create(
+                    patientId,
+                    drugName,
+                    row.RxAui,
+                    rxCode: null, // legacy PatientMedications has no RXCUI column — always null for migrated rows.
+                    row.Ndc,
+                    row.Prescriber,
+                    row.StartDate ?? row.CreatedDate ?? DateTime.UtcNow,
+                    row.EndDate,
+                    row.DoseValue,
+                    row.DoseUnitId,
+                    row.DosePeriodValue,
+                    row.DosePeriodUnit,
+                    row.Instructions,
+                    row.Indication,
+                    row.Active,
+                    createdByUserId: null,
+                    createdByName: "BackChart migration"));
+                added++;
+                if (added % 500 == 0)
+                {
+                    await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+                    dbContext.ChangeTracker.Clear();
+                }
+            }
+            await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+            dbContext.ChangeTracker.Clear();
+
+            await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+                $"[mssql-migration] {TargetTable}: migrated {added} row(s), {skipped} skipped (no matching patient)"))
+                .ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // Per-table isolation: a write failure must not abort the rest of the migration.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            dbContext.ChangeTracker.Clear();
+            await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+                $"[mssql-migration] {TargetTable}: write failed ({ex.Message}) — TABLE NOT MIGRATED"))
+                .ConfigureAwait(false);
+            logger.LogWarning(ex, "[mssql-migration] {Table} write failed: {Message}", TargetTable, ex.Message);
+        }
     }
 
     private async Task MigrateNotesAsync(
@@ -477,37 +505,51 @@ internal sealed class MssqlPatientMigrationRunner(
         }
 
         var patientIds = resolved.Select(r => r.PatientId).Distinct().ToArray();
-        await DeleteExistingForPatientsAsync(dbContext, TargetTable, patientIds, ct).ConfigureAwait(false);
 
-        var added = 0;
-        foreach (var (row, patientId) in resolved)
+        try
         {
-            var name = string.IsNullOrWhiteSpace(row.Name) ? "(unknown)" : row.Name;
-            var note = PatientNote.Create(
-                patientId,
-                name,
-                row.Description,
-                row.MedicalAlert,
-                createdByUserId: null,
-                createdByName: "BackChart migration");
-            if (row.Deleted)
-            {
-                note.Delete("BackChart migration");
-            }
-            dbContext.PatientNotes.Add(note);
-            added++;
-            if (added % 500 == 0)
-            {
-                await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
-                dbContext.ChangeTracker.Clear();
-            }
-        }
-        await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
-        dbContext.ChangeTracker.Clear();
+            await DeleteExistingForPatientsAsync(dbContext, TargetTable, patientIds, ct).ConfigureAwait(false);
 
-        await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
-            $"[mssql-migration] {TargetTable}: migrated {added} row(s), {skipped} skipped (no matching patient)"))
-            .ConfigureAwait(false);
+            var added = 0;
+            foreach (var (row, patientId) in resolved)
+            {
+                var name = string.IsNullOrWhiteSpace(row.Name) ? "(unknown)" : row.Name;
+                var note = PatientNote.Create(
+                    patientId,
+                    name,
+                    row.Description,
+                    row.MedicalAlert,
+                    createdByUserId: null,
+                    createdByName: "BackChart migration");
+                if (row.Deleted)
+                {
+                    note.Delete("BackChart migration");
+                }
+                dbContext.PatientNotes.Add(note);
+                added++;
+                if (added % 500 == 0)
+                {
+                    await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+                    dbContext.ChangeTracker.Clear();
+                }
+            }
+            await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+            dbContext.ChangeTracker.Clear();
+
+            await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+                $"[mssql-migration] {TargetTable}: migrated {added} row(s), {skipped} skipped (no matching patient)"))
+                .ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // Per-table isolation: a write failure must not abort the rest of the migration.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            dbContext.ChangeTracker.Clear();
+            await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+                $"[mssql-migration] {TargetTable}: write failed ({ex.Message}) — TABLE NOT MIGRATED"))
+                .ConfigureAwait(false);
+            logger.LogWarning(ex, "[mssql-migration] {Table} write failed: {Message}", TargetTable, ex.Message);
+        }
     }
 
     private async Task MigrateReconciledDatesAsync(
@@ -558,29 +600,43 @@ internal sealed class MssqlPatientMigrationRunner(
         }
 
         var patientIds = resolved.Select(r => r.PatientId).Distinct().ToArray();
-        await DeleteExistingForPatientsAsync(dbContext, TargetTable, patientIds, ct).ConfigureAwait(false);
 
-        var added = 0;
-        foreach (var (row, patientId) in resolved)
+        try
         {
-            dbContext.MedicationReconciledDates.Add(MedicationReconciledDate.Create(
-                patientId,
-                row.Date ?? DateTime.UtcNow,
-                createdByUserId: null,
-                createdByName: "BackChart migration"));
-            added++;
-            if (added % 500 == 0)
-            {
-                await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
-                dbContext.ChangeTracker.Clear();
-            }
-        }
-        await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
-        dbContext.ChangeTracker.Clear();
+            await DeleteExistingForPatientsAsync(dbContext, TargetTable, patientIds, ct).ConfigureAwait(false);
 
-        await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
-            $"[mssql-migration] {TargetTable}: migrated {added} row(s), {skipped} skipped (no matching patient)"))
-            .ConfigureAwait(false);
+            var added = 0;
+            foreach (var (row, patientId) in resolved)
+            {
+                dbContext.MedicationReconciledDates.Add(MedicationReconciledDate.Create(
+                    patientId,
+                    row.Date ?? DateTime.UtcNow,
+                    createdByUserId: null,
+                    createdByName: "BackChart migration"));
+                added++;
+                if (added % 500 == 0)
+                {
+                    await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+                    dbContext.ChangeTracker.Clear();
+                }
+            }
+            await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
+            dbContext.ChangeTracker.Clear();
+
+            await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+                $"[mssql-migration] {TargetTable}: migrated {added} row(s), {skipped} skipped (no matching patient)"))
+                .ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // Per-table isolation: a write failure must not abort the rest of the migration.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            dbContext.ChangeTracker.Clear();
+            await Console.Out.WriteLineAsync(string.Create(CultureInfo.InvariantCulture,
+                $"[mssql-migration] {TargetTable}: write failed ({ex.Message}) — TABLE NOT MIGRATED"))
+                .ConfigureAwait(false);
+            logger.LogWarning(ex, "[mssql-migration] {Table} write failed: {Message}", TargetTable, ex.Message);
+        }
     }
 
     /// <summary>
