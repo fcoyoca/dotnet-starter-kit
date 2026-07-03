@@ -417,6 +417,38 @@ try
         return exitCode;
     }
 
+    // ── Step 4d — MSSQL drug catalog migration (verb: `migrate-drug-catalog-from-mssql`) ──────
+    // Populates Drugs (RXNCONSO via COPY), AllergyReactions (SnomedAssociation × Snomed, best-effort
+    // cross-database join) and MedicationDoseUnits (MedicationUnitTypes) from BackChart. Run before
+    // `migrate-from-mssql` so patient allergy/medication rows resolve their catalog foreign keys.
+    if (cli.Command == "migrate-drug-catalog-from-mssql")
+    {
+        if (string.IsNullOrWhiteSpace(cli.SourceConnectionString))
+        {
+            await Console.Error.WriteLineAsync(
+                "[mssql-drug-catalog] FAILED: --source-connection is required for migrate-drug-catalog-from-mssql.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+        if (string.IsNullOrWhiteSpace(cli.Tenant))
+        {
+            await Console.Error.WriteLineAsync(
+                "[mssql-drug-catalog] FAILED: --tenant is required for migrate-drug-catalog-from-mssql.")
+                .ConfigureAwait(false);
+            return 1;
+        }
+
+        var mode = cli.DryRun ? "DRY-RUN" : "LIVE";
+        await Console.Out.WriteLineAsync(
+            $"[mssql-drug-catalog] starting {mode} drug catalog migration → tenant={cli.Tenant}").ConfigureAwait(false);
+
+        var drugCatalogRunner = new MssqlDrugCatalogMigrationRunner(host.Services, logger);
+        var exitCode = await drugCatalogRunner.RunAsync(
+            cli.SourceConnectionString!, cli.Tenant!, cli.DryRun, CancellationToken.None)
+            .ConfigureAwait(false);
+        return exitCode;
+    }
+
     await Console.Out.WriteLineAsync("[migrator] finished successfully.").ConfigureAwait(false);
     return 0;
 }

@@ -24,7 +24,7 @@ internal sealed record MigratorCommand(
     int BatchSize = 100)
 {
     private static readonly string[] KnownVerbs =
-        ["apply", "seed", "seed-demo", "list-pending", "migrate-from-mssql", "migrate-lookups-from-mssql", "migrate-users-from-mssql"];
+        ["apply", "seed", "seed-demo", "list-pending", "migrate-from-mssql", "migrate-lookups-from-mssql", "migrate-users-from-mssql", "migrate-drug-catalog-from-mssql"];
 
     public static MigratorCommand Parse(string[] args)
     {
@@ -93,6 +93,10 @@ internal sealed record MigratorCommand(
                               user gets a discarded random password + confirmed email, so they sign in
                               via forgot-password). uSuperUser → Admin, all → Basic. Requires
                               --source-connection and --tenant.
+          migrate-drug-catalog-from-mssql
+                              Copy RXNCONSO → Drugs (COPY), SnomedAssociation → AllergyReactions,
+                              MedicationUnitTypes → MedicationDoseUnits. Run before migrate-from-mssql.
+                              Requires --source-connection and --tenant. Supports --dry-run.
           apply           Apply pending migrations (default). Use --seed to also run SeedAsync.
           seed            Run only the SeedAsync step per tenant.
           seed-demo       Provision the demo tenants (acme, globex) with users, catalog,
