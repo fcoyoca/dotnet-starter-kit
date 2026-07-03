@@ -47,3 +47,30 @@ export const PROBLEM_PERMISSIONS = {
 } as const;
 
 export type ProblemPermissionKey = keyof typeof PROBLEM_PERMISSIONS;
+
+export const ALLERGY_PERMISSIONS = {
+  view:   "Permissions.Patient.Allergies.View",
+  create: "Permissions.Patient.Allergies.Create",
+  update: "Permissions.Patient.Allergies.Update",
+  delete: "Permissions.Patient.Allergies.Delete",
+} as const;
+
+export type AllergyPermissionKey = keyof typeof ALLERGY_PERMISSIONS;
+
+export const MEDICATION_PERMISSIONS = {
+  view:   "Permissions.Patient.Medications.View",
+  create: "Permissions.Patient.Medications.Create",
+  update: "Permissions.Patient.Medications.Update",
+  delete: "Permissions.Patient.Medications.Delete",
+} as const;
+
+export type MedicationPermissionKey = keyof typeof MEDICATION_PERMISSIONS;
+
+export const NOTE_PERMISSIONS = {
+  view:   "Permissions.Patient.Notes.View",
+  create: "Permissions.Patient.Notes.Create",
+  update: "Permissions.Patient.Notes.Update",
+  delete: "Permissions.Patient.Notes.Delete",
+} as const;
+
+export type NotePermissionKey = keyof typeof NOTE_PERMISSIONS;
