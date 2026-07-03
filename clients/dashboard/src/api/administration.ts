@@ -1470,3 +1470,70 @@ export async function deleteProcedureCode(id: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// ─── Drugs (global catalog — allergy/medication pickers) ───────────────
+
+export type DrugDto = {
+  id: number;
+  name: string;
+  rxAui?: string | null;
+  rxCui?: string | null;
+  tty?: string | null;
+  sab?: string | null;
+  code?: string | null;
+  isActive: boolean;
+  createdAtUtc: string;
+  updatedAtUtc?: string | null;
+};
+
+export type ListDrugsParams = {
+  search?: string;
+  isActive?: boolean | null;
+  pageNumber?: number;
+  pageSize?: number;
+};
+
+export function listDrugs(params: ListDrugsParams = {}): Promise<PagedResponse<DrugDto>> {
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.isActive !== undefined && params.isActive !== null)
+    query.set("isActive", String(params.isActive));
+  query.set("pageNumber", String(params.pageNumber ?? 1));
+  query.set("pageSize", String(params.pageSize ?? 20));
+  return apiFetch<PagedResponse<DrugDto>>(`/api/v1/administration/drugs?${query.toString()}`);
+}
+
+// ─── Allergy Reactions (global SNOMED reaction lookup) ──────────────────
+
+export type AllergyReactionDto = {
+  id: number;
+  term: string;
+  snomedCode?: string | null;
+  isActive: boolean;
+};
+
+export function listAllergyReactions(params: { isActive?: boolean } = {}): Promise<AllergyReactionDto[]> {
+  const query = new URLSearchParams();
+  if (params.isActive !== undefined) query.set("isActive", String(params.isActive));
+  return apiFetch<AllergyReactionDto[]>(
+    `/api/v1/administration/allergy-reactions?${query.toString()}`,
+  );
+}
+
+// ─── Medication Dose Units (global lookup) ──────────────────────────────
+
+export type MedicationDoseUnitDto = {
+  id: number;
+  name: string;
+  isActive: boolean;
+};
+
+export function listMedicationDoseUnits(
+  params: { isActive?: boolean } = {},
+): Promise<MedicationDoseUnitDto[]> {
+  const query = new URLSearchParams();
+  if (params.isActive !== undefined) query.set("isActive", String(params.isActive));
+  return apiFetch<MedicationDoseUnitDto[]>(
+    `/api/v1/administration/medication-dose-units?${query.toString()}`,
+  );
+}

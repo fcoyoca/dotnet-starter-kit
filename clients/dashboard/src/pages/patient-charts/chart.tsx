@@ -17,6 +17,7 @@ import {
   FileText,
   Lock,
   Pencil,
+  Pill,
   Plus,
   Stethoscope,
   Trash2,
@@ -36,7 +37,12 @@ import {
 } from "@/api/administration";
 import { createReport, deleteReport, searchPatientReports } from "@/api/reports";
 import { searchPatientProblems } from "@/api/problems";
-import { INCIDENT_PERMISSIONS, PROBLEM_PERMISSIONS, REPORT_PERMISSIONS } from "@/lib/patient-permissions";
+import {
+  ALLERGY_PERMISSIONS,
+  INCIDENT_PERMISSIONS,
+  PROBLEM_PERMISSIONS,
+  REPORT_PERMISSIONS,
+} from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +64,7 @@ import {
   EntityStatusBadge,
 } from "@/components/list";
 import { describe, formatDate } from "@/lib/list-helpers";
+import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
@@ -163,8 +170,10 @@ export function PatientChartDetailPage() {
   const canDeleteReports = user?.permissions?.includes(REPORT_PERMISSIONS.delete) ?? false;
 
   const canViewProblems = user?.permissions?.includes(PROBLEM_PERMISSIONS.view) ?? false;
+  const canViewAllergies = user?.permissions?.includes(ALLERGY_PERMISSIONS.view) ?? false;
 
   const [problemListOpen, setProblemListOpen] = useState(false);
+  const [allergyListOpen, setAllergyListOpen] = useState(false);
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -366,6 +375,17 @@ export function PatientChartDetailPage() {
           >
             <Stethoscope className="size-4" />
             Problem List
+          </Button>
+        )}
+        {canViewAllergies && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
+            onClick={() => setAllergyListOpen(true)}
+          >
+            <Pill className="size-4" />
+            Allergy List
           </Button>
         )}
       </div>
@@ -823,6 +843,15 @@ export function PatientChartDetailPage() {
           open={problemListOpen}
           onClose={() => setProblemListOpen(false)}
           incidentId={activeIncidentId}
+        />
+      )}
+
+      {/* Allergy List dialog (opens add/edit allergy dialog from within) */}
+      {patientId && (
+        <AllergyListDialog
+          patientId={patientId}
+          open={allergyListOpen}
+          onClose={() => setAllergyListOpen(false)}
         />
       )}
 
