@@ -105,14 +105,16 @@ export function MedicationListDialog({ patientId, open, onClose }: Props) {
                   />
                   <span>Set No Medications</span>
                 </label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
-                  onClick={() => setReconciliationOpen(true)}
-                >
-                  Reconciliation
-                </Button>
+                {canUpdate && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
+                    onClick={() => setReconciliationOpen(true)}
+                  >
+                    Reconciliation
+                  </Button>
+                )}
                 {canCreate && (
                   <Button
                     size="sm"
