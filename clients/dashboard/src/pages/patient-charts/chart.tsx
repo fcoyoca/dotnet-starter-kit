@@ -20,6 +20,7 @@ import {
   Pill,
   Plus,
   Stethoscope,
+  StickyNote,
   Tablets,
   Trash2,
 } from "lucide-react";
@@ -38,10 +39,12 @@ import {
 } from "@/api/administration";
 import { createReport, deleteReport, searchPatientReports } from "@/api/reports";
 import { searchPatientProblems } from "@/api/problems";
+import { searchPatientNotes } from "@/api/patient-notes";
 import {
   ALLERGY_PERMISSIONS,
   INCIDENT_PERMISSIONS,
   MEDICATION_PERMISSIONS,
+  NOTE_PERMISSIONS,
   PROBLEM_PERMISSIONS,
   REPORT_PERMISSIONS,
 } from "@/lib/patient-permissions";
@@ -70,6 +73,7 @@ import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
 import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
+import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
 import { ReportSearchDialog } from "@/pages/patient-charts/report-search-dialog";
 import {
@@ -175,10 +179,12 @@ export function PatientChartDetailPage() {
   const canViewProblems = user?.permissions?.includes(PROBLEM_PERMISSIONS.view) ?? false;
   const canViewAllergies = user?.permissions?.includes(ALLERGY_PERMISSIONS.view) ?? false;
   const canViewMedications = user?.permissions?.includes(MEDICATION_PERMISSIONS.view) ?? false;
+  const canViewNotes = user?.permissions?.includes(NOTE_PERMISSIONS.view) ?? false;
 
   const [problemListOpen, setProblemListOpen] = useState(false);
   const [allergyListOpen, setAllergyListOpen] = useState(false);
   const [medicationListOpen, setMedicationListOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -296,6 +302,22 @@ export function PatientChartDetailPage() {
     [medicalAlertsQuery.data],
   );
 
+  // Medical-alert notes power the chart banner alongside medical-alert problems;
+  // the full list lives in the Patient Notes dialog. Keyed under
+  // ["patient-notes", patientId, ...] so the dialog's mutations (which invalidate
+  // that prefix) also refresh this banner.
+  const noteAlertsQuery = useQuery({
+    queryKey: ["patient-notes", patientId, "alerts"],
+    queryFn: () =>
+      searchPatientNotes({ patientId: patientId!, medicalAlertsOnly: true, pageSize: 100 }),
+    enabled: !!patientId && canViewNotes,
+  });
+
+  const medicalAlertNotes = useMemo(
+    () => noteAlertsQuery.data?.items ?? [],
+    [noteAlertsQuery.data],
+  );
+
   const patient = patientQuery.data;
   const allIncidents = useMemo(() => incidentsQuery.data?.items ?? [], [incidentsQuery.data]);
 
@@ -348,8 +370,9 @@ export function PatientChartDetailPage() {
         Patient Chart
       </Link>
 
-      {/* Medical alerts surfaced from the problem list */}
-      {canViewProblems && medicalAlertProblems.length > 0 && (
+      {/* Medical alerts surfaced from the problem list and patient notes */}
+      {((canViewProblems && medicalAlertProblems.length > 0) ||
+        (canViewNotes && medicalAlertNotes.length > 0)) && (
         <div className="flex items-start gap-2.5 rounded-xl border border-[oklch(from_var(--color-destructive)_l_c_h_/_0.3)] bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.06)] px-4 py-3">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--color-destructive)]" />
           <div className="min-w-0">
@@ -363,6 +386,13 @@ export function PatientChartDetailPage() {
                   {p.diagnosticDescription ? ` — ${p.diagnosticDescription}` : ""}
                 </li>
               ))}
+              {canViewNotes &&
+                medicalAlertNotes.map((n) => (
+                  <li key={n.id} className="text-[13px]">
+                    <span className="font-medium">{n.name}</span>
+                    {n.description ? ` — ${n.description}` : ""}
+                  </li>
+                ))}
             </ul>
           </div>
         </div>
@@ -402,6 +432,17 @@ export function PatientChartDetailPage() {
           >
             <Tablets className="size-4" />
             Medication List
+          </Button>
+        )}
+        {canViewNotes && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
+            onClick={() => setNotesOpen(true)}
+          >
+            <StickyNote className="size-4" />
+            Patient Notes
           </Button>
         )}
       </div>
@@ -877,6 +918,15 @@ export function PatientChartDetailPage() {
           patientId={patientId}
           open={medicationListOpen}
           onClose={() => setMedicationListOpen(false)}
+        />
+      )}
+
+      {/* Patient Notes dialog (opens add/edit note dialog from within) */}
+      {patientId && (
+        <PatientNotesDialog
+          patientId={patientId}
+          open={notesOpen}
+          onClose={() => setNotesOpen(false)}
         />
       )}
 
