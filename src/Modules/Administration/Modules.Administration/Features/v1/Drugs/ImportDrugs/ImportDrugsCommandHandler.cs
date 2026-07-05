@@ -13,14 +13,20 @@ public sealed class ImportDrugsCommandHandler(AdministrationDbContext dbContext)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var rxCuis = command.Items.Select(i => i.RxCui).ToList();
+        // De-duplicate by RxCui within this payload so two items sharing a new RxCui can't both
+        // take the Add branch below and create duplicate rows in the global drug catalog.
+        var items = command.Items
+            .DistinctBy(i => i.RxCui)
+            .ToList();
+
+        var rxCuis = items.Select(i => i.RxCui).ToList();
         Dictionary<string, Drug> existing = await dbContext.Drugs
             .Where(d => d.RxCui != null && rxCuis.Contains(d.RxCui))
             .ToDictionaryAsync(d => d.RxCui!, cancellationToken)
             .ConfigureAwait(false);
 
         int affected = 0;
-        foreach (var item in command.Items)
+        foreach (var item in items)
         {
             if (existing.TryGetValue(item.RxCui, out Drug? drug))
             {

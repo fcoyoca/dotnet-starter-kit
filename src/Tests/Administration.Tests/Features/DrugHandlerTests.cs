@@ -2,10 +2,12 @@ using Finbuckle.MultiTenant;
 using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Shared.Multitenancy;
 using FSH.Framework.Shared.Persistence;
+using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Administration.Contracts.v1.Drugs;
 using FSH.Modules.Administration.Data;
 using FSH.Modules.Administration.Features.v1.Drugs.CreateDrug;
 using FSH.Modules.Administration.Features.v1.Drugs.DeleteDrug;
+using FSH.Modules.Administration.Features.v1.Drugs.ImportDrugs;
 using FSH.Modules.Administration.Features.v1.Drugs.ListDrugs;
 using FSH.Modules.Administration.Features.v1.Drugs.UpdateDrug;
 using Microsoft.EntityFrameworkCore;
@@ -64,5 +66,26 @@ public sealed class DrugHandlerTests
 
         await delete.Handle(new DeleteDrugCommand(id), CancellationToken.None);
         (await list.Handle(new ListDrugsQuery(), CancellationToken.None)).Items.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Import_DuplicateRxCuiInSamePayload_CreatesOnlyOneDrug()
+    {
+        using var db = CreateContext(Guid.NewGuid().ToString());
+        var import = new ImportDrugsCommandHandler(db);
+        var list = new ListDrugsQueryHandler(db);
+
+        int affected = await import.Handle(
+            new ImportDrugsCommand(
+            [
+                new RxNavDrugDto("314076", "Lisinopril 10 MG Oral Tablet", "SCD"),
+                new RxNavDrugDto("314076", "Lisinopril 10 MG Oral Tablet (duplicate)", "SCD")
+            ]),
+            CancellationToken.None);
+
+        affected.ShouldBe(1);
+        var page = await list.Handle(new ListDrugsQuery(), CancellationToken.None);
+        page.Items.Count.ShouldBe(1);
+        page.Items.Single().RxCui.ShouldBe("314076");
     }
 }
