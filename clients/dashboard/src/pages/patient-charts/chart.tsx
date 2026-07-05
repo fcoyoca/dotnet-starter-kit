@@ -20,6 +20,7 @@ import {
   Pill,
   Plus,
   Stethoscope,
+  Tablets,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ import { searchPatientProblems } from "@/api/problems";
 import {
   ALLERGY_PERMISSIONS,
   INCIDENT_PERMISSIONS,
+  MEDICATION_PERMISSIONS,
   PROBLEM_PERMISSIONS,
   REPORT_PERMISSIONS,
 } from "@/lib/patient-permissions";
@@ -67,6 +69,7 @@ import { describe, formatDate } from "@/lib/list-helpers";
 import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
+import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
 import { ReportSearchDialog } from "@/pages/patient-charts/report-search-dialog";
 import {
@@ -171,9 +174,11 @@ export function PatientChartDetailPage() {
 
   const canViewProblems = user?.permissions?.includes(PROBLEM_PERMISSIONS.view) ?? false;
   const canViewAllergies = user?.permissions?.includes(ALLERGY_PERMISSIONS.view) ?? false;
+  const canViewMedications = user?.permissions?.includes(MEDICATION_PERMISSIONS.view) ?? false;
 
   const [problemListOpen, setProblemListOpen] = useState(false);
   const [allergyListOpen, setAllergyListOpen] = useState(false);
+  const [medicationListOpen, setMedicationListOpen] = useState(false);
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -386,6 +391,17 @@ export function PatientChartDetailPage() {
           >
             <Pill className="size-4" />
             Allergy List
+          </Button>
+        )}
+        {canViewMedications && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
+            onClick={() => setMedicationListOpen(true)}
+          >
+            <Tablets className="size-4" />
+            Medication List
           </Button>
         )}
       </div>
@@ -852,6 +868,15 @@ export function PatientChartDetailPage() {
           patientId={patientId}
           open={allergyListOpen}
           onClose={() => setAllergyListOpen(false)}
+        />
+      )}
+
+      {/* Medication List dialog (opens add/edit medication + reconciliation dialogs from within) */}
+      {patientId && (
+        <MedicationListDialog
+          patientId={patientId}
+          open={medicationListOpen}
+          onClose={() => setMedicationListOpen(false)}
         />
       )}
 
