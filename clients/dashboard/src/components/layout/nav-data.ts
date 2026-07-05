@@ -1,6 +1,7 @@
 import {
   Activity,
   AlertTriangle,
+  Beaker,
   Building,
   Building2,
   CalendarClock,
@@ -18,6 +19,7 @@ import {
   MessageCircle,
   Network,
   Package,
+  Pill,
   Receipt,
   ScrollText,
   Settings,
@@ -168,6 +170,24 @@ export const sections: NavSection[] = [
         label: "Diagnostic Details",
         icon: Stethoscope,
         perm: "Permissions.Administration.Diagnostics.View",
+      },
+      {
+        to: "/administration/drugs",
+        label: "Drugs",
+        icon: Pill,
+        perm: "Permissions.Administration.Drugs.View",
+      },
+      {
+        to: "/administration/allergy-reactions",
+        label: "Allergy Reactions",
+        icon: AlertTriangle,
+        perm: "Permissions.Administration.AllergyReactions.View",
+      },
+      {
+        to: "/administration/medication-dose-units",
+        label: "Medication Dose Units",
+        icon: Beaker,
+        perm: "Permissions.Administration.MedicationDoseUnits.View",
       },
       {
         to: "/administration/procedure-categories",

@@ -1537,3 +1537,111 @@ export function listMedicationDoseUnits(
     `/api/v1/administration/medication-dose-units?${query.toString()}`,
   );
 }
+
+// ─── Drugs CRUD + RxNav import ──────────────────────────────────────────
+
+export type DrugInput = {
+  name: string;
+  rxAui?: string | null;
+  rxCui?: string | null;
+  tty?: string | null;
+  sab?: string | null;
+  code?: string | null;
+};
+
+function drugBody(input: DrugInput): Record<string, unknown> {
+  return {
+    name: input.name,
+    rxAui: input.rxAui ?? null,
+    rxCui: input.rxCui ?? null,
+    tty: input.tty ?? null,
+    sab: input.sab ?? null,
+    code: input.code ?? null,
+  };
+}
+
+export async function createDrug(input: DrugInput): Promise<number> {
+  return apiFetch<number>("/api/v1/administration/drugs", {
+    method: "POST",
+    body: JSON.stringify(drugBody(input)),
+  });
+}
+
+export async function updateDrug(input: DrugInput & { id: number; isActive: boolean }): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/drugs/${input.id}`, {
+    method: "PUT",
+    body: JSON.stringify({ id: input.id, ...drugBody(input), isActive: input.isActive }),
+  });
+}
+
+export async function deleteDrug(id: number): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/drugs/${id}`, { method: "DELETE" });
+}
+
+export type RxNavDrug = { rxCui: string; name: string; tty?: string | null };
+
+export function searchRxNav(term: string): Promise<RxNavDrug[]> {
+  const query = new URLSearchParams({ term });
+  return apiFetch<RxNavDrug[]>(`/api/v1/administration/drugs/rxnav?${query.toString()}`);
+}
+
+export async function importDrugs(items: RxNavDrug[]): Promise<number> {
+  return apiFetch<number>("/api/v1/administration/drugs/import", {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+}
+
+// ─── Allergy Reactions CRUD ──────────────────────────────────────────────
+
+export async function createAllergyReaction(input: { term: string; snomedCode?: string | null }): Promise<number> {
+  return apiFetch<number>("/api/v1/administration/allergy-reactions", {
+    method: "POST",
+    body: JSON.stringify({ term: input.term, snomedCode: input.snomedCode ?? null }),
+  });
+}
+
+export async function updateAllergyReaction(input: {
+  id: number;
+  term: string;
+  snomedCode?: string | null;
+  isActive: boolean;
+}): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/allergy-reactions/${input.id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      id: input.id,
+      term: input.term,
+      snomedCode: input.snomedCode ?? null,
+      isActive: input.isActive,
+    }),
+  });
+}
+
+export async function deleteAllergyReaction(id: number): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/allergy-reactions/${id}`, { method: "DELETE" });
+}
+
+// ─── Medication Dose Units CRUD ──────────────────────────────────────────
+
+export async function createMedicationDoseUnit(input: { name: string }): Promise<number> {
+  return apiFetch<number>("/api/v1/administration/medication-dose-units", {
+    method: "POST",
+    body: JSON.stringify({ name: input.name }),
+  });
+}
+
+export async function updateMedicationDoseUnit(input: {
+  id: number;
+  name: string;
+  isActive: boolean;
+}): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/medication-dose-units/${input.id}`, {
+    method: "PUT",
+    body: JSON.stringify({ id: input.id, name: input.name, isActive: input.isActive }),
+  });
+}
+
+export async function deleteMedicationDoseUnit(id: number): Promise<void> {
+  await apiFetch<void>(`/api/v1/administration/medication-dose-units/${id}`, { method: "DELETE" });
+}

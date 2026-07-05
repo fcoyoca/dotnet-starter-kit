@@ -161,6 +161,15 @@ const DiagnosticsPage = lazyNamed(
   () => import("@/pages/administration/diagnostics"),
   "DiagnosticsPage",
 );
+const DrugsPage = lazyNamed(() => import("@/pages/administration/drugs"), "DrugsPage");
+const AllergyReactionsPage = lazyNamed(
+  () => import("@/pages/administration/allergy-reactions"),
+  "AllergyReactionsPage",
+);
+const MedicationDoseUnitsPage = lazyNamed(
+  () => import("@/pages/administration/medication-dose-units"),
+  "MedicationDoseUnitsPage",
+);
 const ProcedureCategoriesPage = lazyNamed(
   () => import("@/pages/administration/procedure-categories"),
   "ProcedureCategoriesPage",
@@ -309,6 +318,9 @@ export const router = createBrowserRouter([
           { path: "administration/diagnostic-categories", element: withSuspense(<DiagnosticCategoriesPage />) },
           { path: "administration/custom-diagnostics", element: withSuspense(<CustomDiagnosticsPage />) },
           { path: "administration/diagnostics", element: withSuspense(<DiagnosticsPage />) },
+          { path: "administration/drugs", element: withSuspense(<DrugsPage />) },
+          { path: "administration/allergy-reactions", element: withSuspense(<AllergyReactionsPage />) },
+          { path: "administration/medication-dose-units", element: withSuspense(<MedicationDoseUnitsPage />) },
           { path: "administration/procedure-categories", element: withSuspense(<ProcedureCategoriesPage />) },
           { path: "administration/procedure-codes", element: withSuspense(<ProcedureCodesPage />) },
           { path: "administration/code-sources", element: withSuspense(<CodeSourcesPage />) },
