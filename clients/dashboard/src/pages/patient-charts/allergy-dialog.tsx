@@ -82,7 +82,7 @@ export function AllergyDialog({ patientId, open, onClose, allergy, canToggleActi
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["patient-allergies", patientId] });
-    void queryClient.invalidateQueries({ queryKey: ["patient", patientId] });
+    void queryClient.invalidateQueries({ queryKey: ["patients", patientId] });
   };
 
   const createMutation = useMutation({

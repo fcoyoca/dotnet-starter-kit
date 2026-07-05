@@ -4,7 +4,7 @@ import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { searchPatientAllergies, setNoKnownAllergies, type PatientAllergy } from "@/api/allergies";
 import { getPatientById } from "@/api/patients";
-import { ALLERGY_PERMISSIONS } from "@/lib/patient-permissions";
+import { ALLERGY_PERMISSIONS, PATIENT_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,8 @@ export function AllergyListDialog({ patientId, open, onClose }: Props) {
   const canCreate = user?.permissions?.includes(ALLERGY_PERMISSIONS.create) ?? false;
   const canUpdate = user?.permissions?.includes(ALLERGY_PERMISSIONS.update) ?? false;
   const canToggleActive = user?.permissions?.includes(ALLERGY_PERMISSIONS.delete) ?? false;
+  // SetNoKnownAllergies is a patient-record mutation and requires Patients.Update, not any Allergies.* permission.
+  const canUpdatePatient = user?.permissions?.includes(PATIENT_PERMISSIONS.update) ?? false;
 
   const [showInactive, setShowInactive] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -47,7 +49,7 @@ export function AllergyListDialog({ patientId, open, onClose }: Props) {
   });
 
   const patientQuery = useQuery({
-    queryKey: ["patient", patientId],
+    queryKey: ["patients", patientId],
     queryFn: () => getPatientById(patientId),
     enabled: open,
   });
@@ -58,12 +60,12 @@ export function AllergyListDialog({ patientId, open, onClose }: Props) {
   const noAllergiesMutation = useMutation({
     mutationFn: (value: boolean) => setNoKnownAllergies(patientId, value),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["patient", patientId] });
+      void queryClient.invalidateQueries({ queryKey: ["patients", patientId] });
     },
     onError: (err) => {
       // Legacy rule surfaces here as a 409 with the exact message.
       toast.warning("Could not change No Allergies.", { description: describe(err) });
-      void queryClient.invalidateQueries({ queryKey: ["patient", patientId] });
+      void queryClient.invalidateQueries({ queryKey: ["patients", patientId] });
     },
   });
 
@@ -91,7 +93,7 @@ export function AllergyListDialog({ patientId, open, onClose }: Props) {
                   <input
                     type="checkbox"
                     checked={noKnownAllergies}
-                    disabled={noAllergiesMutation.isPending}
+                    disabled={!canUpdatePatient || noAllergiesMutation.isPending}
                     onChange={(e) => noAllergiesMutation.mutate(e.target.checked)}
                     className="rounded border-[var(--color-border)]"
                   />
