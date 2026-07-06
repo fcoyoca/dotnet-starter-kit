@@ -63,6 +63,7 @@ public sealed class PatientDbContext : BaseDbContext
     public DbSet<Domain.PatientNote> PatientNotes => Set<Domain.PatientNote>();
     public DbSet<Domain.PatientDocument> PatientDocuments => Set<Domain.PatientDocument>();
     public DbSet<Domain.MedicationReconciledDate> MedicationReconciledDates => Set<Domain.MedicationReconciledDate>();
+    public DbSet<Domain.SuperBill> SuperBills => Set<Domain.SuperBill>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -85,6 +86,9 @@ public sealed class PatientDbContext : BaseDbContext
         modelBuilder.ApplyConfiguration(new PatientNoteConfiguration());
         modelBuilder.ApplyConfiguration(new PatientDocumentConfiguration());
         modelBuilder.ApplyConfiguration(new MedicationReconciledDateConfiguration());
+        modelBuilder.ApplyConfiguration(new SuperBillConfiguration());
+        modelBuilder.ApplyConfiguration(new SuperBillProcedureConfiguration());
+        modelBuilder.ApplyConfiguration(new SuperBillProcedureDiagnosticConfiguration());
         base.OnModelCreating(modelBuilder);
     }
 }
