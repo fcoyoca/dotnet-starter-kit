@@ -85,3 +85,10 @@ export const DOCUMENT_PERMISSIONS = {
 } as const;
 
 export type DocumentPermissionKey = keyof typeof DOCUMENT_PERMISSIONS;
+
+export const SUPERBILL_PERMISSIONS = {
+  view:   "Permissions.Patient.SuperBills.View",
+  manage: "Permissions.Patient.SuperBills.Manage",
+} as const;
+
+export type SuperBillPermissionKey = keyof typeof SUPERBILL_PERMISSIONS;

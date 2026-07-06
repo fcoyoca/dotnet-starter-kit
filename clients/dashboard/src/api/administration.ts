@@ -1148,6 +1148,8 @@ export type ListCustomDiagnosticsParams = {
   search?: string;
   isActive?: boolean | null;
   isChiropractic?: boolean | null;
+  /** Resolve specific diagnostics by id (repeated ?ids= query params). */
+  ids?: string[];
   pageNumber?: number;
   pageSize?: number;
   sortBy?: string;
@@ -1173,6 +1175,7 @@ export function listCustomDiagnostics(
     query.set("isActive", String(params.isActive));
   if (params.isChiropractic !== undefined && params.isChiropractic !== null)
     query.set("isChiropractic", String(params.isChiropractic));
+  for (const id of params.ids ?? []) query.append("ids", id);
   query.set("pageNumber", String(params.pageNumber ?? 1));
   query.set("pageSize", String(params.pageSize ?? 20));
   if (params.sortBy) query.set("sortBy", params.sortBy);
