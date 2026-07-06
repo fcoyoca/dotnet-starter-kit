@@ -79,12 +79,14 @@ export function ProceduresPerformedDialog({
   const [editDxOpen, setEditDxOpen] = useState(false);
   const rowKey = useRef(0);
 
-  const reset = () => {
-    setPickedReportId(reportId);
-    setRows([]);
-    setHydratedFor(null);
-    setEditDxOpen(false);
-  };
+  useEffect(() => {
+    if (!open) {
+      setPickedReportId(reportId);
+      setRows([]);
+      setHydratedFor(null);
+      setEditDxOpen(false);
+    }
+  }, [open, reportId]);
 
   // ── Report picker phase (chart-shortcut context) ──
   const reportsQuery = useQuery({
@@ -254,10 +256,7 @@ export function ProceduresPerformedDialog({
       <Dialog
         open={open}
         onOpenChange={(o) => {
-          if (!o) {
-            reset();
-            onClose();
-          }
+          if (!o) onClose();
         }}
       >
         <DialogContent className="!max-w-4xl">
