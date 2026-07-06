@@ -1,13 +1,16 @@
 using Finbuckle.MultiTenant;
 using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Core.Exceptions;
+using FSH.Framework.Eventing.Abstractions;
 using FSH.Framework.Shared.Multitenancy;
 using FSH.Framework.Shared.Persistence;
 using FSH.Modules.Patient.Contracts.Dtos;
+using FSH.Modules.Patient.Contracts.Events;
 using FSH.Modules.Patient.Contracts.v1.SuperBills;
 using FSH.Modules.Patient.Data;
 using FSH.Modules.Patient.Domain;
 using FSH.Modules.Patient.Features.v1.SuperBills.GetReportProcedures;
+using FSH.Modules.Patient.Features.v1.SuperBills.SetReportProcedures;
 using FSH.Modules.Patient.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -99,5 +102,91 @@ public sealed class SuperBillHandlerTests
         dto.Procedures[0].Code.ShouldBe("98940");
         dto.Procedures[1].Code.ShouldBe("97110");
         dto.Procedures[0].DiagnosticIds.Single().ShouldBe(dx);
+    }
+
+    private static SetReportProceduresCommandHandler CreateSetHandler(PatientDbContext db, IEventBus? bus = null)
+    {
+        var accessor = Substitute.For<IMultiTenantContextAccessor<AppTenantInfo>>();
+        accessor.MultiTenantContext.Returns(
+            new MultiTenantContext<AppTenantInfo>(
+                new AppTenantInfo("test", "test", string.Empty, "test@test.com", "test")));
+        return new SetReportProceduresCommandHandler(
+            db, bus ?? Substitute.For<IEventBus>(), accessor, TimeProvider.System);
+    }
+
+    [Fact]
+    public async Task Set_Should_Create_SuperBill_On_First_Save_And_Publish_Event()
+    {
+        using var db = CreateContext(Guid.NewGuid().ToString());
+        PatientReport report = await SeedReport(db);
+        IEventBus bus = Substitute.For<IEventBus>();
+        Guid dx = Guid.NewGuid();
+        var sut = CreateSetHandler(db, bus);
+
+        await sut.Handle(new SetReportProceduresCommand(report.Id,
+        [
+            new ReportProcedureItem(Guid.NewGuid(), "98940", "One to two spinal regions", 20m, [dx]),
+        ]), CancellationToken.None);
+
+        SuperBill saved = await db.SuperBills.Include(x => x.Procedures).ThenInclude(p => p.Diagnostics)
+            .SingleAsync(x => x.ReportId == report.Id);
+        saved.PatientId.ShouldBe(report.PatientId);
+        saved.Procedures.Single().Code.ShouldBe("98940");
+        saved.Procedures.Single().Diagnostics.Single().DiagnosticId.ShouldBe(dx);
+        await bus.Received(1).PublishAsync(
+            Arg.Is<SuperBillSavedIntegrationEvent>(e =>
+                e.ReportId == report.Id && e.Source == "Patient" && e.Procedures.Count == 1),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Set_Should_Replace_Existing_Set()
+    {
+        using var db = CreateContext(Guid.NewGuid().ToString());
+        PatientReport report = await SeedReport(db);
+        Guid dx = Guid.NewGuid();
+        var sut = CreateSetHandler(db);
+
+        await sut.Handle(new SetReportProceduresCommand(report.Id,
+        [
+            new ReportProcedureItem(Guid.NewGuid(), "98940", null, 20m, [dx]),
+            new ReportProcedureItem(Guid.NewGuid(), "97110", null, 35m, [dx]),
+        ]), CancellationToken.None);
+        await sut.Handle(new SetReportProceduresCommand(report.Id,
+        [
+            new ReportProcedureItem(Guid.NewGuid(), "97140", null, 40m, [dx]),
+        ]), CancellationToken.None);
+
+        SuperBill saved = await db.SuperBills.Include(x => x.Procedures)
+            .SingleAsync(x => x.ReportId == report.Id);
+        saved.Procedures.Single().Code.ShouldBe("97140");
+        (await db.SuperBills.CountAsync()).ShouldBe(1); // still one super bill per report
+    }
+
+    [Fact]
+    public async Task Set_Should_Allow_Empty_List_To_Clear()
+    {
+        using var db = CreateContext(Guid.NewGuid().ToString());
+        PatientReport report = await SeedReport(db);
+        Guid dx = Guid.NewGuid();
+        var sut = CreateSetHandler(db);
+
+        await sut.Handle(new SetReportProceduresCommand(report.Id,
+            [new ReportProcedureItem(Guid.NewGuid(), "98940", null, 20m, [dx])]), CancellationToken.None);
+        await sut.Handle(new SetReportProceduresCommand(report.Id, []), CancellationToken.None);
+
+        SuperBill saved = await db.SuperBills.Include(x => x.Procedures)
+            .SingleAsync(x => x.ReportId == report.Id);
+        saved.Procedures.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Set_Should_Throw_NotFound_For_Unknown_Report()
+    {
+        using var db = CreateContext(Guid.NewGuid().ToString());
+        var sut = CreateSetHandler(db);
+
+        await Should.ThrowAsync<NotFoundException>(
+            () => sut.Handle(new SetReportProceduresCommand(Guid.NewGuid(), []), CancellationToken.None).AsTask());
     }
 }
