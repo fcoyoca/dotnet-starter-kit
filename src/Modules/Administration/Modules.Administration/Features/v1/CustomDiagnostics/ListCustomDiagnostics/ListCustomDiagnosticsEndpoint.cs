@@ -21,10 +21,13 @@ public static class ListCustomDiagnosticsEndpoint
                     int? pageSize,
                     string? sortBy,
                     string? sortDir,
+                    Guid[]? ids,
                     IMediator mediator,
                     CancellationToken ct) =>
                     Results.Ok(await mediator.Send(
-                        new ListCustomDiagnosticsQuery(search, isActive, isChiropractic, pageNumber ?? 1, pageSize ?? 20, sortBy, sortDir), ct)))
+                        new ListCustomDiagnosticsQuery(
+                            search, isActive, isChiropractic, pageNumber ?? 1, pageSize ?? 20,
+                            sortBy, sortDir, ids is { Length: > 0 } ? ids : null), ct)))
             .WithName("ListCustomDiagnostics")
             .WithSummary("Search and list custom diagnostics")
             .RequirePermission(AdministrationPermissions.CustomDiagnostics.View);

@@ -11,4 +11,5 @@ public sealed record ListCustomDiagnosticsQuery(
     int PageNumber = 1,
     int PageSize = 20,
     string? SortBy = null,
-    string? SortDir = null) : IQuery<PagedResponse<CustomDiagnosticDto>>;
+    string? SortDir = null,
+    IReadOnlyList<Guid>? Ids = null) : IQuery<PagedResponse<CustomDiagnosticDto>>;

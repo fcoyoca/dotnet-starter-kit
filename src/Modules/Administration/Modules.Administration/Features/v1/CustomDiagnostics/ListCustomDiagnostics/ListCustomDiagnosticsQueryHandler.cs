@@ -37,6 +37,11 @@ public sealed class ListCustomDiagnosticsQueryHandler(AdministrationDbContext db
             q = q.Where(c => c.IsChiropractic == query.IsChiropractic.Value);
         }
 
+        if (query.Ids is { Count: > 0 })
+        {
+            q = q.Where(c => query.Ids.Contains(c.Id));
+        }
+
         bool desc = string.Equals(query.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
         q = (query.SortBy?.ToUpperInvariant()) switch
         {
