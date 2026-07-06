@@ -32,6 +32,7 @@ public static class PatientPermissions
         public const string Update = $"Permissions.{Resource}.Update";
         public const string Sign   = $"Permissions.{Resource}.Sign";
         public const string Review = $"Permissions.{Resource}.Review";
+        public const string Export = $"Permissions.{Resource}.Export";
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
@@ -88,6 +89,7 @@ public static class PatientPermissions
         new("Update Reports", ActionConstants.Update, Reports.Resource),
         new("Sign Reports",   "Sign",                 Reports.Resource),
         new("Review Reports", "Review",               Reports.Resource),
+        new("Export Reports", "Export",               Reports.Resource),
         new("Delete Reports", ActionConstants.Delete, Reports.Resource),
         new("View Problems",   ActionConstants.View,   Problems.Resource, IsBasic: true),
         new("Create Problems", ActionConstants.Create, Problems.Resource),

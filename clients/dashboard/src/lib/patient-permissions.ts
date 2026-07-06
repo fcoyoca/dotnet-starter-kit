@@ -34,6 +34,7 @@ export const REPORT_PERMISSIONS = {
   update: "Permissions.Patient.Reports.Update",
   sign:   "Permissions.Patient.Reports.Sign",
   review: "Permissions.Patient.Reports.Review",
+  export: "Permissions.Patient.Reports.Export",
   delete: "Permissions.Patient.Reports.Delete",
 } as const;
 

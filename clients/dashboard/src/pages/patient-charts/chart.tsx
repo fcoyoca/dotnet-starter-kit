@@ -12,6 +12,7 @@ import {
   CalendarDays,
   ClipboardList,
   Eye,
+  FileDown,
   FilePlus,
   FileSearch,
   FileText,
@@ -70,6 +71,7 @@ import {
 } from "@/components/list";
 import { describe, formatDate } from "@/lib/list-helpers";
 import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
+import { ExportReportsDialog } from "@/pages/patient-charts/export-reports-dialog";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
 import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
@@ -175,6 +177,7 @@ export function PatientChartDetailPage() {
   const canCreateReports = user?.permissions?.includes(REPORT_PERMISSIONS.create) ?? false;
   const canUpdateReports = user?.permissions?.includes(REPORT_PERMISSIONS.update) ?? false;
   const canDeleteReports = user?.permissions?.includes(REPORT_PERMISSIONS.delete) ?? false;
+  const canExportReports = user?.permissions?.includes(REPORT_PERMISSIONS.export) ?? false;
 
   const canViewProblems = user?.permissions?.includes(PROBLEM_PERMISSIONS.view) ?? false;
   const canViewAllergies = user?.permissions?.includes(ALLERGY_PERMISSIONS.view) ?? false;
@@ -185,6 +188,7 @@ export function PatientChartDetailPage() {
   const [allergyListOpen, setAllergyListOpen] = useState(false);
   const [medicationListOpen, setMedicationListOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [exportReportsOpen, setExportReportsOpen] = useState(false);
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -398,8 +402,8 @@ export function PatientChartDetailPage() {
         </div>
       )}
 
-      {/* Chart actions — opens per-section dialogs (Problem List today; Allergy/
-          Medication/Notes/Export/Outcome/Documents to follow). */}
+      {/* Chart actions — opens per-section dialogs (Problem List, Allergy, Medication,
+          Notes, Export Reports today; Outcome/Documents to follow). */}
       <div className="flex flex-wrap items-center gap-2">
         {canViewProblems && (
           <Button
@@ -443,6 +447,18 @@ export function PatientChartDetailPage() {
           >
             <StickyNote className="size-4" />
             Patient Notes
+          </Button>
+        )}
+        {canExportReports && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
+            disabled={!activeIncident}
+            onClick={() => setExportReportsOpen(true)}
+          >
+            <FileDown className="size-4" />
+            Export Reports
           </Button>
         )}
       </div>
@@ -927,6 +943,15 @@ export function PatientChartDetailPage() {
           patientId={patientId}
           open={notesOpen}
           onClose={() => setNotesOpen(false)}
+        />
+      )}
+
+      {/* Export Reports dialog (exports the active incident's reports as PDF) */}
+      {activeIncidentId && (
+        <ExportReportsDialog
+          incidentId={activeIncidentId}
+          open={exportReportsOpen}
+          onClose={() => setExportReportsOpen(false)}
         />
       )}
 

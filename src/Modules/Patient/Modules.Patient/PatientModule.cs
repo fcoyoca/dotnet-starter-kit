@@ -27,6 +27,7 @@ using FSH.Modules.Patient.Features.v1.PatientIncidents.UpdatePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientReports.AddPatientReportAddendum;
 using FSH.Modules.Patient.Features.v1.PatientReports.CreatePatientReport;
 using FSH.Modules.Patient.Features.v1.PatientReports.DeletePatientReport;
+using FSH.Modules.Patient.Features.v1.PatientReports.ExportPatientReportsPdf;
 using FSH.Modules.Patient.Features.v1.PatientReports.GetPatientReportById;
 using FSH.Modules.Patient.Features.v1.PatientReports.RequestReportReview;
 using FSH.Modules.Patient.Features.v1.PatientReports.ReviewSignReport;
@@ -49,6 +50,7 @@ using FSH.Modules.Patient.Features.v1.Patients.SetPatientNoKnownAllergies;
 using FSH.Modules.Patient.Features.v1.Patients.SetPatientNoKnownMedications;
 using FSH.Modules.Patient.Features.v1.Patients.UpdatePatient;
 using FSH.Modules.Patient.Infrastructure;
+using FSH.Modules.Patient.Services;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -79,6 +81,7 @@ public sealed class PatientModule : IModule
         builder.Services.AddScoped<IDbInitializer, PatientDbInitializer>();
         builder.Services.AddScoped<IPhiEncryptor, PhiEncryptor>();
         builder.Services.AddScoped<IPatientCodeGenerator, SequentialPatientCodeGenerator>();
+        builder.Services.AddSingleton<IPatientReportPdfRenderer, PatientReportPdfRenderer>();
 
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<PatientDbContext>(
@@ -123,7 +126,8 @@ public sealed class PatientModule : IModule
         group.MapDeletePatientIncidentEndpoint();
 
         // Report endpoints — literal sub-routes (/reports/{id}/sign, /addendums, /request-review,
-        // /review-sign) registered before the generic /reports/{id:guid} so the literal segments win
+        // /review-sign, /export-pdf) registered before the generic /reports/{id:guid} so the literal segments win
+        group.MapExportPatientReportsPdfEndpoint();
         group.MapSignPatientReportEndpoint();
         group.MapAddPatientReportAddendumEndpoint();
         group.MapRequestReportReviewEndpoint();

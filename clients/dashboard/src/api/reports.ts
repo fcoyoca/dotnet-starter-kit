@@ -1,4 +1,6 @@
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, ApiRequestError } from "@/lib/api-client";
+import { env } from "@/env";
+import { tokenStore } from "@/auth/token-store";
 import type { PagedResponse } from "@/api/catalog";
 
 export type ReportWorkflowStatus = "Draft" | "Signed" | "ReviewRequested" | "Reviewed";
@@ -209,4 +211,79 @@ export async function deleteReport(id: string): Promise<void> {
   await apiFetch<void>(`/api/v1/patient/reports/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+}
+
+export type ExportedReportPdf = {
+  fileName: string;
+  /** Lowercase hex SHA-256 of the downloaded bytes (integrity check, legacy "Secure Download" parity). */
+  sha256: string;
+};
+
+function parseContentDispositionFileName(header: string | null): string | null {
+  if (!header) return null;
+  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (utf8?.[1]) return decodeURIComponent(utf8[1]);
+  const plain = /filename="?([^";]+)"?/i.exec(header);
+  return plain?.[1] ?? null;
+}
+
+async function sha256Hex(blob: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * Export one or more reports as a single (merged) PDF and trigger a browser
+ * download. apiFetch only returns parsed JSON, so we fetch the blob directly
+ * here while replicating the same auth + tenant headers apiFetch sets
+ * (mirrors `downloadInvoicePdf` in billing.ts).
+ */
+export async function exportReportsPdf(reportIds: string[]): Promise<ExportedReportPdf> {
+  const accessToken = tokenStore.getAccessToken();
+  if (!accessToken) {
+    throw new ApiRequestError(401, "Not signed in");
+  }
+
+  const headers = new Headers({
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  });
+  const tenant = tokenStore.getTenant() ?? env.defaultTenant;
+  if (tenant) headers.set("tenant", tenant);
+
+  const response = await fetch(`${env.apiBase}/api/v1/patient/reports/export-pdf`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ reportIds }),
+  });
+
+  if (!response.ok) {
+    throw new ApiRequestError(response.status, `Failed to export reports (${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const fileName =
+    parseContentDispositionFileName(response.headers.get("content-disposition")) ??
+    (reportIds.length === 1
+      ? `report_${reportIds[0].replaceAll("-", "")}.pdf`
+      : "reports.pdf");
+  // Prefer the server-computed checksum; hash the received bytes ourselves if the
+  // header isn't exposed to this origin.
+  const sha256 = response.headers.get("x-content-sha256") ?? (await sha256Hex(blob));
+
+  const objectUrl = window.URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  } finally {
+    window.URL.revokeObjectURL(objectUrl);
+  }
+
+  return { fileName, sha256 };
 }

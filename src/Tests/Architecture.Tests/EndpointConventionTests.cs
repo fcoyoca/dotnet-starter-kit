@@ -232,6 +232,7 @@ public class EndpointConventionTests
                                name.StartsWith("List", StringComparison.Ordinal) ||
                                name.StartsWith("Search", StringComparison.Ordinal) ||
                                name.StartsWith("Import", StringComparison.Ordinal) ||
+                               name.StartsWith("Export", StringComparison.Ordinal) ||
                                name.StartsWith("Register", StringComparison.Ordinal) ||
                                name.StartsWith("Generate", StringComparison.Ordinal) ||
                                name.StartsWith("Refresh", StringComparison.Ordinal) ||
