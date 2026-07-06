@@ -50,6 +50,7 @@ import {
   NOTE_PERMISSIONS,
   PROBLEM_PERMISSIONS,
   REPORT_PERMISSIONS,
+  SUPERBILL_PERMISSIONS,
 } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog"
 import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
 import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
+import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
 import { ReportSearchDialog } from "@/pages/patient-charts/report-search-dialog";
 import {
   SelectAppointmentDialog,
@@ -181,6 +183,7 @@ export function PatientChartDetailPage() {
   const canUpdateReports = user?.permissions?.includes(REPORT_PERMISSIONS.update) ?? false;
   const canDeleteReports = user?.permissions?.includes(REPORT_PERMISSIONS.delete) ?? false;
   const canExportReports = user?.permissions?.includes(REPORT_PERMISSIONS.export) ?? false;
+  const canViewSuperBills = user?.permissions?.includes(SUPERBILL_PERMISSIONS.view) ?? false;
 
   const canViewProblems = user?.permissions?.includes(PROBLEM_PERMISSIONS.view) ?? false;
   const canViewAllergies = user?.permissions?.includes(ALLERGY_PERMISSIONS.view) ?? false;
@@ -194,6 +197,7 @@ export function PatientChartDetailPage() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [exportReportsOpen, setExportReportsOpen] = useState(false);
+  const [proceduresOpen, setProceduresOpen] = useState(false);
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -475,6 +479,18 @@ export function PatientChartDetailPage() {
           >
             <FileDown className="size-4" />
             Export Reports
+          </Button>
+        )}
+        {canViewSuperBills && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
+            disabled={!activeIncident}
+            onClick={() => setProceduresOpen(true)}
+          >
+            <ClipboardList className="size-4" />
+            Procedures
           </Button>
         )}
       </div>
@@ -977,6 +993,17 @@ export function PatientChartDetailPage() {
           incidentId={activeIncidentId}
           open={exportReportsOpen}
           onClose={() => setExportReportsOpen(false)}
+        />
+      )}
+
+      {/* Procedures Performed dialog (chart-shortcut context: report-picker phase first) */}
+      {patientId && activeIncidentId && (
+        <ProceduresPerformedDialog
+          patientId={patientId}
+          incidentId={activeIncidentId}
+          reportId={null}
+          open={proceduresOpen}
+          onClose={() => setProceduresOpen(false)}
         />
       )}
 

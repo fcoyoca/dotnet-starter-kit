@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, FileDown, FileText, PenLine, Plus, Save, Stethoscope, UserCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ClipboardList,
+  FileDown,
+  FileText,
+  PenLine,
+  Plus,
+  Save,
+  Stethoscope,
+  UserCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { getPatientById } from "@/api/patients";
 import {
@@ -20,7 +31,7 @@ import {
   type ReportFieldValue,
 } from "@/api/reports";
 import { searchPatientProblems, setReportProblems } from "@/api/problems";
-import { REPORT_PERMISSIONS } from "@/lib/patient-permissions";
+import { REPORT_PERMISSIONS, SUPERBILL_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MacroInsert } from "@/components/ui/macro-insert";
 import { Combobox, Field } from "@/components/list";
 import { describe, formatDate, formatDateTimeMono } from "@/lib/list-helpers";
+import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
 
 /** lbs + inches → BMI (rounded to 1 decimal); null when either is missing/0. */
 function computeBmi(heightInches: number | null, weightLbs: number | null): number | null {
@@ -43,6 +55,10 @@ const DX_IMPORT_FIELDS = new Set(["clinical impression", "assessment"]);
 function fieldImportsDx(name: string): boolean {
   return DX_IMPORT_FIELDS.has(name.trim().toLowerCase());
 }
+
+// Field that receives procedure macro text (legacy: Plan Comments). Matched by name
+// like DX_IMPORT_FIELDS since clinic fields are per-type copies.
+const PLAN_FIELDS = new Set(["plan", "plan comments", "treatment plan"]);
 
 function resolveProviderLabel(
   id: string | null | undefined,
@@ -82,6 +98,7 @@ export function ReportEditorPage() {
   const canUpdate = user?.permissions?.includes(REPORT_PERMISSIONS.update) ?? false;
   const canSign = user?.permissions?.includes(REPORT_PERMISSIONS.sign) ?? false;
   const canReview = user?.permissions?.includes(REPORT_PERMISSIONS.review) ?? false;
+  const canViewSuperBills = user?.permissions?.includes(SUPERBILL_PERMISSIONS.view) ?? false;
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -122,6 +139,7 @@ export function ReportEditorPage() {
   const [addendumText, setAddendumText] = useState("");
   const [reviewerProviderId, setReviewerProviderId] = useState<string | null>(null);
   const [associatedProblemIds, setAssociatedProblemIds] = useState<string[]>([]);
+  const [proceduresOpen, setProceduresOpen] = useState(false);
 
   // Refs to each field's textarea so macro-insert can splice at the caret.
   const fieldRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
@@ -148,6 +166,22 @@ export function ReportEditorPage() {
   const bmi = useMemo(() => computeBmi(toNum(height), toNum(weight)), [height, weight]);
 
   const groups = useMemo(() => groupByCategory(fieldsQuery.data ?? []), [fieldsQuery.data]);
+
+  const planFieldId = useMemo(() => {
+    const field = (fieldsQuery.data ?? []).find((f) =>
+      PLAN_FIELDS.has(f.name.trim().toLowerCase()),
+    );
+    return field?.id ?? null;
+  }, [fieldsQuery.data]);
+
+  // Procedures Performed macro text lands in the Plan field (legacy behavior).
+  const onProcedureMacroText = (text: string) => {
+    if (planFieldId == null) {
+      toast.info("No Plan field on this report type — macro text was not inserted.");
+      return;
+    }
+    insertMacro(planFieldId, text);
+  };
 
   const buildFieldValues = (): ReportFieldValue[] =>
     Object.entries(values)
@@ -337,15 +371,28 @@ export function ReportEditorPage() {
             </p>
           </div>
         </div>
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${
-            isSigned
-              ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
-              : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]"
-          }`}
-        >
-          {report.workflowStatus}
-        </span>
+        <div className="flex items-center gap-2">
+          {canViewSuperBills && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
+              onClick={() => setProceduresOpen(true)}
+            >
+              <ClipboardList className="size-4" />
+              Procedures Performed
+            </Button>
+          )}
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+              isSigned
+                ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]"
+            }`}
+          >
+            {report.workflowStatus}
+          </span>
+        </div>
       </div>
 
       {/* Header fields */}
@@ -708,6 +755,17 @@ export function ReportEditorPage() {
             </Button>
           )}
         </div>
+      )}
+
+      {canViewSuperBills && reportId && (
+        <ProceduresPerformedDialog
+          patientId={patientId!}
+          incidentId={report.incidentId}
+          reportId={reportId}
+          open={proceduresOpen}
+          onClose={() => setProceduresOpen(false)}
+          onMacroText={onProcedureMacroText}
+        />
       )}
     </div>
   );
