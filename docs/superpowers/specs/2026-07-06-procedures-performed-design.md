@@ -41,10 +41,10 @@ New-app patterns to mirror:
    report's incident `diagnosticIds` (CustomDiagnostic guids); *Edit Dx Codes* opens the
    existing incident edit dialog. Report-level Associated Problems are not involved.
 5. **Pluggable billing integration**: every save publishes a
-   `SuperBillSavedIntegrationEvent` through the Outbox. Third-party billing providers
-   (the modern equivalents of legacy Kareo / Cvikota / OfficeAlly, chosen per client)
-   plug in later as separate modules subscribing to that event — zero changes to this
-   feature when a provider is added. See §1 *Billing integration seam*.
+   `SuperBillSavedIntegrationEvent`. Third-party billing providers (the modern
+   equivalents of legacy Kareo / Cvikota / OfficeAlly, chosen per client) plug in later
+   as separate modules subscribing to that event — zero changes to this feature when a
+   provider is added. See §1 *Billing integration seam*.
 
 ## 1. Backend — Patient module
 
@@ -67,6 +67,8 @@ New-app patterns to mirror:
 |---|---|---|---|
 | `SuperBillId` | `Guid` | `sbpSuperBillID` | FK |
 | `ProcedureCodeId` | `Guid` | `sbpProcedureCodeID` | bare id into Administration (no cross-module FK) |
+| `Code` | `string(32)` | `pcCode` | snapshot at save time (same pattern as `PatientProblem.DiagnosticCode`) — billing-correct and avoids cross-module lookups when displaying saved rows |
+| `Description` | `string(512)?` | `pcDescription` | snapshot at save time |
 | `Charge` | `decimal` | `sbpCharge` | ≥ 0 |
 | `DisplayOrder` | `int` | — | preserves the on-screen order |
 | `DiagnosticIds` | join rows | `sbpDiagnosticsID` | `SuperBillProcedureDiagnostic` (`SuperBillProcedureId`, `DiagnosticId`) mirroring `PatientIncidentDiagnostic` |
@@ -95,19 +97,22 @@ editing the super bill after signing (it's billing data, not chart content), so 
 signed-report guard.
 
 After a successful replace, `SetReportProceduresCommandHandler` publishes
-`SuperBillSavedIntegrationEvent` via `IOutboxStore` (same transaction — see the seam
-below).
+`SuperBillSavedIntegrationEvent` via `IEventBus` (see the seam below).
 
 ### Billing integration seam (pluggable providers)
 
 The feature ships **billing-ready but provider-free**, using the repo's eventing
 architecture (`.agents/rules/eventing.md`) as the plug point:
 
-- **`SuperBillSavedIntegrationEvent`** (`Modules.Patient.Contracts`, `IIntegrationEvent`):
-  `SuperBillId`, `ReportId`, `PatientId`, `IsBilled`, and the full procedures snapshot
-  (`ProcedureCodeId`, `Charge`, `DiagnosticIds[]`). Published through `IOutboxStore`
-  inside the save transaction, so it commits atomically with the data and survives
-  crashes; the type name must stay stable (outbox stores assembly-qualified names).
+- **`SuperBillSavedIntegrationEvent`** (`Modules.Patient.Contracts/Events`,
+  `IIntegrationEvent`): `SuperBillId`, `ReportId`, `PatientId`, `IsBilled`, and the full
+  procedures snapshot (`ProcedureCodeId`, `Charge`, `DiagnosticIds[]`). Published via
+  `IEventBus.PublishAsync` after `SaveChanges` — the same pattern Billing, Chat, and
+  Files use for cross-module events. (True Outbox publishing is not available to this
+  module today: `IOutboxStore` is a single un-keyed DI registration owned by the
+  Identity DbContext, and re-registering it per-module requires BuildingBlocks changes.
+  When a real billing subscriber lands, upgrading this publish to a Patient-schema
+  outbox is part of that work; keep the event type name stable.)
 - **Adding a provider later** (Kareo-style, Cvikota-style, or any modern clearinghouse):
   a new module (e.g. `Modules.MedicalBilling`) subscribes with
   `IIntegrationEventHandler<SuperBillSavedIntegrationEvent>`, decides per tenant which
@@ -115,8 +120,7 @@ architecture (`.agents/rules/eventing.md`) as the plug point:
   registration, configured per tenant) to submit to, and calls back into Patient
   Contracts to flip `IsBilled` / `BilledDateUtc`. None of that requires changes here —
   the Inbox gives handler idempotency for free.
-- **Now**: no subscribers exist; the event simply sits in the outbox stream (dispatched,
-  no-op). `IsBilled` stays `false`.
+- **Now**: no subscribers exist; the bus publish is a no-op. `IsBilled` stays `false`.
 
 ### Permissions
 
@@ -153,11 +157,15 @@ Layout (mirrors `ProceduresPerformedDialog.razor`):
    (default on; rendered only when `onMacroText` is provided, i.e. report-editor context).
 2. **Current procedures list**: one row per procedure — code, description, editable
    charge input, a checkbox per incident Dx code (checked = linked; label = dx code,
-   tooltip = description, resolved via `listCustomDiagnostics`), and a remove button
-   (double-click on the row also removes, as in legacy).
+   tooltip = description), and a remove button (double-click on the row also removes, as
+   in legacy). Incident dx ids are resolved to codes via `listCustomDiagnostics` with a
+   new optional `ids` filter added to the existing Administration
+   `ListCustomDiagnosticsQuery` (page caps make unfiltered resolution unreliable; the
+   same filter later fixes `incident-view-dialog`'s raw-guid chips).
 3. **Picker filters**: Insurance combobox (`useInsuranceTypeOptions`) — default: the
-   incident's insurance type when set, else the patient's top-priority insurance, else
-   the first active type (legacy default cascade); Procedure Category combobox
+   first active insurance type. (The legacy default cascade — incident insurance type,
+   then patient's top-priority insurance — can't be ported yet: clinic-app incidents and
+   `PatientInsuranceDto` don't carry an insurance-type id.) Procedure Category combobox
    (`useProcedureCategoryOptions`) with an "All" default.
 4. **Procedure picker table**: active codes from
    `listProcedureCodes({ procedureCategoryId, isActive: true, pageSize: 500 })` merged
