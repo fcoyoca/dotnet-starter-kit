@@ -40,6 +40,11 @@ New-app patterns to mirror:
 4. **Dx source = incident diagnostics** (faithful to BackChart): checkboxes come from the
    report's incident `diagnosticIds` (CustomDiagnostic guids); *Edit Dx Codes* opens the
    existing incident edit dialog. Report-level Associated Problems are not involved.
+5. **Pluggable billing integration**: every save publishes a
+   `SuperBillSavedIntegrationEvent` through the Outbox. Third-party billing providers
+   (the modern equivalents of legacy Kareo / Cvikota / OfficeAlly, chosen per client)
+   plug in later as separate modules subscribing to that event — zero changes to this
+   feature when a provider is added. See §1 *Billing integration seam*.
 
 ## 1. Backend — Patient module
 
@@ -88,6 +93,30 @@ diagnostic id, no empty diagnostic guids. An empty `procedures` list is valid (c
 set). Setting procedures is rejected when the report is signed? **No** — legacy allows
 editing the super bill after signing (it's billing data, not chart content), so no
 signed-report guard.
+
+After a successful replace, `SetReportProceduresCommandHandler` publishes
+`SuperBillSavedIntegrationEvent` via `IOutboxStore` (same transaction — see the seam
+below).
+
+### Billing integration seam (pluggable providers)
+
+The feature ships **billing-ready but provider-free**, using the repo's eventing
+architecture (`.agents/rules/eventing.md`) as the plug point:
+
+- **`SuperBillSavedIntegrationEvent`** (`Modules.Patient.Contracts`, `IIntegrationEvent`):
+  `SuperBillId`, `ReportId`, `PatientId`, `IsBilled`, and the full procedures snapshot
+  (`ProcedureCodeId`, `Charge`, `DiagnosticIds[]`). Published through `IOutboxStore`
+  inside the save transaction, so it commits atomically with the data and survives
+  crashes; the type name must stay stable (outbox stores assembly-qualified names).
+- **Adding a provider later** (Kareo-style, Cvikota-style, or any modern clearinghouse):
+  a new module (e.g. `Modules.MedicalBilling`) subscribes with
+  `IIntegrationEventHandler<SuperBillSavedIntegrationEvent>`, decides per tenant which
+  provider gateway (`IBillingProviderGateway` implementations behind a keyed/factory
+  registration, configured per tenant) to submit to, and calls back into Patient
+  Contracts to flip `IsBilled` / `BilledDateUtc`. None of that requires changes here —
+  the Inbox gives handler idempotency for free.
+- **Now**: no subscribers exist; the event simply sits in the outbox stream (dispatched,
+  no-op). `IsBilled` stays `false`.
 
 ### Permissions
 
@@ -186,10 +215,12 @@ Update the separate docs repo (`github.com/fullstackhero/docs`): patient-chart p
 a *Procedures Performed* section; add a changelog entry under
 `src/content/docs/changelog/` (golden rule 10).
 
-## Out of scope
+## Out of scope (seam is in place — add later without touching this feature)
 
 - Billing workflow (`IsBilled` stays false; no billed-date UI)
-- Kareo / Cvikota / Centricity export paths and `cGenerateCvikotaDocuments`
+- Provider modules themselves — Kareo / Cvikota / Centricity equivalents subscribe to
+  `SuperBillSavedIntegrationEvent` when built; `cGenerateCvikotaDocuments`-style flags
+  become per-tenant provider configuration in that future module
 - Kareo-specific code rendering (`CustomPcCode` modifier concatenation)
 - Legacy-data migration of `SuperBills` / `SuperBillProcedures` rows (can join the
   existing DbMigrator `migrate-from-mssql` verb in a later task)
