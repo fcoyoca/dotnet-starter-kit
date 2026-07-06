@@ -16,6 +16,7 @@ import {
   FilePlus,
   FileSearch,
   FileText,
+  FolderOpen,
   Lock,
   Pencil,
   Pill,
@@ -43,6 +44,7 @@ import { searchPatientProblems } from "@/api/problems";
 import { searchPatientNotes } from "@/api/patient-notes";
 import {
   ALLERGY_PERMISSIONS,
+  DOCUMENT_PERMISSIONS,
   INCIDENT_PERMISSIONS,
   MEDICATION_PERMISSIONS,
   NOTE_PERMISSIONS,
@@ -71,6 +73,7 @@ import {
 } from "@/components/list";
 import { describe, formatDate } from "@/lib/list-helpers";
 import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
+import { DocumentsListDialog } from "@/pages/patient-charts/documents-list-dialog";
 import { ExportReportsDialog } from "@/pages/patient-charts/export-reports-dialog";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
@@ -183,11 +186,13 @@ export function PatientChartDetailPage() {
   const canViewAllergies = user?.permissions?.includes(ALLERGY_PERMISSIONS.view) ?? false;
   const canViewMedications = user?.permissions?.includes(MEDICATION_PERMISSIONS.view) ?? false;
   const canViewNotes = user?.permissions?.includes(NOTE_PERMISSIONS.view) ?? false;
+  const canViewDocuments = user?.permissions?.includes(DOCUMENT_PERMISSIONS.view) ?? false;
 
   const [problemListOpen, setProblemListOpen] = useState(false);
   const [allergyListOpen, setAllergyListOpen] = useState(false);
   const [medicationListOpen, setMedicationListOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
   const [exportReportsOpen, setExportReportsOpen] = useState(false);
 
   const patientQuery = useQuery({
@@ -403,7 +408,7 @@ export function PatientChartDetailPage() {
       )}
 
       {/* Chart actions — opens per-section dialogs (Problem List, Allergy, Medication,
-          Notes, Export Reports today; Outcome/Documents to follow). */}
+          Notes, Export Reports, Documents today; Outcome to follow). */}
       <div className="flex flex-wrap items-center gap-2">
         {canViewProblems && (
           <Button
@@ -447,6 +452,17 @@ export function PatientChartDetailPage() {
           >
             <StickyNote className="size-4" />
             Patient Notes
+          </Button>
+        )}
+        {canViewDocuments && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
+            onClick={() => setDocumentsOpen(true)}
+          >
+            <FolderOpen className="size-4" />
+            Documents
           </Button>
         )}
         {canExportReports && (
@@ -943,6 +959,15 @@ export function PatientChartDetailPage() {
           patientId={patientId}
           open={notesOpen}
           onClose={() => setNotesOpen(false)}
+        />
+      )}
+
+      {/* Documents dialog (uploads/downloads patient chart documents) */}
+      {patientId && (
+        <DocumentsListDialog
+          patientId={patientId}
+          open={documentsOpen}
+          onClose={() => setDocumentsOpen(false)}
         />
       )}
 

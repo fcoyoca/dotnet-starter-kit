@@ -75,3 +75,13 @@ export const NOTE_PERMISSIONS = {
 } as const;
 
 export type NotePermissionKey = keyof typeof NOTE_PERMISSIONS;
+
+export const DOCUMENT_PERMISSIONS = {
+  view:     "Permissions.Patient.Documents.View",
+  create:   "Permissions.Patient.Documents.Create",
+  update:   "Permissions.Patient.Documents.Update",
+  download: "Permissions.Patient.Documents.Download",
+  delete:   "Permissions.Patient.Documents.Delete",
+} as const;
+
+export type DocumentPermissionKey = keyof typeof DOCUMENT_PERMISSIONS;

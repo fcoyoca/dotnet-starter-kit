@@ -14,6 +14,11 @@ using FSH.Modules.Patient.Features.v1.PatientMedications.GetPatientMedicationByI
 using FSH.Modules.Patient.Features.v1.PatientMedications.MarkMedicationsReconciled;
 using FSH.Modules.Patient.Features.v1.PatientMedications.SearchPatientMedications;
 using FSH.Modules.Patient.Features.v1.PatientMedications.UpdatePatientMedication;
+using FSH.Modules.Patient.Features.v1.PatientDocuments.DeletePatientDocument;
+using FSH.Modules.Patient.Features.v1.PatientDocuments.DownloadPatientDocument;
+using FSH.Modules.Patient.Features.v1.PatientDocuments.SearchPatientDocuments;
+using FSH.Modules.Patient.Features.v1.PatientDocuments.UpdatePatientDocument;
+using FSH.Modules.Patient.Features.v1.PatientDocuments.UploadPatientDocument;
 using FSH.Modules.Patient.Features.v1.PatientNotes.CreatePatientNote;
 using FSH.Modules.Patient.Features.v1.PatientNotes.DeletePatientNote;
 using FSH.Modules.Patient.Features.v1.PatientNotes.SearchPatientNotes;
@@ -82,6 +87,7 @@ public sealed class PatientModule : IModule
         builder.Services.AddScoped<IPhiEncryptor, PhiEncryptor>();
         builder.Services.AddScoped<IPatientCodeGenerator, SequentialPatientCodeGenerator>();
         builder.Services.AddSingleton<IPatientReportPdfRenderer, PatientReportPdfRenderer>();
+        builder.Services.AddScoped<IPatientDocumentStorage, PatientDocumentStorage>();
 
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<PatientDbContext>(
@@ -167,5 +173,12 @@ public sealed class PatientModule : IModule
         group.MapCreatePatientNoteEndpoint();
         group.MapUpdatePatientNoteEndpoint();
         group.MapDeletePatientNoteEndpoint();
+
+        // Document endpoints — literal /documents/{id}/download before the generic /documents/{id:guid}
+        group.MapDownloadPatientDocumentEndpoint();
+        group.MapSearchPatientDocumentsEndpoint();
+        group.MapUploadPatientDocumentEndpoint();
+        group.MapUpdatePatientDocumentEndpoint();
+        group.MapDeletePatientDocumentEndpoint();
     }
 }

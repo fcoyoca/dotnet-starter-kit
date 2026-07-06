@@ -15,4 +15,12 @@ public sealed class PatientOptions
     [Required]
     [MinLength(1)]
     public string PhiHmacKey { get; init; } = default!;
+
+    /// <summary>
+    /// Root folder for uploaded patient documents (stored per tenant as
+    /// <c>{root}/c_{tenantId}/patientDocuments/</c>, mirroring legacy BackChart's per-client
+    /// upload directory). Optional — defaults to <c>{ContentRoot}/secure-uploads</c>, which is
+    /// intentionally outside wwwroot so PHI files are never served statically.
+    /// </summary>
+    public string? DocumentsRootPath { get; init; }
 }
