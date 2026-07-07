@@ -180,6 +180,10 @@ export function ProceduresPerformedDialog({
   const addProcedure = (codeId: string) => {
     const picked = codesQuery.data?.items.find((c) => c.id === codeId);
     if (!picked) return;
+    if (insuranceTypeId && pricesQuery.isPending) {
+      toast.info("Please wait — procedure prices are still loading.");
+      return;
+    }
     if (dxIds.length === 0) {
       toast.warning("Please add at least one DX code before picking procedures.");
       return;
