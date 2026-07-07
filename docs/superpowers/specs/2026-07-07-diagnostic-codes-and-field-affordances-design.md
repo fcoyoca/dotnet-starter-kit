@@ -55,9 +55,10 @@ Incidents store `CustomDiagnostic` guids; category associations and DX search op
   pattern), gated on the existing DiagnosticCategories permissions. Admin UI: a "Codes"
   editor on the existing Diagnostic Categories page (search global codes, add/remove,
   save) — mirrors the insurance-type procedures editor.
-- **DbMigrator**: extend the lookup migration with `ascDiagnosticCategories` → join rows
-  (category by `DiagnosticCategory.LegacyId`, code by `Diagnostic.LegacyId`; idempotent
-  delete-and-reinsert like sibling runners; skip+log unmatched/negative).
+- **Data migration deferred**: the DbMigrator does not migrate `lupDiagnosticCategories`
+  today (categories are admin-managed in-app), so migrating `ascDiagnosticCategories`
+  association rows is deferred to the same lookup-migration backlog item — the admin
+  editor below covers ongoing management meanwhile.
 - **`POST /administration/custom-diagnostics/ensure`** — find-or-create the tenant
   `CustomDiagnostic` for a picked global code (match by Code, case-insensitive, incl.
   soft-deleted → reactivate; else create with the global code's fields). Returns the guid.
