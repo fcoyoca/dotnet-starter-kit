@@ -5,15 +5,19 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { ChevronRight, FolderTree, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, FolderTree, ListChecks, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   createDiagnosticCategory,
   deleteDiagnosticCategory,
   listDiagnosticCategories,
+  listDiagnosticCategoryCodes,
+  listDiagnostics,
+  setDiagnosticCategoryCodes,
   updateDiagnosticCategory,
   type DiagnosticCategoryDto,
   type CreateDiagnosticCategoryInput,
+  type DiagnosticDto,
   type UpdateDiagnosticCategoryInput,
 } from "@/api/administration";
 import { Button } from "@/components/ui/button";
@@ -51,7 +55,8 @@ type EditorState =
   | { mode: "closed" }
   | { mode: "create" }
   | { mode: "edit"; category: DiagnosticCategoryDto }
-  | { mode: "delete"; category: DiagnosticCategoryDto };
+  | { mode: "delete"; category: DiagnosticCategoryDto }
+  | { mode: "codes"; category: DiagnosticCategoryDto };
 
 export function DiagnosticCategoriesPage() {
   const [search, setSearch] = useState("");
@@ -131,7 +136,12 @@ export function DiagnosticCategoriesPage() {
 
           <div className="space-y-2 md:hidden">
             {items.map((c) => (
-              <MobileCard key={c.id} category={c} onEdit={() => setEditor({ mode: "edit", category: c })} />
+              <MobileCard
+                key={c.id}
+                category={c}
+                onEdit={() => setEditor({ mode: "edit", category: c })}
+                onManageCodes={() => setEditor({ mode: "codes", category: c })}
+              />
             ))}
           </div>
 
@@ -148,6 +158,7 @@ export function DiagnosticCategoriesPage() {
                 isLast={i === items.length - 1}
                 onEdit={() => setEditor({ mode: "edit", category: c })}
                 onDelete={() => setEditor({ mode: "delete", category: c })}
+                onManageCodes={() => setEditor({ mode: "codes", category: c })}
               />
             ))}
           </EntityListCard>
@@ -174,11 +185,20 @@ export function DiagnosticCategoriesPage() {
 
       <DiagnosticCategoryEditorDialog state={editor} onClose={() => setEditor({ mode: "closed" })} />
       <DeleteDiagnosticCategoryDialog state={editor} onClose={() => setEditor({ mode: "closed" })} />
+      <DiagnosticCategoryCodesDialog state={editor} onClose={() => setEditor({ mode: "closed" })} />
     </div>
   );
 }
 
-function MobileCard({ category, onEdit }: { category: DiagnosticCategoryDto; onEdit: () => void }) {
+function MobileCard({
+  category,
+  onEdit,
+  onManageCodes,
+}: {
+  category: DiagnosticCategoryDto;
+  onEdit: () => void;
+  onManageCodes: () => void;
+}) {
   return (
     <EntityMobileCard
       href="#"
@@ -193,9 +213,23 @@ function MobileCard({ category, onEdit }: { category: DiagnosticCategoryDto; onE
           <EntityInitialsAvatar name={category.name} size={40} />
           <p className="truncate text-[14px] font-medium text-[var(--color-foreground)]">{category.name}</p>
         </div>
-        <EntityStatusBadge tone={category.isActive ? "success" : "default"}>
-          {category.isActive ? "Active" : "Inactive"}
-        </EntityStatusBadge>
+        <div className="flex items-center gap-2">
+          <EntityStatusBadge tone={category.isActive ? "success" : "default"}>
+            {category.isActive ? "Active" : "Inactive"}
+          </EntityStatusBadge>
+          <button
+            type="button"
+            aria-label={`Manage codes for ${category.name}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onManageCodes();
+            }}
+            className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+          >
+            <ListChecks className="size-3.5" />
+          </button>
+        </div>
       </div>
     </EntityMobileCard>
   );
@@ -206,11 +240,13 @@ function DesktopRow({
   isLast,
   onEdit,
   onDelete,
+  onManageCodes,
 }: {
   category: DiagnosticCategoryDto;
   isLast: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onManageCodes: () => void;
 }) {
   return (
     <EntityListRow className="grid-cols-[1fr_90px_24px]" isLast={isLast}>
@@ -226,6 +262,14 @@ function DesktopRow({
         </EntityStatusBadge>
       </div>
       <div className="flex items-center justify-end gap-1">
+        <button
+          type="button"
+          aria-label={`Manage codes for ${category.name}`}
+          onClick={onManageCodes}
+          className="grid size-7 cursor-pointer place-items-center rounded-md text-[var(--color-muted-foreground)] opacity-0 transition-all hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)] group-hover:opacity-100"
+        >
+          <ListChecks className="size-3.5" />
+        </button>
         <button
           type="button"
           aria-label={`Edit ${category.name}`}
@@ -395,6 +439,245 @@ function DeleteDiagnosticCategoryDialog({ state, onClose }: { state: EditorState
           >
             {deleteMutation.isPending ? "Deleting…" : "Delete category"}
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** One row of an associated (or about-to-be-associated) diagnostic code in the category-codes editor. */
+type CategoryCodeRow = { diagnosticId: number; code: string; description: string | null };
+
+/**
+ * Category ↔ code association editor — legacy `ascDiagnosticCategories`. Left panel searches the
+ * global diagnostic (ICD) catalog and adds rows; right panel is the working association set with
+ * per-row remove. Nothing persists until Save, which replaces the category's full code set.
+ */
+function DiagnosticCategoryCodesDialog({ state, onClose }: { state: EditorState; onClose: () => void }) {
+  const isOpen = state.mode === "codes";
+  const category = state.mode === "codes" ? state.category : undefined;
+  const queryClient = useQueryClient();
+
+  const [rows, setRows] = useState<CategoryCodeRow[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [committedSearch, setCommittedSearch] = useState("");
+
+  // One-shot fetch (not a live useQuery) so a background refetch can never clobber the user's
+  // in-progress edits; a reopen always reflects the latest saved set (AssociatedProcedureCodes precedent).
+  useEffect(() => {
+    if (!isOpen || !category) return;
+    setHydrated(false);
+    setSearchInput("");
+    setCommittedSearch("");
+    let cancelled = false;
+    queryClient
+      .fetchQuery({
+        queryKey: ["administration", "diagnostic-category-codes", category.id],
+        queryFn: () => listDiagnosticCategoryCodes(category.id),
+        staleTime: 0,
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setRows(
+          data.map((d) => ({
+            diagnosticId: d.diagnosticId,
+            code: d.code,
+            description: d.description ?? null,
+          })),
+        );
+      })
+      .catch((err) => {
+        if (!cancelled) toast.error("Could not load associated codes", { description: describe(err) });
+      })
+      .finally(() => {
+        if (!cancelled) setHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, category, queryClient]);
+
+  const searchQuery = useQuery({
+    queryKey: ["administration", "diagnostics", "search", committedSearch],
+    queryFn: () => listDiagnostics({ search: committedSearch, pageSize: 50 }),
+    enabled: isOpen && committedSearch.length >= 2,
+  });
+  const results = searchQuery.data?.items ?? [];
+
+  const runSearch = () => {
+    const trimmed = searchInput.trim();
+    if (trimmed.length < 2) {
+      toast.warning("Please enter at least 2 characters.");
+      return;
+    }
+    setCommittedSearch(trimmed);
+  };
+
+  const addRow = (d: DiagnosticDto) => {
+    if (rows.some((r) => r.diagnosticId === d.id)) {
+      toast.warning("Code already associated.");
+      return;
+    }
+    setRows((prev) => [...prev, { diagnosticId: d.id, code: d.code, description: d.description ?? null }]);
+  };
+
+  const removeRow = (diagnosticId: number) =>
+    setRows((prev) => prev.filter((r) => r.diagnosticId !== diagnosticId));
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      setDiagnosticCategoryCodes({
+        categoryId: category!.id,
+        diagnosticIds: rows.map((r) => r.diagnosticId),
+      }),
+    onSuccess: () => {
+      toast.success("Category codes saved.");
+      void queryClient.invalidateQueries({
+        queryKey: ["administration", "diagnostic-category-codes", category!.id],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["diagnostics", "by-category", category!.id] });
+      onClose();
+    },
+    onError: (err) => toast.error("Save failed", { description: describe(err) }),
+  });
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => (!o ? onClose() : undefined)}>
+      <DialogContent className="!max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{category ? `Codes — ${category.name}` : "Codes"}</DialogTitle>
+          <DialogDescription>Associate diagnostic (ICD) codes with this category.</DialogDescription>
+        </DialogHeader>
+
+        <DialogBody className="space-y-4">
+          {!hydrated ? (
+            <div className="skeleton h-24 rounded-lg" />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <p className="text-[13px] font-semibold">Search codes</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        runSearch();
+                      }
+                    }}
+                    placeholder="Code or description…"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={runSearch}>
+                    <Search className="size-4" />
+                  </Button>
+                </div>
+                {searchQuery.isLoading ? (
+                  <div className="skeleton h-40 rounded-lg" />
+                ) : (
+                  <div className="max-h-64 overflow-auto rounded-lg border border-[var(--color-border)]">
+                    <table className="w-full text-[13px]">
+                      <thead className="sticky top-0 bg-[var(--color-card)]">
+                        <tr className="border-b border-[var(--color-border)] text-left text-[11px] uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                          <th className="px-3 py-2 w-24">Code</th>
+                          <th className="px-3 py-2">Description</th>
+                          <th className="px-3 py-2 w-10" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={3}
+                              className="px-3 py-6 text-center text-[13px] text-[var(--color-muted-foreground)]"
+                            >
+                              {committedSearch.length >= 2 ? "No matches." : "Search for codes to add."}
+                            </td>
+                          </tr>
+                        ) : (
+                          results.map((d) => (
+                            <tr
+                              key={d.id}
+                              className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-accent)]"
+                            >
+                              <td className="px-3 py-2 font-medium">{d.code}</td>
+                              <td className="px-3 py-2">{d.description ?? "—"}</td>
+                              <td className="px-3 py-2">
+                                <button
+                                  type="button"
+                                  title={`Add ${d.code}`}
+                                  aria-label={`Add ${d.code}`}
+                                  onClick={() => addRow(d)}
+                                  className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] transition-colors hover:bg-[var(--color-card)]"
+                                >
+                                  <Plus className="size-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-[13px] font-semibold">
+                  Associated codes{rows.length > 0 ? ` (${rows.length})` : ""}
+                </p>
+                {rows.length === 0 ? (
+                  <p className="rounded-lg border border-[var(--color-border)] px-3 py-4 text-center text-[13px] text-[var(--color-muted-foreground)]">
+                    No codes associated yet.
+                  </p>
+                ) : (
+                  <div className="max-h-64 overflow-auto rounded-lg border border-[var(--color-border)]">
+                    <table className="w-full text-[13px]">
+                      <thead className="sticky top-0 bg-[var(--color-card)]">
+                        <tr className="border-b border-[var(--color-border)] text-left text-[11px] uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                          <th className="px-3 py-2 w-24">Code</th>
+                          <th className="px-3 py-2">Description</th>
+                          <th className="px-3 py-2 w-10" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((r) => (
+                          <tr key={r.diagnosticId} className="border-b border-[var(--color-border)] last:border-b-0">
+                            <td className="px-3 py-2 font-medium">{r.code}</td>
+                            <td className="px-3 py-2">{r.description ?? "—"}</td>
+                            <td className="px-3 py-2">
+                              <button
+                                type="button"
+                                title="Remove"
+                                aria-label={`Remove ${r.code}`}
+                                onClick={() => removeRow(r.diagnosticId)}
+                                className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] transition-colors hover:bg-[var(--color-accent)]"
+                              >
+                                <X className="size-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogBody>
+
+        <DialogFooter>
+          <Button type="button" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !hydrated}>
+            <Save className="size-4" />
+            {saveMutation.isPending ? "Saving…" : "Save"}
+          </Button>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Close
+            </Button>
+          </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
