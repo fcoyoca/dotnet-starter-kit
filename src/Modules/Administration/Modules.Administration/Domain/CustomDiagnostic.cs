@@ -73,6 +73,19 @@ public sealed class CustomDiagnostic : AggregateRoot<Guid>, ISoftDeletable
         DeletedBy = deletedBy;
     }
 
+    /// <summary>
+    /// Undoes a soft delete and re-marks the record active. Used by the "ensure" find-or-create flow when a
+    /// previously deleted/inactive record matches a newly-picked global code.
+    /// </summary>
+    public void Reactivate()
+    {
+        IsDeleted = false;
+        DeletedOnUtc = null;
+        DeletedBy = null;
+        IsActive = true;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
     private static string? Clean(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

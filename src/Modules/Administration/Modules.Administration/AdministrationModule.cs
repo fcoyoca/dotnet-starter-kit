@@ -92,6 +92,7 @@ using FSH.Modules.Administration.Features.v1.InsuranceCompanies.ListInsuranceCom
 using FSH.Modules.Administration.Features.v1.InsuranceCompanies.UpdateInsuranceCompany;
 using FSH.Modules.Administration.Features.v1.CustomDiagnostics.CreateCustomDiagnostic;
 using FSH.Modules.Administration.Features.v1.CustomDiagnostics.DeleteCustomDiagnostic;
+using FSH.Modules.Administration.Features.v1.CustomDiagnostics.EnsureCustomDiagnostic;
 using FSH.Modules.Administration.Features.v1.CustomDiagnostics.GetCustomDiagnosticById;
 using FSH.Modules.Administration.Features.v1.CustomDiagnostics.ListCustomDiagnostics;
 using FSH.Modules.Administration.Features.v1.CustomDiagnostics.UpdateCustomDiagnostic;
@@ -242,6 +243,7 @@ public sealed class AdministrationModule : IModule
         group.MapSetDiagnosticCategoryCodesEndpoint();
 
         group.MapCreateCustomDiagnosticEndpoint();
+        group.MapEnsureCustomDiagnosticEndpoint();
         group.MapListCustomDiagnosticsEndpoint();
         group.MapGetCustomDiagnosticByIdEndpoint();
         group.MapUpdateCustomDiagnosticEndpoint();
