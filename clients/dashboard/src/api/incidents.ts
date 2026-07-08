@@ -101,6 +101,13 @@ export async function updateIncident(input: UpdateIncidentInput): Promise<void> 
   });
 }
 
+export async function setIncidentDiagnostics(input: { incidentId: string; diagnosticIds: string[] }): Promise<void> {
+  await apiFetch<void>(
+    `/api/v1/patient/incidents/${encodeURIComponent(input.incidentId)}/diagnostics`,
+    { method: "PUT", body: JSON.stringify({ incidentId: input.incidentId, diagnosticIds: input.diagnosticIds }) },
+  );
+}
+
 export async function closeIncident(id: string): Promise<void> {
   await apiFetch<void>(`/api/v1/patient/incidents/${encodeURIComponent(id)}/close`, {
     method: "PUT",

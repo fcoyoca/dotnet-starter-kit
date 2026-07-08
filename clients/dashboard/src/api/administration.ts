@@ -680,6 +680,36 @@ export async function deleteDiagnosticCategory(id: string): Promise<void> {
   });
 }
 
+export type DiagnosticCategoryCodeDto = {
+  diagnosticCategoryId: string;
+  diagnosticId: number;
+  code: string;
+  description?: string | null;
+};
+export function listDiagnosticCategoryCodes(categoryId: string): Promise<DiagnosticCategoryCodeDto[]> {
+  return apiFetch<DiagnosticCategoryCodeDto[]>(
+    `/api/v1/administration/diagnostic-categories/${encodeURIComponent(categoryId)}/codes`,
+  );
+}
+export async function setDiagnosticCategoryCodes(input: { categoryId: string; diagnosticIds: number[] }): Promise<void> {
+  await apiFetch<void>(
+    `/api/v1/administration/diagnostic-categories/${encodeURIComponent(input.categoryId)}/codes`,
+    { method: "PUT", body: JSON.stringify({ categoryId: input.categoryId, diagnosticIds: input.diagnosticIds }) },
+  );
+}
+export type EnsureCustomDiagnosticInput = {
+  code: string;
+  description?: string | null;
+  longDescription?: string | null;
+  isChiropractic: boolean;
+};
+export async function ensureCustomDiagnostic(input: EnsureCustomDiagnosticInput): Promise<string> {
+  return apiFetch<string>("/api/v1/administration/custom-diagnostics/ensure", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 // ─── Incident Types (tenant-scoped CRUD) ───────────────────────────────
 
 export type IncidentTypeDto = {
@@ -1233,6 +1263,7 @@ export type DiagnosticDto = {
 export type ListDiagnosticsParams = {
   search?: string;
   codeSourceId?: number | null;
+  categoryId?: string | null;
   isActive?: boolean | null;
   isChiropractic?: boolean | null;
   isBillable?: boolean | null;
@@ -1258,6 +1289,7 @@ export function listDiagnostics(params: ListDiagnosticsParams = {}): Promise<Pag
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
   if (params.codeSourceId != null) query.set("codeSourceId", String(params.codeSourceId));
+  if (params.categoryId) query.set("categoryId", params.categoryId);
   if (params.isActive !== undefined && params.isActive !== null)
     query.set("isActive", String(params.isActive));
   if (params.isChiropractic !== undefined && params.isChiropractic !== null)
