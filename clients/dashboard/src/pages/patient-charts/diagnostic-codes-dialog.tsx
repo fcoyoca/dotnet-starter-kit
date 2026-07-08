@@ -126,6 +126,10 @@ export function DiagnosticCodesDialog({
       }),
     );
     setHydrated(true);
+    // existingIds is derived from incidentQuery.data (already a dep) via a new array
+    // literal each render; adding it here would make the effect re-fire every render
+    // this component re-renders while open, purely from reference churn — the
+    // `hydrated` guard makes that a no-op, but it's unnecessary work, not a bug.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, hydrated, incidentQuery.data, customDxQuery.data]);
 
@@ -173,6 +177,10 @@ export function DiagnosticCodesDialog({
   // ── Add / remove rows (nothing persists until Save) ──
   const addRow = (d: DiagnosticDto) => {
     if (!canEdit) return;
+    // A fast double-click (or click+dblclick) can fire this twice before the confirm
+    // modal has painted; without this guard the second call would queue a second
+    // add/confirm cycle. Bail while a confirm is already pending.
+    if (pendingConfirmKey !== null) return;
     const dup = rows.some((r) => r.code.toLowerCase() === d.code.toLowerCase());
     if (dup) {
       toast.warning("Item already in the list.");
@@ -207,7 +215,11 @@ export function DiagnosticCodesDialog({
   };
 
   // ── Save: ensure new global rows → guids, replace the incident's dx set,
-  // then create any confirmed problems. Single mutation; rows travel via mutate(arg). ──
+  // then create any confirmed problems. Single mutation; rows travel via mutate(arg).
+  // Progress (resolved customId, consumed addToProblems) is patched back into row
+  // state as each step completes so a retried Save — the user clicking Save again
+  // after a failure — only redoes the work that didn't finish, instead of re-running
+  // ensure/createProblem for rows already committed on the previous attempt. ──
   const saveMutation = useMutation({
     mutationFn: async (toSave: Row[]) => {
       const diagnosticIds: string[] = [];
@@ -221,6 +233,10 @@ export function DiagnosticCodesDialog({
             longDescription: null,
             isChiropractic: row.isChiropractic ?? false,
           });
+          const resolvedId = customId;
+          setRows((prev) =>
+            prev.map((r) => (r.key === row.key ? { ...r, customId: resolvedId } : r)),
+          );
         }
         diagnosticIds.push(customId);
         if (row.addToProblems) problemRows.push(row);
@@ -237,6 +253,9 @@ export function DiagnosticCodesDialog({
           isMedicalAlert: false,
           incidentId,
         });
+        setRows((prev) =>
+          prev.map((r) => (r.key === row.key ? { ...r, addToProblems: false } : r)),
+        );
       }
     },
     onSuccess: () => {
@@ -450,10 +469,19 @@ export function DiagnosticCodesDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Mini confirm — offer to add the just-added code to the patient's problem list. */}
+      {/* Mini confirm — offer to add the just-added code to the patient's problem list.
+          Dismissal must be an explicit Yes/No click: a stray trailing click from a fast
+          double-click on the results row can land on the overlay right as this mounts,
+          and Radix would otherwise treat that (or Escape) as an implicit "No" the user
+          never saw. */}
       {pendingConfirmKey !== null && (
         <Dialog open onOpenChange={(o) => !o && confirmAddToProblems(false)}>
-          <DialogContent className="!max-w-sm">
+          <DialogContent
+            className="!max-w-sm"
+            onPointerDownOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>Add Dx Code to Problems</DialogTitle>
             </DialogHeader>
