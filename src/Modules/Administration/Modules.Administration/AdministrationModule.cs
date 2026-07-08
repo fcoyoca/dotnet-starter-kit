@@ -112,6 +112,8 @@ using FSH.Modules.Administration.Features.v1.DiagnosticCategories.DeleteDiagnost
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.GetDiagnosticCategoryById;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.ListDiagnosticCategories;
 using FSH.Modules.Administration.Features.v1.DiagnosticCategories.UpdateDiagnosticCategory;
+using FSH.Modules.Administration.Features.v1.DiagnosticCategoryCodes.ListCodes;
+using FSH.Modules.Administration.Features.v1.DiagnosticCategoryCodes.SetCodes;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.CreatePreferredContactMethod;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.DeletePreferredContactMethod;
 using FSH.Modules.Administration.Features.v1.PreferredContactMethods.GetPreferredContactMethodById;
@@ -235,6 +237,9 @@ public sealed class AdministrationModule : IModule
         group.MapGetDiagnosticCategoryByIdEndpoint();
         group.MapUpdateDiagnosticCategoryEndpoint();
         group.MapDeleteDiagnosticCategoryEndpoint();
+
+        group.MapListDiagnosticCategoryCodesEndpoint();
+        group.MapSetDiagnosticCategoryCodesEndpoint();
 
         group.MapCreateCustomDiagnosticEndpoint();
         group.MapListCustomDiagnosticsEndpoint();
