@@ -47,6 +47,14 @@ public sealed class ListDiagnosticsQueryHandler(AdministrationDbContext dbContex
             q = q.Where(d => d.IsBillable == query.IsBillable.Value);
         }
 
+        if (query.CategoryId.HasValue)
+        {
+            IQueryable<int> categoryCodeIds = dbContext.DiagnosticCategoryCodes
+                .Where(a => a.DiagnosticCategoryId == query.CategoryId.Value)
+                .Select(a => a.DiagnosticId);
+            q = q.Where(d => categoryCodeIds.Contains(d.Id));
+        }
+
         bool desc = string.Equals(query.SortDir, "desc", StringComparison.OrdinalIgnoreCase);
         q = (query.SortBy?.ToUpperInvariant()) switch
         {

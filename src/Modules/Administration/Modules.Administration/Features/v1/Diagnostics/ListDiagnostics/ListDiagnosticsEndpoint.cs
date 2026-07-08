@@ -23,11 +23,12 @@ public static class ListDiagnosticsEndpoint
                     int? pageSize,
                     string? sortBy,
                     string? sortDir,
+                    Guid? categoryId,
                     IMediator mediator,
                     CancellationToken ct) =>
                     Results.Ok(await mediator.Send(
                         new ListDiagnosticsQuery(search, codeSourceId, isActive, isChiropractic, isBillable,
-                            pageNumber ?? 1, pageSize ?? 20, sortBy, sortDir), ct)))
+                            pageNumber ?? 1, pageSize ?? 20, sortBy, sortDir, categoryId), ct)))
             .WithName("ListDiagnostics")
             .WithSummary("Search and list ICD diagnostics")
             .RequirePermission(AdministrationPermissions.Diagnostics.View);

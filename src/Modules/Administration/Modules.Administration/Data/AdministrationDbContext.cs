@@ -27,6 +27,7 @@ public sealed class AdministrationDbContext : BaseDbContext
     public DbSet<DiagnosticCategory> DiagnosticCategories => Set<DiagnosticCategory>();
     public DbSet<CustomDiagnostic> CustomDiagnostics => Set<CustomDiagnostic>();
     public DbSet<Diagnostic> Diagnostics => Set<Diagnostic>();
+    public DbSet<DiagnosticCategoryCode> DiagnosticCategoryCodes => Set<DiagnosticCategoryCode>();
     public DbSet<Drug> Drugs => Set<Drug>();
     public DbSet<ProcedureCategory> ProcedureCategories => Set<ProcedureCategory>();
     public DbSet<ProcedureCode> ProcedureCodes => Set<ProcedureCode>();

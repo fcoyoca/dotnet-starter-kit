@@ -13,4 +13,5 @@ public sealed record ListDiagnosticsQuery(
     int PageNumber = 1,
     int PageSize = 20,
     string? SortBy = null,
-    string? SortDir = null) : IQuery<PagedResponse<DiagnosticDto>>;
+    string? SortDir = null,
+    Guid? CategoryId = null) : IQuery<PagedResponse<DiagnosticDto>>;
