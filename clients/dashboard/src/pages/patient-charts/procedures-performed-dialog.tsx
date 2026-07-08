@@ -32,7 +32,7 @@ import {
 import { Combobox, Field } from "@/components/list";
 import { EntityStatusBadge } from "@/components/list";
 import { describe, formatDate } from "@/lib/list-helpers";
-import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
+import { DiagnosticCodesDialog } from "@/pages/patient-charts/diagnostic-codes-dialog";
 
 type Props = {
   patientId: string;
@@ -76,7 +76,7 @@ export function ProceduresPerformedDialog({
   const [addMacroText, setAddMacroText] = useState(true);
   const [insuranceTypeId, setInsuranceTypeId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [editDxOpen, setEditDxOpen] = useState(false);
+  const [dxDialogOpen, setDxDialogOpen] = useState(false);
   const rowKey = useRef(0);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export function ProceduresPerformedDialog({
       setPickedReportId(reportId);
       setRows([]);
       setHydratedFor(null);
-      setEditDxOpen(false);
+      setDxDialogOpen(false);
     }
   }, [open, reportId]);
 
@@ -303,7 +303,7 @@ export function ProceduresPerformedDialog({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditDxOpen(true)}
+                    onClick={() => setDxDialogOpen(true)}
                     disabled={!canManage}
                   >
                     <Pencil className="size-4" />
@@ -499,13 +499,13 @@ export function ProceduresPerformedDialog({
       </Dialog>
 
       {/* Edit the incident's dx set; the incident query invalidation refreshes the checkboxes. */}
-      {editDxOpen && (
-        <IncidentDialog
+      {dxDialogOpen && (
+        <DiagnosticCodesDialog
           patientId={patientId}
           incidentId={incidentId}
-          open={editDxOpen}
+          open={dxDialogOpen}
           onClose={() => {
-            setEditDxOpen(false);
+            setDxDialogOpen(false);
             void queryClient.invalidateQueries({ queryKey: ["incident", incidentId] });
           }}
         />
