@@ -60,8 +60,11 @@ function replaceTab(
 /** Remove `removedId` from `items`/deactivate it from `activeId`, falling
  *  back to whichever item now occupies the same position (i.e. the next
  *  item, or the new last item if it was rightmost) — matches browser/editor
- *  tab-close behavior instead of always jumping to the last-inserted item. */
-function closeAndPickFallback<T>(
+ *  tab-close behavior instead of always jumping to the last-inserted item.
+ *  Exported so callers that need to know the fallback ahead of a navigation
+ *  (e.g. PatientTabStrip's close button) compute the identical result
+ *  `closePatient`/`closeReport` will apply — one fallback rule, not two. */
+export function closeAndPickFallback<T>(
   items: T[],
   removedId: string,
   activeId: string | null,

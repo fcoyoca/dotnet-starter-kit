@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
-import { usePatientWorkspace } from "@/state/patient-workspace-context";
+import { closeAndPickFallback, usePatientWorkspace } from "@/state/patient-workspace-context";
 import { cn } from "@/lib/cn";
 
 /**
@@ -20,12 +20,19 @@ export function PatientTabStrip() {
   };
 
   const onClose = (patientId: string) => {
+    // Compute the same fallback closePatient() is about to apply internally,
+    // so the URL we navigate to always matches the resulting activePatientId
+    // instead of independently guessing (previously: always "last remaining").
+    const { activeId: nextActivePatientId } = closeAndPickFallback(
+      openTabs,
+      patientId,
+      activePatientId,
+      (t) => t.patientId,
+    );
     const wasActive = patientId === activePatientId;
-    const remaining = openTabs.filter((t) => t.patientId !== patientId);
     closePatient(patientId);
     if (wasActive) {
-      const next = remaining[remaining.length - 1];
-      navigate(next ? `/patient-charts/${next.patientId}` : "/patient-charts");
+      navigate(nextActivePatientId ? `/patient-charts/${nextActivePatientId}` : "/patient-charts");
     }
   };
 
