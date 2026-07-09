@@ -269,10 +269,16 @@ export function PatientChartDetailPage() {
 
   const createReportMutation = useMutation({
     mutationFn: createReport,
-    onSuccess: (reportId) => {
+    // Use `variables.patientId` (the id the mutation was actually called
+    // with), not the ambient `patientId` route param — this component stays
+    // mounted across /patient-charts/:patientId navigations, so if the user
+    // switches to a different patient's chart while this mutation is still
+    // in flight, the ambient value would be the WRONG (new) patient by the
+    // time onSuccess fires, opening the report under the wrong tab.
+    onSuccess: (reportId, variables) => {
       setPendingReportType(null);
-      void queryClient.invalidateQueries({ queryKey: ["reports", activeIncidentId] });
-      if (patientId) openReport(patientId, reportId);
+      void queryClient.invalidateQueries({ queryKey: ["reports", variables.incidentId] });
+      openReport(variables.patientId, reportId);
     },
     onError: (err) => toast.error("Failed to create report.", { description: describe(err) }),
   });
@@ -379,7 +385,13 @@ export function PatientChartDetailPage() {
   // workspace context (keyed by patientId) instead of local useState, so
   // it survives navigating away from the chart and back.
   useEffect(() => {
-    if (!patientId) return;
+    // Also depend on `workspaceTab` itself (not just the `activeIncidentId`
+    // value derived from it): a brand-new tab starts with activeIncidentId
+    // null, same as "no tab yet" — without this, setActiveIncident's no-op
+    // (before the tab exists, see openPatient's registration effect above)
+    // would never get retried once the tab actually gets created, since
+    // every other dependency would look unchanged.
+    if (!patientId || !workspaceTab) return;
     if (incidents.length === 0) {
       if (activeIncidentId !== null) setActiveIncident(patientId, null);
       return;
@@ -387,7 +399,7 @@ export function PatientChartDetailPage() {
     if (!activeIncidentId || !incidents.some((x) => x.id === activeIncidentId)) {
       setActiveIncident(patientId, incidents[0].id);
     }
-  }, [incidents, activeIncidentId, patientId, setActiveIncident]);
+  }, [incidents, activeIncidentId, patientId, setActiveIncident, workspaceTab]);
 
   const activeIncident = useMemo<PatientIncidentListItemDto | null>(
     () => incidents.find((x) => x.id === activeIncidentId) ?? null,

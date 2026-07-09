@@ -128,14 +128,12 @@ export function ReportEditorDialog({
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
-    queryFn: () => getPatientById(patientId!),
-    enabled: !!patientId,
+    queryFn: () => getPatientById(patientId),
   });
 
   const reportQuery = useQuery({
     queryKey: ["report", reportId],
-    queryFn: () => getReport(reportId!),
-    enabled: !!reportId,
+    queryFn: () => getReport(reportId),
   });
 
   const report = reportQuery.data;
@@ -248,17 +246,16 @@ export function ReportEditorDialog({
     queryKey: ["problems", patientId, "all-for-report"],
     queryFn: () =>
       searchPatientProblems({
-        patientId: patientId!,
+        patientId,
         includeResolved: true,
         includeInactive: true,
         pageSize: 200,
       }),
-    enabled: !!patientId,
   });
   const patientProblems = problemsQuery.data?.items ?? [];
 
   const setProblemsMutation = useMutation({
-    mutationFn: (problemIds: string[]) => setReportProblems(reportId!, problemIds),
+    mutationFn: (problemIds: string[]) => setReportProblems(reportId, problemIds),
     onSuccess: () => {
       toast.success("Associated problems saved.");
       void queryClient.invalidateQueries({ queryKey: ["report", reportId] });
@@ -719,7 +716,7 @@ export function ReportEditorDialog({
                 <Button
                   size="sm"
                   disabled={reviewSignMutation.isPending}
-                  onClick={() => reportId && reviewSignMutation.mutate(reportId)}
+                  onClick={() => reviewSignMutation.mutate(reportId)}
                 >
                   <PenLine className="size-4" />
                   {reviewSignMutation.isPending ? "Signing…" : "Review-Sign"}
@@ -745,7 +742,6 @@ export function ReportEditorDialog({
                 size="sm"
                 disabled={!reviewerProviderId || requestReviewMutation.isPending}
                 onClick={() =>
-                  reportId &&
                   reviewerProviderId &&
                   requestReviewMutation.mutate({ reportId, reviewerProviderId })
                 }
@@ -795,9 +791,7 @@ export function ReportEditorDialog({
               <Button
                 size="sm"
                 disabled={!addendumText.trim() || addendumMutation.isPending}
-                onClick={() =>
-                  reportId && addendumMutation.mutate({ reportId, text: addendumText.trim() })
-                }
+                onClick={() => addendumMutation.mutate({ reportId, text: addendumText.trim() })}
               >
                 <Plus className="size-4" />
                 Add Addendum
@@ -825,9 +819,9 @@ export function ReportEditorDialog({
         </div>
       )}
 
-      {canViewSuperBills && reportId && (
+      {canViewSuperBills && (
         <ProceduresPerformedDialog
-          patientId={patientId!}
+          patientId={patientId}
           patientName={fullName || undefined}
           incidentId={report.incidentId}
           reportId={reportId}
@@ -840,27 +834,23 @@ export function ReportEditorDialog({
         />
       )}
 
-      {patientId && (
-        <ImportAllergiesDialog
-          patientId={patientId}
-          open={allergiesFieldId != null}
-          onClose={() => setAllergiesFieldId(null)}
-          onDone={(text) => {
-            if (allergiesFieldId != null) insertMacro(allergiesFieldId, text);
-          }}
-        />
-      )}
+      <ImportAllergiesDialog
+        patientId={patientId}
+        open={allergiesFieldId != null}
+        onClose={() => setAllergiesFieldId(null)}
+        onDone={(text) => {
+          if (allergiesFieldId != null) insertMacro(allergiesFieldId, text);
+        }}
+      />
 
-      {patientId && (
-        <ImportMedicationsDialog
-          patientId={patientId}
-          open={medicationsFieldId != null}
-          onClose={() => setMedicationsFieldId(null)}
-          onDone={(text) => {
-            if (medicationsFieldId != null) insertMacro(medicationsFieldId, text);
-          }}
-        />
-      )}
+      <ImportMedicationsDialog
+        patientId={patientId}
+        open={medicationsFieldId != null}
+        onClose={() => setMedicationsFieldId(null)}
+        onDone={(text) => {
+          if (medicationsFieldId != null) insertMacro(medicationsFieldId, text);
+        }}
+      />
         </div>
       </DialogContent>
     </Dialog>
