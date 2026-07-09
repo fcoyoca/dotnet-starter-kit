@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   keepPreviousData,
   useMutation,
@@ -25,6 +25,7 @@ import {
   StickyNote,
   Tablets,
   Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getPatientById } from "@/api/patients";
@@ -73,6 +74,8 @@ import {
   EntityStatusBadge,
 } from "@/components/list";
 import { describe, formatDate } from "@/lib/list-helpers";
+import { cn } from "@/lib/cn";
+import { usePatientTab, usePatientWorkspace } from "@/state/patient-workspace-context";
 import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
 import { DocumentsListDialog } from "@/pages/patient-charts/documents-list-dialog";
 import { ExportReportsDialog } from "@/pages/patient-charts/export-reports-dialog";
@@ -82,6 +85,7 @@ import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dia
 import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
 import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
+import { ReportEditorDialog } from "@/pages/patient-charts/report-editor-dialog";
 import { ReportSearchDialog } from "@/pages/patient-charts/report-search-dialog";
 import {
   SelectAppointmentDialog,
@@ -155,9 +159,14 @@ function IconShortcut({
 
 export function PatientChartDetailPage() {
   const { patientId } = useParams<{ patientId: string }>();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { openPatient, setActiveIncident, openReport, closeReport, setActiveReport } =
+    usePatientWorkspace();
+  const workspaceTab = usePatientTab(patientId);
+  const activeIncidentId = workspaceTab?.activeIncidentId ?? null;
+  const openReportIds = workspaceTab?.openReportIds ?? [];
+  const activeReportId = workspaceTab?.activeReportId ?? null;
 
   const [closedFilter, setClosedFilter] = useState<ClosedFilter>("all");
   const [showDeleted, setShowDeleted] = useState(false);
@@ -165,7 +174,6 @@ export function PatientChartDetailPage() {
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
-  const [activeIncidentId, setActiveIncidentId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editIncidentId, setEditIncidentId] = useState<string | null>(null);
   const [viewIncidentId, setViewIncidentId] = useState<string | null>(null);
@@ -332,6 +340,26 @@ export function PatientChartDetailPage() {
   );
 
   const patient = patientQuery.data;
+
+  const fullName = patient
+    ? [
+        patient.demographics.firstName,
+        patient.demographics.middleInitial,
+        patient.demographics.lastName,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : "";
+
+  // Register/refresh this patient's workspace tab as soon as the patient
+  // record loads — covers both "opened from search" (tab already exists,
+  // just gets marked active) and a direct/bookmarked chart URL (creates
+  // the tab). The cached label avoids a refetch just to render the tab strip.
+  useEffect(() => {
+    if (!patientId || !patient) return;
+    openPatient(patientId, fullName || patient.patientCode);
+  }, [patientId, patient, fullName, openPatient]);
+
   const allIncidents = useMemo(() => incidentsQuery.data?.items ?? [], [incidentsQuery.data]);
 
   // Client-side refinement (the API filters by closed/deleted; these narrow further).
@@ -347,30 +375,24 @@ export function PatientChartDetailPage() {
   );
 
   // Keep an active incident selected (mirrors BackChart's ActiveIncident).
+  // The "which incident is active" pointer now lives in the persisted
+  // workspace context (keyed by patientId) instead of local useState, so
+  // it survives navigating away from the chart and back.
   useEffect(() => {
+    if (!patientId) return;
     if (incidents.length === 0) {
-      setActiveIncidentId(null);
+      if (activeIncidentId !== null) setActiveIncident(patientId, null);
       return;
     }
     if (!activeIncidentId || !incidents.some((x) => x.id === activeIncidentId)) {
-      setActiveIncidentId(incidents[0].id);
+      setActiveIncident(patientId, incidents[0].id);
     }
-  }, [incidents, activeIncidentId]);
+  }, [incidents, activeIncidentId, patientId, setActiveIncident]);
 
   const activeIncident = useMemo<PatientIncidentListItemDto | null>(
     () => incidents.find((x) => x.id === activeIncidentId) ?? null,
     [incidents, activeIncidentId],
   );
-
-  const fullName = patient
-    ? [
-        patient.demographics.firstName,
-        patient.demographics.middleInitial,
-        patient.demographics.lastName,
-      ]
-        .filter(Boolean)
-        .join(" ")
-    : "";
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -751,7 +773,7 @@ export function PatientChartDetailPage() {
                       incident.id === activeIncidentId ? "bg-[var(--color-accent)]" : ""
                     }`}
                     isLast={i === incidents.length - 1}
-                    onClick={() => setActiveIncidentId(incident.id)}
+                    onClick={() => patientId && setActiveIncident(patientId, incident.id)}
                   >
                     <span className="text-[13px]">{formatDate(incident.dateOfLoss)}</span>
                     <span className="truncate text-[13px] text-[var(--color-muted-foreground)]">
