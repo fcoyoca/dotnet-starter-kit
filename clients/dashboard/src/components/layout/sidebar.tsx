@@ -16,6 +16,7 @@ import {
   type NavSection,
   type NavSpec,
 } from "@/components/layout/nav-data";
+import { usePatientWorkspace } from "@/state/patient-workspace-context";
 
 const COLLAPSED_KEY = "fsh.sidebar.collapsed";
 
@@ -175,6 +176,23 @@ export function Sidebar() {
 // the mobile drawer so item clicks dismiss the sheet.
 // ────────────────────────────────────────────────────────────────────────
 
+/** Resolve the "Patient Chart" nav entry's `to` to the active patient's
+ *  chart route when one is open, so clicking it jumps straight into that
+ *  patient's chart instead of landing on the search page (design decision
+ *  4 in the persistent-tabs spec). No-op when no patient tab is active. */
+function resolvePatientChartLink(
+  sections: NavSection[],
+  activePatientId: string | null,
+): NavSection[] {
+  if (!activePatientId) return sections;
+  return sections.map((s) => ({
+    ...s,
+    items: s.items.map((item) =>
+      item.to === "/patient-charts" ? { ...item, to: `/patient-charts/${activePatientId}` } : item,
+    ),
+  }));
+}
+
 export function SidebarNavBody({
   collapsed,
   openSection,
@@ -191,9 +209,10 @@ export function SidebarNavBody({
   // Hide nav entries the current (or impersonated) user lacks permission for,
   // so they can't navigate to a page the API will reject with 403.
   const { user } = useAuth();
+  const { activePatientId } = usePatientWorkspace();
   const perms = user?.permissions ?? [];
   const navTop = visibleItems(topNavTop, perms);
-  const navSections = visibleSections(perms);
+  const navSections = resolvePatientChartLink(visibleSections(perms), activePatientId);
   const navBottom = visibleItems(topNavBottom, perms);
 
   return (
