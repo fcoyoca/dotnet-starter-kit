@@ -84,6 +84,124 @@ export const topNavBottom: NavSpec[] = [
 // Scheduling) lead; every other section — and the items inside every
 // section — are alphabetical. The starter-kit Catalog pages stay routable
 // but are deliberately absent from the nav (not part of the clinic app).
+/**
+ * The 17 Administration ("Clinic Setup") entries — single source of truth
+ * for labels/icons/permission strings, consumed by both this file's
+ * `sections` (the sidebar) and the Administration hub page
+ * (`pages/administration/section-registry.ts`, which maps each `to`
+ * path's last segment to its lazy page component). Task 10 collapses the
+ * sidebar's own rendering of these to a single "Administration" entry
+ * pointing at the hub; this array keeps backing the hub regardless.
+ */
+export const administrationHubItems: NavSpec[] = [
+  // Each gate mirrors the permission the page's list endpoint enforces
+  // server-side (Administration.{Resource}.View). View is IsBasic, so members
+  // can reach the page; create/update/delete actions hide for those lacking
+  // the manage perms.
+  {
+    to: "/administration/allergy-reactions",
+    label: "Allergy Reactions",
+    icon: AlertTriangle,
+    perm: "Permissions.Administration.AllergyReactions.View",
+  },
+  {
+    to: "/administration/clinics",
+    label: "Clinics",
+    icon: Building2,
+    perm: "Permissions.Administration.Clinics.View",
+  },
+  {
+    to: "/administration/code-sources",
+    label: "Code Sources",
+    icon: Tags,
+    perm: "Permissions.Administration.CodeSources.View",
+  },
+  {
+    to: "/administration/custom-diagnostics",
+    label: "Custom Diagnostics",
+    icon: ClipboardPlus,
+    perm: "Permissions.Administration.CustomDiagnostics.View",
+  },
+  {
+    to: "/administration/departments",
+    label: "Departments",
+    icon: Network,
+    perm: "Permissions.Administration.Departments.View",
+  },
+  {
+    to: "/administration/diagnostic-categories",
+    label: "Diagnostic Categories",
+    icon: FolderTree,
+    perm: "Permissions.Administration.DiagnosticCategories.View",
+  },
+  {
+    to: "/administration/diagnostics",
+    label: "Diagnostic Details",
+    icon: Stethoscope,
+    perm: "Permissions.Administration.Diagnostics.View",
+  },
+  {
+    to: "/administration/drugs",
+    label: "Drugs",
+    icon: Pill,
+    perm: "Permissions.Administration.Drugs.View",
+  },
+  {
+    to: "/administration/incident-types",
+    label: "Incident Types",
+    icon: AlertTriangle,
+    perm: "Permissions.Administration.IncidentTypes.View",
+  },
+  {
+    to: "/administration/insurance-companies",
+    label: "Insurance Companies",
+    icon: Building,
+    perm: "Permissions.Administration.InsuranceCompanies.View",
+  },
+  {
+    to: "/administration/insurance-types",
+    label: "Insurance Types",
+    icon: ShieldPlus,
+    perm: "Permissions.Administration.InsuranceTypes.View",
+  },
+  {
+    to: "/administration/macros",
+    label: "Macros",
+    icon: ScrollText,
+    perm: "Permissions.Administration.Macros.View",
+  },
+  {
+    to: "/administration/medication-dose-units",
+    label: "Medication Dose Units",
+    icon: Beaker,
+    perm: "Permissions.Administration.MedicationDoseUnits.View",
+  },
+  {
+    to: "/administration/patient-document-types",
+    label: "Patient Document Types",
+    icon: FileText,
+    perm: "Permissions.Administration.PatientDocumentTypes.View",
+  },
+  {
+    to: "/administration/procedure-categories",
+    label: "Procedure Categories",
+    icon: Layers,
+    perm: "Permissions.Administration.ProcedureCategories.View",
+  },
+  {
+    to: "/administration/procedure-codes",
+    label: "Procedure Codes",
+    icon: ListChecks,
+    perm: "Permissions.Administration.ProcedureCodes.View",
+  },
+  {
+    to: "/administration/providers",
+    label: "Providers",
+    icon: Stethoscope,
+    perm: "Permissions.Administration.Providers.View",
+  },
+];
+
 export const sections: NavSection[] = [
   {
     id: "patients",
@@ -109,118 +227,12 @@ export const sections: NavSection[] = [
   {
     // Clinic reference data (formerly "Administration"). Tenant-level
     // configuration (Email Settings, Schedule) lives in the Settings
-    // section below instead.
+    // section below instead. Task 10 collapses `items` to a single
+    // "Administration" hub link — until then this still renders all 17.
     id: "administration",
     caption: "Clinic Setup",
     icon: Building2,
-    items: [
-      // Each gate mirrors the permission the page's list endpoint enforces
-      // server-side (Administration.{Resource}.View). View is IsBasic, so members
-      // can reach the page; create/update/delete actions hide for those lacking
-      // the manage perms.
-      {
-        to: "/administration/allergy-reactions",
-        label: "Allergy Reactions",
-        icon: AlertTriangle,
-        perm: "Permissions.Administration.AllergyReactions.View",
-      },
-      {
-        to: "/administration/clinics",
-        label: "Clinics",
-        icon: Building2,
-        perm: "Permissions.Administration.Clinics.View",
-      },
-      {
-        to: "/administration/code-sources",
-        label: "Code Sources",
-        icon: Tags,
-        perm: "Permissions.Administration.CodeSources.View",
-      },
-      {
-        to: "/administration/custom-diagnostics",
-        label: "Custom Diagnostics",
-        icon: ClipboardPlus,
-        perm: "Permissions.Administration.CustomDiagnostics.View",
-      },
-      {
-        to: "/administration/departments",
-        label: "Departments",
-        icon: Network,
-        perm: "Permissions.Administration.Departments.View",
-      },
-      {
-        to: "/administration/diagnostic-categories",
-        label: "Diagnostic Categories",
-        icon: FolderTree,
-        perm: "Permissions.Administration.DiagnosticCategories.View",
-      },
-      {
-        to: "/administration/diagnostics",
-        label: "Diagnostic Details",
-        icon: Stethoscope,
-        perm: "Permissions.Administration.Diagnostics.View",
-      },
-      {
-        to: "/administration/drugs",
-        label: "Drugs",
-        icon: Pill,
-        perm: "Permissions.Administration.Drugs.View",
-      },
-      {
-        to: "/administration/incident-types",
-        label: "Incident Types",
-        icon: AlertTriangle,
-        perm: "Permissions.Administration.IncidentTypes.View",
-      },
-      {
-        to: "/administration/insurance-companies",
-        label: "Insurance Companies",
-        icon: Building,
-        perm: "Permissions.Administration.InsuranceCompanies.View",
-      },
-      {
-        to: "/administration/insurance-types",
-        label: "Insurance Types",
-        icon: ShieldPlus,
-        perm: "Permissions.Administration.InsuranceTypes.View",
-      },
-      {
-        to: "/administration/macros",
-        label: "Macros",
-        icon: ScrollText,
-        perm: "Permissions.Administration.Macros.View",
-      },
-      {
-        to: "/administration/medication-dose-units",
-        label: "Medication Dose Units",
-        icon: Beaker,
-        perm: "Permissions.Administration.MedicationDoseUnits.View",
-      },
-      {
-        to: "/administration/patient-document-types",
-        label: "Patient Document Types",
-        icon: FileText,
-        perm: "Permissions.Administration.PatientDocumentTypes.View",
-      },
-      {
-        to: "/administration/procedure-categories",
-        label: "Procedure Categories",
-        icon: Layers,
-        perm: "Permissions.Administration.ProcedureCategories.View",
-      },
-      {
-        to: "/administration/procedure-codes",
-        label: "Procedure Codes",
-        icon: ListChecks,
-        perm: "Permissions.Administration.ProcedureCodes.View",
-      },
-      {
-        to: "/administration/providers",
-        label: "Providers",
-        icon: Stethoscope,
-        perm: "Permissions.Administration.Providers.View",
-      },
-    ],
+    items: administrationHubItems,
   },
   {
     id: "helpdesk",
