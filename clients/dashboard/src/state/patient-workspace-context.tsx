@@ -39,8 +39,41 @@ type PatientWorkspaceContextValue = WorkspaceState & {
   setActiveReport: (patientId: string, reportId: string | null) => void;
 };
 
-const STORAGE_KEY = "fsh.patientWorkspace.v1";
+const STORAGE_KEY = "fsh.dashboard.patientWorkspace.v1";
 const EMPTY_STATE: WorkspaceState = { openTabs: [], activePatientId: null };
+
+/** Replace the tab matching `patientId` via `updater`; no-op (same array
+ *  reference) if no tab matches, so callers never trigger a redundant
+ *  state update / localStorage write for a stale id. */
+function replaceTab(
+  tabs: OpenPatientTab[],
+  patientId: string,
+  updater: (tab: OpenPatientTab) => OpenPatientTab,
+): OpenPatientTab[] {
+  const index = tabs.findIndex((t) => t.patientId === patientId);
+  if (index === -1) return tabs;
+  const next = tabs.slice();
+  next[index] = updater(next[index]);
+  return next;
+}
+
+/** Remove `removedId` from `items`/deactivate it from `activeId`, falling
+ *  back to whichever item now occupies the same position (i.e. the next
+ *  item, or the new last item if it was rightmost) — matches browser/editor
+ *  tab-close behavior instead of always jumping to the last-inserted item. */
+function closeAndPickFallback<T>(
+  items: T[],
+  removedId: string,
+  activeId: string | null,
+  keyOf: (item: T) => string,
+): { items: T[]; activeId: string | null } {
+  const removedIndex = items.findIndex((item) => keyOf(item) === removedId);
+  const next = items.filter((item) => keyOf(item) !== removedId);
+  if (activeId !== removedId) return { items: next, activeId };
+  if (next.length === 0) return { items: next, activeId: null };
+  const fallbackIndex = Math.min(removedIndex, next.length - 1);
+  return { items: next, activeId: keyOf(next[fallbackIndex]) };
+}
 
 function isOpenPatientTab(value: unknown): value is OpenPatientTab {
   if (!value || typeof value !== "object") return false;
@@ -98,21 +131,19 @@ export function PatientWorkspaceProvider({ children }: { children: ReactNode }) 
 
   const updateTab = useCallback(
     (patientId: string, updater: (tab: OpenPatientTab) => OpenPatientTab) => {
-      setState((prev) => ({
-        ...prev,
-        openTabs: prev.openTabs.map((t) => (t.patientId === patientId ? updater(t) : t)),
-      }));
+      setState((prev) => {
+        const openTabs = replaceTab(prev.openTabs, patientId, updater);
+        return openTabs === prev.openTabs ? prev : { ...prev, openTabs };
+      });
     },
     [],
   );
 
   const openPatient = useCallback((patientId: string, patientLabel: string) => {
     setState((prev) => {
-      const existing = prev.openTabs.find((t) => t.patientId === patientId);
+      const existing = prev.openTabs.some((t) => t.patientId === patientId);
       if (existing) {
-        const openTabs = prev.openTabs.map((t) =>
-          t.patientId === patientId ? { ...t, patientLabel } : t,
-        );
+        const openTabs = replaceTab(prev.openTabs, patientId, (t) => ({ ...t, patientLabel }));
         return { openTabs, activePatientId: patientId };
       }
       const tab: OpenPatientTab = {
@@ -128,11 +159,12 @@ export function PatientWorkspaceProvider({ children }: { children: ReactNode }) 
 
   const closePatient = useCallback((patientId: string) => {
     setState((prev) => {
-      const openTabs = prev.openTabs.filter((t) => t.patientId !== patientId);
-      const activePatientId =
-        prev.activePatientId === patientId
-          ? (openTabs[openTabs.length - 1]?.patientId ?? null)
-          : prev.activePatientId;
+      const { items: openTabs, activeId: activePatientId } = closeAndPickFallback(
+        prev.openTabs,
+        patientId,
+        prev.activePatientId,
+        (t) => t.patientId,
+      );
       return { openTabs, activePatientId };
     });
   }, []);
@@ -168,20 +200,28 @@ export function PatientWorkspaceProvider({ children }: { children: ReactNode }) 
   const closeReport = useCallback(
     (patientId: string, reportId: string) => {
       updateTab(patientId, (t) => {
-        const openReportIds = t.openReportIds.filter((id) => id !== reportId);
-        const activeReportId =
-          t.activeReportId === reportId
-            ? (openReportIds[openReportIds.length - 1] ?? null)
-            : t.activeReportId;
+        const { items: openReportIds, activeId: activeReportId } = closeAndPickFallback(
+          t.openReportIds,
+          reportId,
+          t.activeReportId,
+          (id) => id,
+        );
         return { ...t, openReportIds, activeReportId };
       });
     },
     [updateTab],
   );
 
+  /** Setting an id not present in `openReportIds` is a no-op — `activeReportId`
+   *  must always be a member of the open list (or null) so the pill-list UI
+   *  never has to render an "active" tab that doesn't exist. */
   const setActiveReport = useCallback(
     (patientId: string, reportId: string | null) => {
-      updateTab(patientId, (t) => ({ ...t, activeReportId: reportId }));
+      updateTab(patientId, (t) =>
+        reportId === null || t.openReportIds.includes(reportId)
+          ? { ...t, activeReportId: reportId }
+          : t,
+      );
     },
     [updateTab],
   );
