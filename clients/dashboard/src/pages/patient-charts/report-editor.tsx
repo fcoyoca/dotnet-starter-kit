@@ -810,7 +810,10 @@ export function ReportEditorPage() {
           reportId={reportId}
           open={proceduresOpen}
           onClose={() => setProceduresOpen(false)}
-          onMacroText={onProcedureMacroText}
+          // No macro-text option when the field can't be edited (signed report / no update
+          // permission) — inserted text would render into a disabled textarea and silently
+          // evaporate on reload since Save is unreachable.
+          onMacroText={readOnly ? undefined : onProcedureMacroText}
         />
       )}
 
