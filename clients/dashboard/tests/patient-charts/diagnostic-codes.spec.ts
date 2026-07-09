@@ -6,6 +6,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mockJsonResponse } from "../helpers/api-mocks";
 import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
 import { installShellMocks, paged } from "../helpers/shell-mocks";
+import { seedPatientWorkspace } from "../helpers/workspace-seed";
 
 const PERMS = [
   "Permissions.Patient.SuperBills.View",
@@ -165,7 +166,16 @@ async function mockReportEditorLookups(page: Page) {
 
 /** Drive the report editor to an open Diagnostic Codes dialog (hydrated). */
 async function openDiagnosticCodesDialog(page: Page) {
-  await page.goto(`/patient-charts/${PATIENT_ID}/reports/${REPORT_ID}`);
+  await seedPatientWorkspace(page, [
+    {
+      patientId: PATIENT_ID,
+      patientLabel: "Alice Q Vance",
+      activeIncidentId: INCIDENT_ID,
+      openReportIds: [REPORT_ID],
+      activeReportId: REPORT_ID,
+    },
+  ]);
+  await page.goto(`/patient-charts/${PATIENT_ID}`);
 
   const planButton = page.getByRole("button", { name: "Procedures Performed" });
   await expect(planButton).toHaveCount(1);
@@ -206,7 +216,16 @@ test.describe("diagnostic codes dialog", () => {
       await route.fulfill({ status: 204, body: "" });
     });
 
-    await page.goto(`/patient-charts/${PATIENT_ID}/reports/${REPORT_ID}`);
+    await seedPatientWorkspace(page, [
+      {
+        patientId: PATIENT_ID,
+        patientLabel: "Alice Q Vance",
+        activeIncidentId: INCIDENT_ID,
+        openReportIds: [REPORT_ID],
+        activeReportId: REPORT_ID,
+      },
+    ]);
+    await page.goto(`/patient-charts/${PATIENT_ID}`);
 
     // Exactly one Procedures Performed button, and it lives in the Plan
     // field's block (not the page header, not the Subjective field).
