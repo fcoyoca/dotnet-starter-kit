@@ -109,42 +109,6 @@ const GroupDetailPage = lazyNamed(
 );
 const MyFilesPage = lazyNamed(() => import("@/pages/files/my-files"), "MyFilesPage");
 const ChatPage = lazyNamed(() => import("@/pages/chat/chat-page"), "ChatPage");
-const ClinicsPage = lazyNamed(
-  () => import("@/pages/administration/clinics"),
-  "ClinicsPage",
-);
-const DepartmentsPage = lazyNamed(
-  () => import("@/pages/administration/departments"),
-  "DepartmentsPage",
-);
-const ProvidersPage = lazyNamed(
-  () => import("@/pages/administration/providers"),
-  "ProvidersPage",
-);
-const InsuranceTypesPage = lazyNamed(
-  () => import("@/pages/administration/insurance-types"),
-  "InsuranceTypesPage",
-);
-const InsuranceCompaniesPage = lazyNamed(
-  () => import("@/pages/administration/insurance-companies"),
-  "InsuranceCompaniesPage",
-);
-const DiagnosticCategoriesPage = lazyNamed(
-  () => import("@/pages/administration/diagnostic-categories"),
-  "DiagnosticCategoriesPage",
-);
-const IncidentTypesPage = lazyNamed(
-  () => import("@/pages/administration/incident-types"),
-  "IncidentTypesPage",
-);
-const PatientDocumentTypesPage = lazyNamed(
-  () => import("@/pages/administration/patient-document-types"),
-  "PatientDocumentTypesPage",
-);
-const MacrosPage = lazyNamed(
-  () => import("@/pages/administration/macros"),
-  "MacrosPage",
-);
 const EmailSettingsPage = lazyNamed(
   () => import("@/pages/administration/email-settings"),
   "EmailSettingsPage",
@@ -153,35 +117,7 @@ const SchedulePage = lazyNamed(
   () => import("@/pages/administration/schedule"),
   "SchedulePage",
 );
-const CustomDiagnosticsPage = lazyNamed(
-  () => import("@/pages/administration/custom-diagnostics"),
-  "CustomDiagnosticsPage",
-);
-const DiagnosticsPage = lazyNamed(
-  () => import("@/pages/administration/diagnostics"),
-  "DiagnosticsPage",
-);
-const DrugsPage = lazyNamed(() => import("@/pages/administration/drugs"), "DrugsPage");
-const AllergyReactionsPage = lazyNamed(
-  () => import("@/pages/administration/allergy-reactions"),
-  "AllergyReactionsPage",
-);
-const MedicationDoseUnitsPage = lazyNamed(
-  () => import("@/pages/administration/medication-dose-units"),
-  "MedicationDoseUnitsPage",
-);
-const ProcedureCategoriesPage = lazyNamed(
-  () => import("@/pages/administration/procedure-categories"),
-  "ProcedureCategoriesPage",
-);
-const ProcedureCodesPage = lazyNamed(
-  () => import("@/pages/administration/procedure-codes"),
-  "ProcedureCodesPage",
-);
-const CodeSourcesPage = lazyNamed(
-  () => import("@/pages/administration/code-sources"),
-  "CodeSourcesPage",
-);
+const AdministrationHub = lazyNamed(() => import("@/pages/administration/hub"), "AdministrationHub");
 const PatientDetailPage = lazyNamed(
   () => import("@/pages/patients/patient-detail"),
   "PatientDetailPage",
@@ -301,26 +237,10 @@ export const router = createBrowserRouter([
           { path: "patient-charts/:patientId", element: withSuspense(<PatientChartDetailPage />) },
           { path: "scheduling", element: <Navigate to="/scheduling/appointments" replace /> },
           { path: "scheduling/appointments", element: withSuspense(<AppointmentsPage />) },
-          { path: "administration", element: <Navigate to="/administration/clinics" replace /> },
-          { path: "administration/clinics", element: withSuspense(<ClinicsPage />) },
-          { path: "administration/departments", element: withSuspense(<DepartmentsPage />) },
-          { path: "administration/providers", element: withSuspense(<ProvidersPage />) },
-          { path: "administration/insurance-types", element: withSuspense(<InsuranceTypesPage />) },
-          { path: "administration/insurance-companies", element: withSuspense(<InsuranceCompaniesPage />) },
-          { path: "administration/diagnostic-categories", element: withSuspense(<DiagnosticCategoriesPage />) },
-          { path: "administration/custom-diagnostics", element: withSuspense(<CustomDiagnosticsPage />) },
-          { path: "administration/diagnostics", element: withSuspense(<DiagnosticsPage />) },
-          { path: "administration/drugs", element: withSuspense(<DrugsPage />) },
-          { path: "administration/allergy-reactions", element: withSuspense(<AllergyReactionsPage />) },
-          { path: "administration/medication-dose-units", element: withSuspense(<MedicationDoseUnitsPage />) },
-          { path: "administration/procedure-categories", element: withSuspense(<ProcedureCategoriesPage />) },
-          { path: "administration/procedure-codes", element: withSuspense(<ProcedureCodesPage />) },
-          { path: "administration/code-sources", element: withSuspense(<CodeSourcesPage />) },
-          { path: "administration/incident-types", element: withSuspense(<IncidentTypesPage />) },
-          { path: "administration/patient-document-types", element: withSuspense(<PatientDocumentTypesPage />) },
-          { path: "administration/macros", element: withSuspense(<MacrosPage />) },
+          { path: "administration", element: withSuspense(<AdministrationHub />) },
           { path: "administration/schedule", element: withSuspense(<SchedulePage />) },
           { path: "administration/email-settings", element: withSuspense(<EmailSettingsPage />) },
+          { path: "administration/:section", element: withSuspense(<AdministrationHub />) },
           { path: "identity", element: <Navigate to="/identity/users" replace /> },
           { path: "identity/users", element: withSuspense(<UsersPage />) },
           { path: "identity/users/:userId", element: withSuspense(<UserDetailPage />) },
