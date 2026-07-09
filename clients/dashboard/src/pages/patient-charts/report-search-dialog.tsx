@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { FileSearch, FileText } from "lucide-react";
 import type { PatientIncidentListItemDto } from "@/api/incidents";
 import { searchPatientReports } from "@/api/reports";
 import { listReportTypes } from "@/api/administration";
+import { usePatientWorkspace } from "@/state/patient-workspace-context";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -32,7 +32,7 @@ type Props = {
  * selecting a match opens the report editor.
  */
 export function ReportSearchDialog({ open, onClose, incident, incidentTypeLabel }: Props) {
-  const navigate = useNavigate();
+  const { openReport: openReportInWorkspace } = usePatientWorkspace();
   const [phrase, setPhrase] = useState("");
   const [debounced, setDebounced] = useState("");
 
@@ -73,7 +73,7 @@ export function ReportSearchDialog({ open, onClose, incident, incidentTypeLabel 
   const openReport = (reportId: string) => {
     if (!incident) return;
     onClose();
-    navigate(`/patient-charts/${incident.patientId}/reports/${reportId}`);
+    openReportInWorkspace(incident.patientId, reportId);
   };
 
   return (

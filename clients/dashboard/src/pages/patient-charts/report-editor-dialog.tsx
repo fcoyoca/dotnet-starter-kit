@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
   CheckCircle2,
   ClipboardList,
   FileDown,
@@ -36,6 +34,7 @@ import { searchPatientProblems, setReportProblems } from "@/api/problems";
 import { REPORT_PERMISSIONS, SUPERBILL_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MacroInsert } from "@/components/ui/macro-insert";
@@ -108,8 +107,17 @@ function groupByCategory(fields: ReportFieldDto[]): { category: string; fields: 
   return groups;
 }
 
-export function ReportEditorPage() {
-  const { patientId, reportId } = useParams<{ patientId: string; reportId: string }>();
+export function ReportEditorDialog({
+  patientId,
+  reportId,
+  open,
+  onClose,
+}: {
+  patientId: string;
+  reportId: string;
+  open: boolean;
+  onClose: () => void;
+}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -350,15 +358,33 @@ export function ReportEditorPage() {
         .join(" ")
     : "";
 
+  const dialogOnOpenChange = (o: boolean) => {
+    if (!o) onClose();
+  };
+
   if (reportQuery.isLoading) {
-    return <div className="skeleton h-64 rounded-xl" />;
+    return (
+      <Dialog open={open} onOpenChange={dialogOnOpenChange}>
+        <DialogContent className="!max-w-4xl overflow-hidden p-0">
+          <DialogTitle className="sr-only">Loading report…</DialogTitle>
+          <div className="max-h-[85vh] overflow-y-auto p-6 pt-10">
+            <div className="skeleton h-64 rounded-xl" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   if (!report) {
     return (
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 text-[13px] text-[var(--color-muted-foreground)]">
-        Report not found.
-      </div>
+      <Dialog open={open} onOpenChange={dialogOnOpenChange}>
+        <DialogContent className="!max-w-4xl overflow-hidden p-0">
+          <DialogTitle className="sr-only">Report not found</DialogTitle>
+          <div className="max-h-[85vh] overflow-y-auto p-6 pt-10 text-[13px] text-[var(--color-muted-foreground)]">
+            Report not found.
+          </div>
+        </DialogContent>
+      </Dialog>
     );
   }
 
@@ -366,15 +392,12 @@ export function ReportEditorPage() {
   const isPending = saveMutation.isPending || signMutation.isPending;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <Link
-        to={`/patient-charts/${patientId}`}
-        className="inline-flex items-center gap-1.5 text-[13px] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-      >
-        <ArrowLeft className="size-4" />
-        Back to Chart
-      </Link>
-
+    <Dialog open={open} onOpenChange={dialogOnOpenChange}>
+      <DialogContent className="!max-w-4xl overflow-hidden p-0">
+        <DialogTitle className="sr-only">
+          {fullName ? `${fullName} — Report` : "Patient report"}
+        </DialogTitle>
+        <div className="max-h-[85vh] space-y-4 overflow-y-auto p-6 pt-10 sm:space-y-6">
       {/* Patient + status strip */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
         <div className="flex items-center gap-3">
@@ -838,6 +861,8 @@ export function ReportEditorPage() {
           }}
         />
       )}
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

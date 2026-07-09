@@ -272,7 +272,7 @@ export function PatientChartDetailPage() {
     onSuccess: (reportId) => {
       setPendingReportType(null);
       void queryClient.invalidateQueries({ queryKey: ["reports", activeIncidentId] });
-      navigate(`/patient-charts/${patientId}/reports/${reportId}`);
+      if (patientId) openReport(patientId, reportId);
     },
     onError: (err) => toast.error("Failed to create report.", { description: describe(err) }),
   });
@@ -869,6 +869,45 @@ export function PatientChartDetailPage() {
             )}
           </div>
 
+          {openReportIds.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted-foreground)]">
+                Open reports
+              </span>
+              {openReportIds.map((id) => {
+                const r = reportsQuery.data?.items.find((x) => x.id === id);
+                const label = r ? reportTypeLabel(r.reportTypeId) : "Report";
+                return (
+                  <span
+                    key={id}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-medium",
+                      id === activeReportId
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                        : "border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)]",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => patientId && setActiveReport(patientId, id)}
+                      className="cursor-pointer"
+                    >
+                      {label}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Close ${label} report tab`}
+                      onClick={() => patientId && closeReport(patientId, id)}
+                      className="grid size-3.5 place-items-center rounded-full opacity-70 hover:opacity-100"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+
           {!activeIncident ? (
             <p className="text-[12px] text-[var(--color-muted-foreground)]">
               Select an incident to view its reports.
@@ -897,14 +936,14 @@ export function PatientChartDetailPage() {
                     <div className="flex items-center gap-1">
                       <IconShortcut
                         label="View report"
-                        onClick={() => navigate(`/patient-charts/${patientId}/reports/${r.id}`)}
+                        onClick={() => patientId && openReport(patientId, r.id)}
                       >
                         <Eye className="size-4" />
                       </IconShortcut>
                       {canUpdateReports && !r.isSigned && (
                         <IconShortcut
                           label="Edit report"
-                          onClick={() => navigate(`/patient-charts/${patientId}/reports/${r.id}`)}
+                          onClick={() => patientId && openReport(patientId, r.id)}
                         >
                           <Pencil className="size-4" />
                         </IconShortcut>
@@ -1046,6 +1085,19 @@ export function PatientChartDetailPage() {
           creating={createReportMutation.isPending}
           onCancel={() => setPendingReportType(null)}
           onConfirm={onConfirmAppointment}
+        />
+      )}
+
+      {/* Report editor dialog — keyed by the workspace context's
+          activeReportId. Closing this dialog (X/ESC/overlay click) only
+          clears which report is showing; it does NOT remove the report
+          from openReportIds — only the pill row's explicit close (×) does. */}
+      {patientId && activeReportId && (
+        <ReportEditorDialog
+          patientId={patientId}
+          reportId={activeReportId}
+          open
+          onClose={() => setActiveReport(patientId, null)}
         />
       )}
     </div>
