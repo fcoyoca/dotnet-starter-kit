@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { PatientTabStrip } from "@/components/layout/patient-tab-strip";
 import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 import { ExpiryBanner } from "@/components/layout/expiry-banner";
 import {
@@ -12,12 +13,14 @@ import { RealtimeProvider } from "@/realtime/realtime-context";
 import { ChatGlobalNotifier } from "@/components/notifications/chat-global-notifier";
 import { CommandPaletteRoot } from "@/components/command-palette/command-palette";
 import { InactivityGuard } from "@/components/auth/inactivity-guard";
+import { PatientWorkspaceProvider } from "@/state/patient-workspace-context";
 import { cn } from "@/lib/cn";
 
 export function AppShell() {
   return (
     <SseProvider>
       <RealtimeProvider>
+      <PatientWorkspaceProvider>
       <MobileNavProvider>
         {/* Skip-to-content link — first focusable element. Visually
             hidden until focused, then it lifts up as a brand chip so
@@ -42,6 +45,7 @@ export function AppShell() {
             <Sidebar />
             <div className="flex min-w-0 flex-1 flex-col">
               <Topbar />
+              <PatientTabStrip />
               <main
                 id="main"
                 tabIndex={-1}
@@ -58,6 +62,7 @@ export function AppShell() {
             the Topbar. */}
         <MobileNavRoot />
       </MobileNavProvider>
+      </PatientWorkspaceProvider>
       {/* Background chat notifier — listens to ChatMessageCreated on the
           shared SignalR connection and toasts when the user isn't currently
           on that channel. Mounted inside the router subtree so the route

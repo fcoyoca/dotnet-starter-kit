@@ -1,0 +1,82 @@
+import { useNavigate } from "react-router-dom";
+import { X } from "lucide-react";
+import { usePatientWorkspace } from "@/state/patient-workspace-context";
+import { cn } from "@/lib/cn";
+
+/**
+ * Horizontal strip of open patient tabs — rendered under the Topbar in
+ * AppShell (above the routed <Outlet/>), so it survives every route
+ * change. Renders nothing when no patient tab is open.
+ */
+export function PatientTabStrip() {
+  const { openTabs, activePatientId, setActivePatient, closePatient } = usePatientWorkspace();
+  const navigate = useNavigate();
+
+  if (openTabs.length === 0) return null;
+
+  const onSelect = (patientId: string) => {
+    setActivePatient(patientId);
+    navigate(`/patient-charts/${patientId}`);
+  };
+
+  const onClose = (patientId: string) => {
+    const wasActive = patientId === activePatientId;
+    const remaining = openTabs.filter((t) => t.patientId !== patientId);
+    closePatient(patientId);
+    if (wasActive) {
+      const next = remaining[remaining.length - 1];
+      navigate(next ? `/patient-charts/${next.patientId}` : "/patient-charts");
+    }
+  };
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Open patient charts"
+      className={cn(
+        "flex h-9 shrink-0 items-center gap-1 overflow-x-auto border-b border-[var(--color-border)]",
+        "bg-[var(--color-muted)] px-2",
+      )}
+    >
+      {openTabs.map((tab) => {
+        const isActive = tab.patientId === activePatientId;
+        return (
+          <div
+            key={tab.patientId}
+            role="tab"
+            aria-selected={isActive}
+            tabIndex={0}
+            onClick={() => onSelect(tab.patientId)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelect(tab.patientId);
+              }
+            }}
+            className={cn(
+              "group flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium",
+              "transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out-cubic)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
+              isActive
+                ? "bg-[var(--color-card)] text-[var(--color-foreground)] shadow-xs"
+                : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)] hover:text-[var(--color-foreground)]",
+            )}
+          >
+            <span className="max-w-[140px] truncate">{tab.patientLabel}</span>
+            <button
+              type="button"
+              aria-label={`Close ${tab.patientLabel}'s chart tab`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose(tab.patientId);
+              }}
+              className="grid size-4 shrink-0 place-items-center rounded-sm opacity-60 transition-opacity hover:bg-[var(--color-border)] hover:opacity-100"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
