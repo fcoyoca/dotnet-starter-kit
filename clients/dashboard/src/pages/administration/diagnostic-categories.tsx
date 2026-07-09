@@ -459,15 +459,21 @@ function DiagnosticCategoryCodesDialog({ state, onClose }: { state: EditorState;
   const queryClient = useQueryClient();
 
   const [rows, setRows] = useState<CategoryCodeRow[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  // The category id `rows` was last hydrated for — comparing this to the current category (rather
+  // than a plain boolean) keeps the skeleton showing across a category switch even on the render
+  // that happens before the effect below has a chance to run, so the previous category's rows can
+  // never flash for a frame.
+  const [hydratedFor, setHydratedFor] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [committedSearch, setCommittedSearch] = useState("");
+
+  const hydrated = !!category && hydratedFor === category.id;
 
   // One-shot fetch (not a live useQuery) so a background refetch can never clobber the user's
   // in-progress edits; a reopen always reflects the latest saved set (AssociatedProcedureCodes precedent).
   useEffect(() => {
     if (!isOpen || !category) return;
-    setHydrated(false);
+    setRows([]);
     setSearchInput("");
     setCommittedSearch("");
     let cancelled = false;
@@ -491,7 +497,7 @@ function DiagnosticCategoryCodesDialog({ state, onClose }: { state: EditorState;
         if (!cancelled) toast.error("Could not load associated codes", { description: describe(err) });
       })
       .finally(() => {
-        if (!cancelled) setHydrated(true);
+        if (!cancelled) setHydratedFor(category.id);
       });
     return () => {
       cancelled = true;
