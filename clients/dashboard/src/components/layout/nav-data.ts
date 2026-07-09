@@ -202,6 +202,14 @@ export const administrationHubItems: NavSpec[] = [
   },
 ];
 
+/** Any one of these grants the sidebar's single "Administration" entry —
+ *  mirrors ALL_TRASH_PERMISSIONS' "show if the user can reach any tab"
+ *  convention. Individual card visibility inside the hub is still gated
+ *  per-section (see ADMIN_HUB_SECTIONS in section-registry.ts). */
+const ALL_ADMINISTRATION_PERMISSIONS: string[] = administrationHubItems
+  .map((item) => item.perm)
+  .filter((p): p is string => !!p);
+
 export const sections: NavSection[] = [
   {
     id: "patients",
@@ -227,12 +235,20 @@ export const sections: NavSection[] = [
   {
     // Clinic reference data (formerly "Administration"). Tenant-level
     // configuration (Email Settings, Schedule) lives in the Settings
-    // section below instead. Task 10 collapses `items` to a single
-    // "Administration" hub link — until then this still renders all 17.
+    // section below instead. Collapsed to a single hub link — the 17
+    // section-level permission checks now gate which hub CARDS render
+    // (see pages/administration/hub.tsx) instead of gating nav items.
     id: "administration",
     caption: "Clinic Setup",
     icon: Building2,
-    items: administrationHubItems,
+    items: [
+      {
+        to: "/administration",
+        label: "Administration",
+        icon: Building2,
+        anyPerm: ALL_ADMINISTRATION_PERMISSIONS,
+      },
+    ],
   },
   {
     id: "helpdesk",
