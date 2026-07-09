@@ -1000,6 +1000,7 @@ export function PatientChartDetailPage() {
       {patientId && activeIncidentId && (
         <ProceduresPerformedDialog
           patientId={patientId}
+          patientName={fullName || undefined}
           incidentId={activeIncidentId}
           reportId={null}
           open={proceduresOpen}

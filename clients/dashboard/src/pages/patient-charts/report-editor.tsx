@@ -8,9 +8,11 @@ import {
   FileDown,
   FileText,
   PenLine,
+  Pill,
   Plus,
   Save,
   Stethoscope,
+  Tablets,
   UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,6 +41,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { MacroInsert } from "@/components/ui/macro-insert";
 import { Combobox, Field } from "@/components/list";
 import { describe, formatDate, formatDateTimeMono } from "@/lib/list-helpers";
+import { ImportAllergiesDialog } from "@/pages/patient-charts/import-allergies-dialog";
+import { ImportMedicationsDialog } from "@/pages/patient-charts/import-medications-dialog";
 import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
 
 /** lbs + inches → BMI (rounded to 1 decimal); null when either is missing/0. */
@@ -56,9 +60,23 @@ function fieldImportsDx(name: string): boolean {
   return DX_IMPORT_FIELDS.has(name.trim().toLowerCase());
 }
 
-// Field that receives procedure macro text (legacy: Plan Comments). Matched by name
-// like DX_IMPORT_FIELDS since clinic fields are per-type copies.
+// Field that carries the Procedures Performed affordance and receives its macro text
+// (legacy: ldfID 24 "Plan"). Matched by name like DX_IMPORT_FIELDS since clinic fields
+// are per-type copies.
 const PLAN_FIELDS = new Set(["plan", "plan comments", "treatment plan"]);
+function fieldIsPlan(name: string): boolean {
+  return PLAN_FIELDS.has(name.trim().toLowerCase());
+}
+
+// Fields that expose Import Allergies / Import Medications (legacy: ldfID 5 / 6).
+const ALLERGY_IMPORT_FIELDS = new Set(["allergies"]);
+function fieldImportsAllergies(name: string): boolean {
+  return ALLERGY_IMPORT_FIELDS.has(name.trim().toLowerCase());
+}
+const MEDICATION_IMPORT_FIELDS = new Set(["medications"]);
+function fieldImportsMedications(name: string): boolean {
+  return MEDICATION_IMPORT_FIELDS.has(name.trim().toLowerCase());
+}
 
 function resolveProviderLabel(
   id: string | null | undefined,
@@ -140,6 +158,12 @@ export function ReportEditorPage() {
   const [reviewerProviderId, setReviewerProviderId] = useState<string | null>(null);
   const [associatedProblemIds, setAssociatedProblemIds] = useState<string[]>([]);
   const [proceduresOpen, setProceduresOpen] = useState(false);
+  // The Plan field the open Procedures Performed dialog was launched from; its macro
+  // text inserts there rather than into a globally-resolved Plan field.
+  const [proceduresFieldId, setProceduresFieldId] = useState<number | null>(null);
+  // Non-null = the field id the Import Allergies / Import Medications dialog inserts into.
+  const [allergiesFieldId, setAllergiesFieldId] = useState<number | null>(null);
+  const [medicationsFieldId, setMedicationsFieldId] = useState<number | null>(null);
 
   // Refs to each field's textarea so macro-insert can splice at the caret.
   const fieldRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
@@ -167,20 +191,14 @@ export function ReportEditorPage() {
 
   const groups = useMemo(() => groupByCategory(fieldsQuery.data ?? []), [fieldsQuery.data]);
 
-  const planFieldId = useMemo(() => {
-    const field = (fieldsQuery.data ?? []).find((f) =>
-      PLAN_FIELDS.has(f.name.trim().toLowerCase()),
-    );
-    return field?.id ?? null;
-  }, [fieldsQuery.data]);
-
-  // Procedures Performed macro text lands in the Plan field (legacy behavior).
+  // Procedures Performed macro text lands in the Plan field the dialog was opened from
+  // (legacy behavior).
   const onProcedureMacroText = (text: string) => {
-    if (planFieldId == null) {
+    if (proceduresFieldId == null) {
       toast.info("No Plan field on this report type — macro text was not inserted.");
       return;
     }
-    insertMacro(planFieldId, text);
+    insertMacro(proceduresFieldId, text);
   };
 
   const buildFieldValues = (): ReportFieldValue[] =>
@@ -371,28 +389,15 @@ export function ReportEditorPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {canViewSuperBills && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
-              onClick={() => setProceduresOpen(true)}
-            >
-              <ClipboardList className="size-4" />
-              Procedures Performed
-            </Button>
-          )}
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${
-              isSigned
-                ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
-                : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]"
-            }`}
-          >
-            {report.workflowStatus}
-          </span>
-        </div>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+            isSigned
+              ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+              : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]"
+          }`}
+        >
+          {report.workflowStatus}
+        </span>
       </div>
 
       {/* Header fields */}
@@ -495,9 +500,47 @@ export function ReportEditorPage() {
                     >
                       {f.name}
                     </label>
-                    {!readOnly && (
+                    {((canViewSuperBills && fieldIsPlan(f.name)) || !readOnly) && (
                       <div className="flex items-center gap-1.5">
-                        {fieldImportsDx(f.name) && (
+                        {/* Legacy parity: the super bill stays editable after the report
+                            is signed, so this affordance ignores readOnly. */}
+                        {canViewSuperBills && fieldIsPlan(f.name) && (
+                          <button
+                            type="button"
+                            title="Record the procedures performed for this report"
+                            onClick={() => {
+                              setProceduresFieldId(f.id);
+                              setProceduresOpen(true);
+                            }}
+                            className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--color-border)] px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-accent)] hover:text-[var(--color-foreground)]"
+                          >
+                            <ClipboardList className="size-3.5" />
+                            Procedures Performed
+                          </button>
+                        )}
+                        {!readOnly && fieldImportsAllergies(f.name) && (
+                          <button
+                            type="button"
+                            title="Import the patient's allergies into this field"
+                            onClick={() => setAllergiesFieldId(f.id)}
+                            className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--color-border)] px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-accent)] hover:text-[var(--color-foreground)]"
+                          >
+                            <Pill className="size-3.5" />
+                            Import Allergies
+                          </button>
+                        )}
+                        {!readOnly && fieldImportsMedications(f.name) && (
+                          <button
+                            type="button"
+                            title="Import the patient's medications into this field"
+                            onClick={() => setMedicationsFieldId(f.id)}
+                            className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--color-border)] px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-accent)] hover:text-[var(--color-foreground)]"
+                          >
+                            <Tablets className="size-3.5" />
+                            Import Medications
+                          </button>
+                        )}
+                        {!readOnly && fieldImportsDx(f.name) && (
                           <button
                             type="button"
                             title="Import the report's associated diagnoses into this field"
@@ -508,11 +551,13 @@ export function ReportEditorPage() {
                             Import Dx Codes
                           </button>
                         )}
-                        <MacroInsert
-                          reportFieldId={f.id}
-                          fieldName={f.name}
-                          onInsert={(text) => insertMacro(f.id, text)}
-                        />
+                        {!readOnly && (
+                          <MacroInsert
+                            reportFieldId={f.id}
+                            fieldName={f.name}
+                            onInsert={(text) => insertMacro(f.id, text)}
+                          />
+                        )}
                       </div>
                     )}
                   </div>
@@ -760,11 +805,34 @@ export function ReportEditorPage() {
       {canViewSuperBills && reportId && (
         <ProceduresPerformedDialog
           patientId={patientId!}
+          patientName={fullName || undefined}
           incidentId={report.incidentId}
           reportId={reportId}
           open={proceduresOpen}
           onClose={() => setProceduresOpen(false)}
           onMacroText={onProcedureMacroText}
+        />
+      )}
+
+      {patientId && (
+        <ImportAllergiesDialog
+          patientId={patientId}
+          open={allergiesFieldId != null}
+          onClose={() => setAllergiesFieldId(null)}
+          onDone={(text) => {
+            if (allergiesFieldId != null) insertMacro(allergiesFieldId, text);
+          }}
+        />
+      )}
+
+      {patientId && (
+        <ImportMedicationsDialog
+          patientId={patientId}
+          open={medicationsFieldId != null}
+          onClose={() => setMedicationsFieldId(null)}
+          onDone={(text) => {
+            if (medicationsFieldId != null) insertMacro(medicationsFieldId, text);
+          }}
         />
       )}
     </div>

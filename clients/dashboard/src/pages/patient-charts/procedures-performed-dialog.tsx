@@ -36,6 +36,8 @@ import { DiagnosticCodesDialog } from "@/pages/patient-charts/diagnostic-codes-d
 
 type Props = {
   patientId: string;
+  /** Shown in the nested Diagnostic Codes dialog's add-to-problems confirm. */
+  patientName?: string;
   incidentId: string;
   /** When null (chart-shortcut context) the dialog shows a report-picker phase first. */
   reportId: string | null;
@@ -57,6 +59,7 @@ type ProcRow = {
 
 export function ProceduresPerformedDialog({
   patientId,
+  patientName,
   incidentId,
   reportId,
   open,
@@ -502,6 +505,7 @@ export function ProceduresPerformedDialog({
       {dxDialogOpen && (
         <DiagnosticCodesDialog
           patientId={patientId}
+          patientName={patientName}
           incidentId={incidentId}
           open={dxDialogOpen}
           onClose={() => {
