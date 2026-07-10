@@ -14,6 +14,8 @@ import { ChatGlobalNotifier } from "@/components/notifications/chat-global-notif
 import { CommandPaletteRoot } from "@/components/command-palette/command-palette";
 import { InactivityGuard } from "@/components/auth/inactivity-guard";
 import { PatientWorkspaceProvider } from "@/state/patient-workspace-context";
+import { AdministrationDialogProvider } from "@/state/administration-dialog-context";
+import { AdministrationDialogRoot } from "@/pages/administration/administration-dialog-root";
 import { cn } from "@/lib/cn";
 
 export function AppShell() {
@@ -21,6 +23,7 @@ export function AppShell() {
     <SseProvider>
       <RealtimeProvider>
       <PatientWorkspaceProvider>
+      <AdministrationDialogProvider>
       <MobileNavProvider>
         {/* Skip-to-content link — first focusable element. Visually
             hidden until focused, then it lifts up as a brand chip so
@@ -61,7 +64,14 @@ export function AppShell() {
             shell. Hidden via Sheet open state; the trigger lives in
             the Topbar. */}
         <MobileNavRoot />
+
+        {/* THE single global Administration dialog — layered over whatever
+            page is behind it (Part A). Inside the provider so the sidebar
+            button, the mobile drawer, and the AdminDeepLinkOpener route
+            (all descendants of the Outlet subtree) can drive it. */}
+        <AdministrationDialogRoot />
       </MobileNavProvider>
+      </AdministrationDialogProvider>
       </PatientWorkspaceProvider>
       {/* Background chat notifier — listens to ChatMessageCreated on the
           shared SignalR connection and toasts when the user isn't currently

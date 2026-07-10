@@ -17,6 +17,7 @@ import {
   type NavSpec,
 } from "@/components/layout/nav-data";
 import { usePatientWorkspace } from "@/state/patient-workspace-context";
+import { useAdministrationDialog } from "@/state/administration-dialog-context";
 
 const COLLAPSED_KEY = "fsh.sidebar.collapsed";
 
@@ -415,6 +416,69 @@ function NavItemLink({
   onNavigate?: () => void;
 }) {
   const Icon = item.icon;
+  const adminDialog = useAdministrationDialog();
+
+  // Part A: the Administration entry opens the global dialog instead of
+  // navigating — whatever page is behind stays mounted, untouched. Mirrors
+  // resolvePatientChartLink's "special-case one nav entry" precedent, but
+  // as a render branch since the affordance is a button, not a Link. One
+  // branch covers all three renders of this component: the expanded
+  // accordion, the collapsed icon rail, and the mobile drawer.
+  if (item.to === "/administration") {
+    const isDialogOpen = adminDialog.view.kind !== "closed";
+    return (
+      <button
+        type="button"
+        title={collapsed ? item.label : undefined}
+        aria-label={collapsed ? item.label : undefined}
+        aria-haspopup="dialog"
+        onClick={() => {
+          adminDialog.openHub();
+          onNavigate?.();
+        }}
+        className={cn(
+          "group/nav relative flex h-9 w-full cursor-pointer items-center gap-3 rounded-md text-left text-sm font-medium",
+          "transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out-cubic)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
+          isDialogOpen
+            ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+            : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)] hover:text-[var(--color-foreground)]",
+          collapsed ? "justify-center px-0" : "px-3",
+        )}
+      >
+        {/* 2px brand bar while the dialog is open — same active affordance
+            the NavLink branch gets from the router. */}
+        <span
+          aria-hidden
+          className={cn(
+            "absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-[var(--color-primary)]",
+            "transition-opacity duration-[var(--duration-default)]",
+            isDialogOpen ? "opacity-100" : "opacity-0",
+          )}
+        />
+
+        <Icon className="h-4 w-4 shrink-0" />
+
+        {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+
+        {collapsed && (
+          <span
+            role="tooltip"
+            className={cn(
+              "pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap",
+              "rounded-md border border-[var(--color-border)] bg-[var(--color-popover)] px-2 py-1",
+              "text-xs text-[var(--color-popover-foreground)] shadow-[var(--shadow-md)]",
+              "opacity-0 transition-opacity duration-[var(--duration-fast)] ease-[var(--ease-out-cubic)]",
+              "group-hover/nav:opacity-100 group-focus-visible/nav:opacity-100",
+            )}
+          >
+            {item.label}
+          </span>
+        )}
+      </button>
+    );
+  }
+
   return (
     <NavLink
       to={item.to}
