@@ -8,40 +8,20 @@ import { ADMIN_HUB_SECTIONS } from "@/pages/administration/section-registry";
 import { cn } from "@/lib/cn";
 
 /**
- * Administration hub — a grid of the 17 existing Administration sections.
- * Clicking a card opens that section's existing page inside a dialog
- * layered over this grid (AdminSectionDialog) instead of navigating to a
- * bare page, so a patient tab strip open above the AppShell's Outlet stays
- * visible underneath. Also backs the legacy `/administration/:section`
- * deep-link routes (routes.tsx points both `/administration` and
- * `/administration/:section` at this same component) — the optional
- * `:section` param opens the matching dialog on mount.
+ * Pure content component: the Administration header + permission-gated
+ * 17-card grid. No routing hooks — where a card click "goes" is the
+ * caller's decision (the global AdministrationDialogRoot switches its
+ * view; the legacy routed page below navigates). Extracted so the grid
+ * renders identically inside the global dialog (Part A).
  */
-export function AdministrationHub() {
-  const { section } = useParams<{ section?: string }>();
-  const navigate = useNavigate();
+export function AdministrationHubGrid({
+  onSelectSection,
+}: {
+  onSelectSection: (slug: string) => void;
+}) {
   const { user } = useAuth();
   const perms = user?.permissions ?? [];
-
-  const [openSlug, setOpenSlug] = useState<string | null>(section ?? null);
-
-  // Keep the open dialog in sync with the :section route param — covers
-  // direct deep links (/administration/clinics) and browser back/forward.
-  useEffect(() => {
-    setOpenSlug(section ?? null);
-  }, [section]);
-
   const visibleCards = ADMIN_HUB_SECTIONS.filter((s) => !s.perm || perms.includes(s.perm));
-
-  const openSection = (slug: string) => {
-    setOpenSlug(slug);
-    navigate(`/administration/${slug}`, { replace: true });
-  };
-
-  const closeSection = () => {
-    setOpenSlug(null);
-    navigate("/administration", { replace: true });
-  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -60,7 +40,7 @@ export function AdministrationHub() {
             <button
               key={s.slug}
               type="button"
-              onClick={() => openSection(s.slug)}
+              onClick={() => onSelectSection(s.slug)}
               className={cn(
                 "flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-left",
                 "transition-colors hover:bg-[var(--color-accent)]",
@@ -75,8 +55,39 @@ export function AdministrationHub() {
           );
         })}
       </div>
-
-      <AdminSectionDialog slug={openSlug} onClose={closeSection} />
     </div>
+  );
+}
+
+/** Routed page — RETIRED in Task 4 (replaced by AdminDeepLinkOpener).
+ *  Kept compiling through Tasks 2-3 so each task lands green independently;
+ *  behavior is unchanged from before this task. */
+export function AdministrationHub() {
+  const { section } = useParams<{ section?: string }>();
+  const navigate = useNavigate();
+
+  const [openSlug, setOpenSlug] = useState<string | null>(section ?? null);
+
+  // Keep the open dialog in sync with the :section route param — covers
+  // direct deep links (/administration/clinics) and browser back/forward.
+  useEffect(() => {
+    setOpenSlug(section ?? null);
+  }, [section]);
+
+  const openSection = (slug: string) => {
+    setOpenSlug(slug);
+    navigate(`/administration/${slug}`, { replace: true });
+  };
+
+  const closeSection = () => {
+    setOpenSlug(null);
+    navigate("/administration", { replace: true });
+  };
+
+  return (
+    <>
+      <AdministrationHubGrid onSelectSection={openSection} />
+      <AdminSectionDialog slug={openSlug} onClose={closeSection} />
+    </>
   );
 }
