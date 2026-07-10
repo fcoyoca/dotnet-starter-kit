@@ -42,6 +42,12 @@ test.describe("administration — diagnostic details", () => {
     await installShellMocks(page);
     await mockJsonResponse(page, "**/api/v1/identity/permissions", DIAG_PERMS);
     await mockLookups(page);
+    // The deep-link bridge redirects to Overview ("/") and opens the
+    // Administration dialog on top — mock Overview's queries so the
+    // background page settles deterministically.
+    await mockJsonResponse(page, "**/api/v1/billing/usage**", []);
+    await mockJsonResponse(page, "**/api/v1/billing/subscriptions/me**", { plan: "Scale", status: "Active" });
+    await mockJsonResponse(page, "**/api/v1/audits**", paged([]));
   });
 
   test("renders the ICD catalog list with code + source", async ({ page }) => {
@@ -49,16 +55,20 @@ test.describe("administration — diagnostic details", () => {
 
     await page.goto("/administration/diagnostics");
 
-    await expect(page.getByRole("heading", { name: "Diagnostic Details", level: 1 })).toBeVisible();
-    await expect(page.getByText("A00").last()).toBeVisible();
-    await expect(page.getByText("Cholera").last()).toBeVisible();
-    await expect(page.getByText("ICD-10-CM").last()).toBeVisible();
+    // The bridge opens the section dialog and replaces the URL with "/".
+    await expect(page).toHaveURL("/");
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Diagnostic Details", level: 1 })).toBeVisible();
+    await expect(dialog.getByText("A00").last()).toBeVisible();
+    await expect(dialog.getByText("Cholera").last()).toBeVisible();
+    await expect(dialog.getByText("ICD-10-CM").last()).toBeVisible();
   });
 
   test("create dialog posts a new diagnostic with the ICD-10 source", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/administration/diagnostics**", paged([DIAG]));
 
     await page.goto("/administration/diagnostics");
+    await expect(page).toHaveURL("/");
     await page.getByRole("button", { name: /new diagnostic/i }).first().click();
 
     const dialog = page.getByRole("dialog");

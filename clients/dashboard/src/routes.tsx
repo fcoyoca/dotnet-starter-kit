@@ -117,7 +117,10 @@ const SchedulePage = lazyNamed(
   () => import("@/pages/administration/schedule"),
   "SchedulePage",
 );
-const AdministrationHub = lazyNamed(() => import("@/pages/administration/hub"), "AdministrationHub");
+const AdminDeepLinkOpener = lazyNamed(
+  () => import("@/pages/administration/hub"),
+  "AdminDeepLinkOpener",
+);
 const PatientDetailPage = lazyNamed(
   () => import("@/pages/patients/patient-detail"),
   "PatientDetailPage",
@@ -237,10 +240,10 @@ export const router = createBrowserRouter([
           { path: "patient-charts/:patientId", element: withSuspense(<PatientChartDetailPage />) },
           { path: "scheduling", element: <Navigate to="/scheduling/appointments" replace /> },
           { path: "scheduling/appointments", element: withSuspense(<AppointmentsPage />) },
-          { path: "administration", element: withSuspense(<AdministrationHub />) },
+          { path: "administration", element: withSuspense(<AdminDeepLinkOpener />) },
           { path: "administration/schedule", element: withSuspense(<SchedulePage />) },
           { path: "administration/email-settings", element: withSuspense(<EmailSettingsPage />) },
-          { path: "administration/:section", element: withSuspense(<AdministrationHub />) },
+          { path: "administration/:section", element: withSuspense(<AdminDeepLinkOpener />) },
           { path: "identity", element: <Navigate to="/identity/users" replace /> },
           { path: "identity/users", element: withSuspense(<UsersPage />) },
           { path: "identity/users/:userId", element: withSuspense(<UserDetailPage />) },

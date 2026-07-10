@@ -1,18 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Building2 } from "lucide-react";
 import { useAuth } from "@/auth/use-auth";
 import { EntityPageHeader } from "@/components/list";
-import { AdminSectionDialog } from "@/pages/administration/admin-section-dialog";
-import { ADMIN_HUB_SECTIONS } from "@/pages/administration/section-registry";
+import { useAdministrationDialog } from "@/state/administration-dialog-context";
+import {
+  ADMIN_HUB_SECTIONS,
+  ADMIN_SECTION_COMPONENTS,
+} from "@/pages/administration/section-registry";
 import { cn } from "@/lib/cn";
 
 /**
  * Pure content component: the Administration header + permission-gated
- * 17-card grid. No routing hooks — where a card click "goes" is the
- * caller's decision (the global AdministrationDialogRoot switches its
- * view; the legacy routed page below navigates). Extracted so the grid
- * renders identically inside the global dialog (Part A).
+ * 17-card grid, rendered inside the global AdministrationDialogRoot.
+ * No routing hooks — a card click switches the dialog's view.
  */
 export function AdministrationHubGrid({
   onSelectSection,
@@ -59,35 +60,23 @@ export function AdministrationHubGrid({
   );
 }
 
-/** Routed page — RETIRED in Task 4 (replaced by AdminDeepLinkOpener).
- *  Kept compiling through Tasks 2-3 so each task lands green independently;
- *  behavior is unchanged from before this task. */
-export function AdministrationHub() {
+/**
+ * Route bridge for legacy /administration[/:section] deep links: opens the
+ * matching view of the global Administration dialog, then replaces the URL
+ * with Overview ("/") — a cold deep link has no "previous page" to
+ * preserve, so Overview is the surface the dialog layers over. An unknown
+ * slug falls back to the hub. Renders nothing.
+ */
+export function AdminDeepLinkOpener() {
   const { section } = useParams<{ section?: string }>();
   const navigate = useNavigate();
+  const { openHub, openSection } = useAdministrationDialog();
 
-  const [openSlug, setOpenSlug] = useState<string | null>(section ?? null);
-
-  // Keep the open dialog in sync with the :section route param — covers
-  // direct deep links (/administration/clinics) and browser back/forward.
   useEffect(() => {
-    setOpenSlug(section ?? null);
-  }, [section]);
+    if (section && ADMIN_SECTION_COMPONENTS[section]) openSection(section);
+    else openHub();
+    navigate("/", { replace: true });
+  }, [section, openHub, openSection, navigate]);
 
-  const openSection = (slug: string) => {
-    setOpenSlug(slug);
-    navigate(`/administration/${slug}`, { replace: true });
-  };
-
-  const closeSection = () => {
-    setOpenSlug(null);
-    navigate("/administration", { replace: true });
-  };
-
-  return (
-    <>
-      <AdministrationHubGrid onSelectSection={openSection} />
-      <AdminSectionDialog slug={openSlug} onClose={closeSection} />
-    </>
-  );
+  return null;
 }
