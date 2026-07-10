@@ -338,7 +338,14 @@ function ProviderEditorDialog({ state, onClose }: { state: EditorState; onClose:
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["administration", "providers"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "providers"] });
+    // Live lookup refresh (Part B): provider names feed the report editor's
+    // Provider/Reviewer pickers, Select Appointment, patient chart search
+    // (useProviderOptions), and the scheduling provider filter.
+    void queryClient.invalidateQueries({ queryKey: ["administration.providerOptions"] });
+    void queryClient.invalidateQueries({ queryKey: ["scheduling.providers"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (input: CreateProviderInput) => createProvider(input),
@@ -569,6 +576,8 @@ function DeleteProviderDialog({ state, onClose }: { state: EditorState; onClose:
     onSuccess: () => {
       toast.success("Provider deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "providers"] });
+      queryClient.invalidateQueries({ queryKey: ["administration.providerOptions"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduling.providers"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),

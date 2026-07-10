@@ -274,7 +274,12 @@ function DepartmentEditorDialog({ state, onClose }: { state: EditorState; onClos
     if (isOpen) setForm(initial);
   }, [isOpen, initial]);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["administration", "departments"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "departments"] });
+    // Live lookup refresh (Part B): department names feed the chart's
+    // incident filter + incident dialogs (useDepartmentOptions).
+    void queryClient.invalidateQueries({ queryKey: ["administration.departmentOptions"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (input: CreateDepartmentInput) => createDepartment(input),
@@ -387,6 +392,7 @@ function DeleteDepartmentDialog({ state, onClose }: { state: EditorState; onClos
     onSuccess: () => {
       toast.success("Department deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "departments"] });
+      queryClient.invalidateQueries({ queryKey: ["administration.departmentOptions"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),

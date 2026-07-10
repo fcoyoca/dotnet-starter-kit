@@ -263,8 +263,12 @@ function IncidentTypeEditorDialog({ state, onClose }: { state: EditorState; onCl
     if (isOpen) setForm(initial);
   }, [isOpen, initial]);
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["administration", "incident-types"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "incident-types"] });
+    // Live lookup refresh (Part B): incident type names feed the chart's
+    // incident filter + incident dialogs (useIncidentTypeOptions).
+    void queryClient.invalidateQueries({ queryKey: ["administration.incidentTypeOptions"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (input: CreateIncidentTypeInput) => createIncidentType(input),
@@ -366,6 +370,7 @@ function DeleteIncidentTypeDialog({ state, onClose }: { state: EditorState; onCl
     onSuccess: () => {
       toast.success("Incident type deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "incident-types"] });
+      queryClient.invalidateQueries({ queryKey: ["administration.incidentTypeOptions"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),

@@ -364,8 +364,16 @@ function ClinicEditorDialog({ state, onClose }: { state: EditorState; onClose: (
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["administration", "clinics"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "clinics"] });
+    // Live lookup refresh (Part B): clinic names feed the report editor /
+    // patient-chart-search pickers (useClinicOptions), the scheduling
+    // clinic filter, and the Settings > Schedule clinic picker — none of
+    // which share the ["administration","clinics"] array prefix.
+    void queryClient.invalidateQueries({ queryKey: ["administration.clinicOptions"] });
+    void queryClient.invalidateQueries({ queryKey: ["scheduling.clinics"] });
+    void queryClient.invalidateQueries({ queryKey: ["administration", "clinicOptions"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (input: CreateClinicInput) => createClinic(input),
@@ -596,6 +604,9 @@ function DeleteClinicDialog({ state, onClose }: { state: EditorState; onClose: (
     onSuccess: () => {
       toast.success("Clinic deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "clinics"] });
+      queryClient.invalidateQueries({ queryKey: ["administration.clinicOptions"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduling.clinics"] });
+      queryClient.invalidateQueries({ queryKey: ["administration", "clinicOptions"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),
