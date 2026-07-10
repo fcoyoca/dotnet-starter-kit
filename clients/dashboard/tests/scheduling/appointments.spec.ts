@@ -59,8 +59,16 @@ const SCHEDULE_CONFIG = {
   intervalMinutes: 30,
 };
 
-// Date the appointment "today" (UTC midday → safely on today's calendar in America/Chicago).
-const todayYmd = new Date().toISOString().slice(0, 10);
+// Date the appointment "today" in LOCAL terms — the calendar opens on the machine's
+// local date, so the ymd must come from local time, not toISOString() (UTC), which is
+// still yesterday between local midnight and the UTC rollover. 15:00Z on this date is
+// 10:00 America/Chicago wall time on the SAME date, inside the 08:00–18:00 day view.
+const now = new Date();
+const todayYmd = [
+  now.getFullYear(),
+  String(now.getMonth() + 1).padStart(2, "0"),
+  String(now.getDate()).padStart(2, "0"),
+].join("-");
 const APPOINTMENT = {
   id: "00000000-0000-0000-0000-00000000e333",
   clinicId: CLINIC.id,
