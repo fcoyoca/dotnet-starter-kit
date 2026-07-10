@@ -315,6 +315,9 @@ function InsuranceTypeEditorDialog({ state, onClose }: { state: EditorState; onC
     queryClient.invalidateQueries({ queryKey: ["administration", "insurance-types"] });
     queryClient.invalidateQueries({ queryKey: ["administration.insuranceTypeOptions"] });
     queryClient.invalidateQueries({ queryKey: ["administration", "insurance-type-procedures"] });
+    // Live lookup refresh (Part B): the SuperBill reads prices under
+    // ["insurance-type-procedures", id] — a different prefix.
+    queryClient.invalidateQueries({ queryKey: ["insurance-type-procedures"] });
   };
 
   const saveMutation = useMutation({
@@ -459,6 +462,7 @@ function DeleteInsuranceTypeDialog({ state, onClose }: { state: EditorState; onC
       toast.success("Insurance type deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "insurance-types"] });
       queryClient.invalidateQueries({ queryKey: ["administration.insuranceTypeOptions"] });
+      queryClient.invalidateQueries({ queryKey: ["insurance-type-procedures"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),

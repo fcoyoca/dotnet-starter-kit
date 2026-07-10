@@ -307,8 +307,12 @@ function DiagnosticCategoryEditorDialog({ state, onClose }: { state: EditorState
     if (isOpen) setForm(initial);
   }, [isOpen, initial]);
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["administration", "diagnostic-categories"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "diagnostic-categories"] });
+    // Live lookup refresh (Part B): category names feed the diagnostic
+    // codes dialog's category dropdown (["diagnostic-categories","dx-dialog"]).
+    void queryClient.invalidateQueries({ queryKey: ["diagnostic-categories"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (input: CreateDiagnosticCategoryInput) => createDiagnosticCategory(input),
@@ -410,6 +414,7 @@ function DeleteDiagnosticCategoryDialog({ state, onClose }: { state: EditorState
     onSuccess: () => {
       toast.success("Diagnostic category deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "diagnostic-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["diagnostic-categories"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),

@@ -358,7 +358,12 @@ function ProcedureCodeEditorDialog({
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["administration", "procedure-codes"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "procedure-codes"] });
+    // Live lookup refresh (Part B): procedure codes feed the SuperBill's
+    // code picker (["procedure-codes","picker",…]).
+    void queryClient.invalidateQueries({ queryKey: ["procedure-codes"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (input: CreateProcedureCodeInput) => createProcedureCode(input),
@@ -512,6 +517,7 @@ function DeleteProcedureCodeDialog({ state, onClose }: { state: EditorState; onC
     onSuccess: () => {
       toast.success("Procedure code deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "procedure-codes"] });
+      queryClient.invalidateQueries({ queryKey: ["procedure-codes"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),

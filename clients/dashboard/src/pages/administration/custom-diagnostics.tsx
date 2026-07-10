@@ -289,7 +289,14 @@ function CustomDiagnosticEditorDialog({ state, onClose }: { state: EditorState; 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["administration", "custom-diagnostics"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "custom-diagnostics"] });
+    // Live lookup refresh (Part B): custom diagnostics feed the diagnostic
+    // codes dialog + SuperBill (["custom-diagnostics","by-ids",…]) and the
+    // incident dialog's dx search (["dx-search",…]).
+    void queryClient.invalidateQueries({ queryKey: ["custom-diagnostics"] });
+    void queryClient.invalidateQueries({ queryKey: ["dx-search"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (input: CreateCustomDiagnosticInput) => createCustomDiagnostic(input),
@@ -429,6 +436,8 @@ function DeleteCustomDiagnosticDialog({ state, onClose }: { state: EditorState; 
     onSuccess: () => {
       toast.success("Custom diagnostic deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "custom-diagnostics"] });
+      queryClient.invalidateQueries({ queryKey: ["custom-diagnostics"] });
+      queryClient.invalidateQueries({ queryKey: ["dx-search"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),

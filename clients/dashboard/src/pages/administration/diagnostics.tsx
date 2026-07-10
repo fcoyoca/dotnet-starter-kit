@@ -346,7 +346,14 @@ function DiagnosticEditorDialog({
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["administration", "diagnostics"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "diagnostics"] });
+    // Live lookup refresh (Part B): the ICD catalog feeds the diagnostic
+    // codes dialog (["diagnostics","by-category"/"search",…]) and the
+    // problem dialog's dx search (["dx-icd-search",…]).
+    void queryClient.invalidateQueries({ queryKey: ["diagnostics"] });
+    void queryClient.invalidateQueries({ queryKey: ["dx-icd-search"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (input: CreateDiagnosticInput) => createDiagnostic(input),
@@ -501,6 +508,8 @@ function DeleteDiagnosticDialog({ state, onClose }: { state: EditorState; onClos
     onSuccess: () => {
       toast.success("Diagnostic deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "diagnostics"] });
+      queryClient.invalidateQueries({ queryKey: ["diagnostics"] });
+      queryClient.invalidateQueries({ queryKey: ["dx-icd-search"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),

@@ -665,7 +665,12 @@ function MacroEditorDialog({
     if (isOpen) setForm(initial);
   }, [isOpen, initial]);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["administration", "macros"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "macros"] });
+    // Live lookup refresh (Part B): the report editor's macro popover reads
+    // ["administration.macros", …] (dotted key — different prefix).
+    void queryClient.invalidateQueries({ queryKey: ["administration.macros"] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (input: CreateMacroInput) => createMacro(input),
@@ -811,6 +816,7 @@ function DeleteMacroDialog({ state, onClose }: { state: MacroEditorState; onClos
     onSuccess: () => {
       toast.success("Macro deleted");
       queryClient.invalidateQueries({ queryKey: ["administration", "macros"] });
+      queryClient.invalidateQueries({ queryKey: ["administration.macros"] });
       onClose();
     },
     onError: (err) => toast.error("Delete failed", { description: describe(err) }),
@@ -851,7 +857,12 @@ function ReportTypeEditorDialog({ state, onClose }: { state: TypeEditorState; on
   const isOpen = state.mode === "create" || isEdit;
   const type = state.mode === "edit" ? state.type : undefined;
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["administration", "report-types"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "report-types"] });
+    // Live lookup refresh (Part B): the chart's Add Report menu, report
+    // search, and export dialogs read ["report-types"].
+    void queryClient.invalidateQueries({ queryKey: ["report-types"] });
+  };
 
   const initial = useMemo(
     () => ({ name: type?.name ?? "", displayOrder: type?.displayOrder ?? 0, isActive: type?.isActive ?? true }),
@@ -977,7 +988,12 @@ function ReportFieldEditorDialog({
   const isOpen = state.mode === "create" || isEdit;
   const field = state.mode === "edit" ? state.field : undefined;
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["administration", "report-fields"] });
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["administration", "report-fields"] });
+    // Live lookup refresh (Part B): the report editor renders its field
+    // sections from ["report-fields", reportTypeId].
+    void queryClient.invalidateQueries({ queryKey: ["report-fields"] });
+  };
 
   const initial = useMemo(
     () => ({
