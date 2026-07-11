@@ -182,6 +182,12 @@ export function ReportEditorPanel({
   // server copy would later shadow genuinely newer server data.
   const suppressDraftWriteRef = useRef(false);
   const draftDirtyRef = useRef(false);
+  // Which reportId the form state was last hydrated for. Until hydration
+  // has run for the CURRENT report, the write effect must stay inert —
+  // otherwise the still-empty initial state (or the previous report's
+  // state right after a pill switch) gets scheduled as a draft and can
+  // clobber a real one before the report query resolves.
+  const hydratedForReportRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!report) return;
@@ -220,6 +226,7 @@ export function ReportEditorPanel({
     // Review / Save Associated Problems), so the server copy always wins.
     setReviewerProviderId(report.reviewerProviderId ?? null);
     setAssociatedProblemIds(report.associatedProblemIds ?? []);
+    hydratedForReportRef.current = reportId;
   }, [report, reportId]);
 
   // One snapshot of everything the draft persists — the ONLY draft-write
@@ -262,6 +269,7 @@ export function ReportEditorPanel({
   // arms `suppress`, so the snapshot change IT causes is skipped; only
   // real typing marks the draft dirty and schedules a write.
   useEffect(() => {
+    if (hydratedForReportRef.current !== reportId) return;
     if (suppressDraftWriteRef.current) {
       suppressDraftWriteRef.current = false;
       return;
