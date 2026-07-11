@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   keepPreviousData,
@@ -80,6 +80,7 @@ import { DocumentsListDialog } from "@/pages/patient-charts/documents-list-dialo
 import { ExportReportsDialog } from "@/pages/patient-charts/export-reports-dialog";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
+import { IncidentsListDialog } from "@/pages/patient-charts/incidents-list-dialog";
 import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
 import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
@@ -177,6 +178,7 @@ export function PatientChartDetailPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editIncidentId, setEditIncidentId] = useState<string | null>(null);
   const [viewIncidentId, setViewIncidentId] = useState<string | null>(null);
+  const [incidentsListOpen, setIncidentsListOpen] = useState(false);
   const [reportSearchOpen, setReportSearchOpen] = useState(false);
   // Report type chosen from "Add Report", pending appointment selection before creation.
   const [pendingReportType, setPendingReportType] = useState<{ id: number; name: string } | null>(null);
@@ -406,6 +408,27 @@ export function PatientChartDetailPage() {
     [incidents, activeIncidentId],
   );
 
+  // Open incidents feed the Incidents dialog (BackChart's chooser lists
+  // open incidents only).
+  const openIncidents = useMemo(() => allIncidents.filter((x) => !x.isClosed), [allIncidents]);
+
+  // BackChart parity: when a patient chart first loads with more than one
+  // open incident, the Incidents dialog pops up so the user picks which
+  // incident to load. Prompt once per patient visit — refetches and filter
+  // changes must not re-open it.
+  const incidentsPromptedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!patientId || !incidentsQuery.data) return;
+    if (incidentsPromptedForRef.current === patientId) return;
+    incidentsPromptedForRef.current = patientId;
+    if (openIncidents.length > 1) setIncidentsListOpen(true);
+  }, [patientId, incidentsQuery.data, openIncidents]);
+
+  // "Patient Reports" row in the Incident card scrolls to the reports list
+  // (BackChart's card switches the workspace to the reports view; here the
+  // list lives further down the rail).
+  const reportsCardRef = useRef<HTMLDivElement | null>(null);
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Back link */}
@@ -622,9 +645,9 @@ export function PatientChartDetailPage() {
                   </IconShortcut>
                 )}
                 <IconShortcut
-                  label="View selected incident"
-                  disabled={!activeIncident}
-                  onClick={() => activeIncident && setViewIncidentId(activeIncident.id)}
+                  label="View incidents"
+                  disabled={openIncidents.length === 0}
+                  onClick={() => setIncidentsListOpen(true)}
                 >
                   <Eye className="size-4" />
                 </IconShortcut>
@@ -638,33 +661,32 @@ export function PatientChartDetailPage() {
               </div>
             </div>
 
+            {/* BackChart PatientChartCard parity: the card shows the selected
+                incident's DOIV (click → Incidents dialog) and a Patient
+                Reports shortcut, rather than a detail block. */}
             {activeIncident ? (
-              <div className="space-y-1.5 rounded-lg border border-[var(--color-border)] p-2.5">
-                <SidebarRow
-                  label="Date of Initial Visit"
-                  value={formatDate(activeIncident.dateOfInitialVisit)}
-                />
-                <SidebarRow label="Date of Loss" value={formatDate(activeIncident.dateOfLoss)} />
-                <SidebarRow
-                  label="Incident Type"
-                  value={resolveLabel(activeIncident.incidentTypeId, incidentTypeOptions)}
-                />
-                <SidebarRow
-                  label="Department"
-                  value={resolveLabel(activeIncident.departmentId, departmentOptions)}
-                />
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  <EntityStatusBadge tone={activeIncident.isClosed ? "default" : "success"}>
-                    {activeIncident.isClosed ? "Closed" : "Open"}
-                  </EntityStatusBadge>
-                  {activeIncident.isTransfer && (
-                    <EntityStatusBadge tone="info">Transfer</EntityStatusBadge>
-                  )}
-                  {activeIncident.isAccident && (
-                    <EntityStatusBadge tone="warning">Accident</EntityStatusBadge>
-                  )}
-                </div>
-              </div>
+              <ul className="space-y-0.5">
+                <li>
+                  <button
+                    type="button"
+                    className="w-full rounded-md px-2 py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-[var(--color-accent)]"
+                    onClick={() => setIncidentsListOpen(true)}
+                  >
+                    DOIV: {formatDate(activeIncident.dateOfInitialVisit)}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="w-full rounded-md px-2 py-1.5 text-left text-[13px] font-semibold transition-colors hover:bg-[var(--color-accent)]"
+                    onClick={() =>
+                      reportsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    }
+                  >
+                    Patient Reports
+                  </button>
+                </li>
+              </ul>
             ) : (
               <p className="text-[12px] text-[var(--color-muted-foreground)]">
                 No incident selected. Add one or pick a row from the list.
@@ -846,7 +868,10 @@ export function PatientChartDetailPage() {
           {/* Patient Reports (for the active incident) — Add Report + rows.
               The open-report pill strip moved to the right panel. */}
           {canViewReports && (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+            <div
+              ref={reportsCardRef}
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+            >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
                   <FileText className="size-3.5" />
@@ -1018,6 +1043,26 @@ export function PatientChartDetailPage() {
           open={!!editIncidentId}
           onClose={() => setEditIncidentId(null)}
           incidentId={editIncidentId}
+        />
+      )}
+
+      {/* Incidents dialog — BackChart's open-incidents chooser. Pops up on
+          initial chart load when the patient has more than one open incident,
+          and opens from the Incident card's view (eye) button / DOIV row. */}
+      {patientId && (
+        <IncidentsListDialog
+          open={incidentsListOpen}
+          onClose={() => setIncidentsListOpen(false)}
+          incidents={openIncidents}
+          onSelect={(incidentId) => {
+            setActiveIncident(patientId, incidentId);
+            setIncidentsListOpen(false);
+          }}
+          onOpenReport={(incidentId, reportId) => {
+            setActiveIncident(patientId, incidentId);
+            openReport(patientId, reportId);
+            setIncidentsListOpen(false);
+          }}
         />
       )}
 
