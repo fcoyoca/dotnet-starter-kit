@@ -32,9 +32,15 @@ import {
 } from "@/api/reports";
 import { searchPatientProblems, setReportProblems } from "@/api/problems";
 import { REPORT_PERMISSIONS, SUPERBILL_PERMISSIONS } from "@/lib/patient-permissions";
+import {
+  clearReportDraft,
+  DRAFT_WRITE_DEBOUNCE_MS,
+  readReportDraft,
+  writeReportDraft,
+  type ReportDraft,
+} from "@/state/report-draft-store";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MacroInsert } from "@/components/ui/macro-insert";
@@ -107,16 +113,12 @@ function groupByCategory(fields: ReportFieldDto[]): { category: string; fields: 
   return groups;
 }
 
-export function ReportEditorDialog({
+export function ReportEditorPanel({
   patientId,
   reportId,
-  open,
-  onClose,
 }: {
   patientId: string;
   reportId: string;
-  open: boolean;
-  onClose: () => void;
 }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -174,24 +176,117 @@ export function ReportEditorDialog({
   // Refs to each field's textarea so macro-insert can splice at the caret.
   const fieldRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
 
+  // ─── Draft persistence (Part C) ───
+  // `suppress` arms before hydration: the snapshot change hydration causes
+  // must NOT be written back as a draft — an untouched draft equal to the
+  // server copy would later shadow genuinely newer server data.
+  const suppressDraftWriteRef = useRef(false);
+  const draftDirtyRef = useRef(false);
+
   useEffect(() => {
     if (!report) return;
-    setReportDate(report.reportDate.slice(0, 10));
-    setProviderId(report.providerId ?? null);
-    setClinicId(report.clinicId ?? null);
-    setIsNoShow(report.isNoShow);
-    setHeight(report.vitals.heightInches != null ? String(report.vitals.heightInches) : "");
-    setWeight(report.vitals.weightLbs != null ? String(report.vitals.weightLbs) : "");
-    setSystolic(report.vitals.systolic != null ? String(report.vitals.systolic) : "");
-    setDiastolic(report.vitals.diastolic != null ? String(report.vitals.diastolic) : "");
-    setPulse(report.vitals.pulse != null ? String(report.vitals.pulse) : "");
-    setTemperature(report.vitals.temperatureF != null ? String(report.vitals.temperatureF) : "");
+    suppressDraftWriteRef.current = true;
+    draftDirtyRef.current = false;
+    const draft = report.isSigned ? null : readReportDraft(reportId);
+    if (draft) {
+      // Unsaved local edits win over the server copy until Save/Sign.
+      setReportDate(draft.reportDate);
+      setProviderId(draft.providerId);
+      setClinicId(draft.clinicId);
+      setIsNoShow(draft.isNoShow);
+      setHeight(draft.height);
+      setWeight(draft.weight);
+      setSystolic(draft.systolic);
+      setDiastolic(draft.diastolic);
+      setPulse(draft.pulse);
+      setTemperature(draft.temperature);
+      setValues(draft.values);
+    } else {
+      setReportDate(report.reportDate.slice(0, 10));
+      setProviderId(report.providerId ?? null);
+      setClinicId(report.clinicId ?? null);
+      setIsNoShow(report.isNoShow);
+      setHeight(report.vitals.heightInches != null ? String(report.vitals.heightInches) : "");
+      setWeight(report.vitals.weightLbs != null ? String(report.vitals.weightLbs) : "");
+      setSystolic(report.vitals.systolic != null ? String(report.vitals.systolic) : "");
+      setDiastolic(report.vitals.diastolic != null ? String(report.vitals.diastolic) : "");
+      setPulse(report.vitals.pulse != null ? String(report.vitals.pulse) : "");
+      setTemperature(report.vitals.temperatureF != null ? String(report.vitals.temperatureF) : "");
+      const map: Record<number, string> = {};
+      for (const fv of report.fieldValues) map[fv.reportFieldId] = fv.text;
+      setValues(map);
+    }
+    // Never drafted — these save through their own mutations (Request
+    // Review / Save Associated Problems), so the server copy always wins.
     setReviewerProviderId(report.reviewerProviderId ?? null);
     setAssociatedProblemIds(report.associatedProblemIds ?? []);
-    const map: Record<number, string> = {};
-    for (const fv of report.fieldValues) map[fv.reportFieldId] = fv.text;
-    setValues(map);
-  }, [report]);
+  }, [report, reportId]);
+
+  // One snapshot of everything the draft persists — the ONLY draft-write
+  // instrumentation point (spec: instrument once, not per input).
+  const draftSnapshot = useMemo<ReportDraft>(
+    () => ({
+      reportDate,
+      providerId,
+      clinicId,
+      isNoShow,
+      height,
+      weight,
+      systolic,
+      diastolic,
+      pulse,
+      temperature,
+      values,
+    }),
+    [
+      reportDate,
+      providerId,
+      clinicId,
+      isNoShow,
+      height,
+      weight,
+      systolic,
+      diastolic,
+      pulse,
+      temperature,
+      values,
+    ],
+  );
+  const draftSnapshotRef = useRef(draftSnapshot);
+  draftSnapshotRef.current = draftSnapshot;
+
+  const isSignedRef = useRef(isSigned);
+  isSignedRef.current = isSigned;
+
+  // Debounced draft write on any form change. The hydration effect above
+  // arms `suppress`, so the snapshot change IT causes is skipped; only
+  // real typing marks the draft dirty and schedules a write.
+  useEffect(() => {
+    if (suppressDraftWriteRef.current) {
+      suppressDraftWriteRef.current = false;
+      return;
+    }
+    if (isSignedRef.current || !canUpdate) return;
+    draftDirtyRef.current = true;
+    const t = window.setTimeout(() => {
+      writeReportDraft(reportId, draftSnapshotRef.current);
+      draftDirtyRef.current = false;
+    }, DRAFT_WRITE_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [draftSnapshot, reportId, canUpdate]);
+
+  // Flush a pending (sub-debounce) write when the panel unmounts — e.g.
+  // switching to another open report's pill, or client-side navigation
+  // away from the chart. (A hard reload mid-debounce can lose <500ms of
+  // typing — accepted; effect cleanups don't run on browser unload.)
+  useEffect(() => {
+    return () => {
+      if (draftDirtyRef.current) {
+        writeReportDraft(reportId, draftSnapshotRef.current);
+        draftDirtyRef.current = false;
+      }
+    };
+  }, [reportId]);
 
   const bmi = useMemo(() => computeBmi(toNum(height), toNum(weight)), [height, weight]);
 
@@ -216,6 +311,8 @@ export function ReportEditorDialog({
     mutationFn: updateReport,
     onSuccess: () => {
       toast.success("Report saved.");
+      clearReportDraft(reportId);
+      draftDirtyRef.current = false;
       void queryClient.invalidateQueries({ queryKey: ["report", reportId] });
       void queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
@@ -226,6 +323,8 @@ export function ReportEditorDialog({
     mutationFn: (id: string) => signReport(id),
     onSuccess: () => {
       toast.success("Report signed.");
+      clearReportDraft(reportId);
+      draftDirtyRef.current = false;
       void queryClient.invalidateQueries({ queryKey: ["report", reportId] });
       void queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
@@ -355,33 +454,18 @@ export function ReportEditorDialog({
         .join(" ")
     : "";
 
-  const dialogOnOpenChange = (o: boolean) => {
-    if (!o) onClose();
-  };
-
   if (reportQuery.isLoading) {
-    return (
-      <Dialog open={open} onOpenChange={dialogOnOpenChange}>
-        <DialogContent className="!max-w-4xl overflow-hidden p-0">
-          <DialogTitle className="sr-only">Loading report…</DialogTitle>
-          <div className="max-h-[85vh] overflow-y-auto p-6 pt-10">
-            <div className="skeleton h-64 rounded-xl" />
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
+    return <div data-testid="report-editor-panel" className="skeleton h-64 rounded-xl" />;
   }
 
   if (!report) {
     return (
-      <Dialog open={open} onOpenChange={dialogOnOpenChange}>
-        <DialogContent className="!max-w-4xl overflow-hidden p-0">
-          <DialogTitle className="sr-only">Report not found</DialogTitle>
-          <div className="max-h-[85vh] overflow-y-auto p-6 pt-10 text-[13px] text-[var(--color-muted-foreground)]">
-            Report not found.
-          </div>
-        </DialogContent>
-      </Dialog>
+      <div
+        data-testid="report-editor-panel"
+        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 text-[13px] text-[var(--color-muted-foreground)]"
+      >
+        Report not found.
+      </div>
     );
   }
 
@@ -389,12 +473,7 @@ export function ReportEditorDialog({
   const isPending = saveMutation.isPending || signMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={dialogOnOpenChange}>
-      <DialogContent className="!max-w-4xl overflow-hidden p-0">
-        <DialogTitle className="sr-only">
-          {fullName ? `${fullName} — Report` : "Patient report"}
-        </DialogTitle>
-        <div className="max-h-[85vh] space-y-4 overflow-y-auto p-6 pt-10 sm:space-y-6">
+    <div data-testid="report-editor-panel" className="min-w-0 space-y-4 sm:space-y-6">
       {/* Patient + status strip */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
         <div className="flex items-center gap-3">
@@ -851,8 +930,6 @@ export function ReportEditorDialog({
           if (medicationsFieldId != null) insertMacro(medicationsFieldId, text);
         }}
       />
-        </div>
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 }

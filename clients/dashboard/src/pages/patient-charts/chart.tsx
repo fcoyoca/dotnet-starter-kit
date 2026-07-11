@@ -67,7 +67,6 @@ import {
   EntityEmpty,
   EntityFilterPill,
   EntityListCard,
-  EntityListHeader,
   EntityListLoading,
   EntityListRow,
   EntityPageHeader,
@@ -85,7 +84,7 @@ import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dia
 import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
 import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
-import { ReportEditorDialog } from "@/pages/patient-charts/report-editor-dialog";
+import { ReportEditorPanel } from "@/pages/patient-charts/report-editor-panel";
 import { ReportSearchDialog } from "@/pages/patient-charts/report-search-dialog";
 import {
   SelectAppointmentDialog,
@@ -94,7 +93,8 @@ import {
 
 type ClosedFilter = "all" | "open" | "closed";
 
-const DESKTOP_COLS = "grid-cols-[1fr_1fr_1fr_84px_72px_auto]";
+/** Compact incident-row grid for the left rail: content column + actions. */
+const RAIL_COLS = "grid-cols-[minmax(0,1fr)_auto]";
 
 function resolveLabel(
   id: string | null | undefined,
@@ -529,9 +529,11 @@ export function PatientChartDetailPage() {
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[330px_1fr]">
-        {/* ─── Left: patient minimal info + incident shortcuts ─── */}
-        <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+      <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
+        {/* ─── Left rail: patient info + incident shortcuts + incident list +
+            reports list (Part C: the incident list narrows into a rail; the
+            right column is the persistent report workspace) ─── */}
+        <div className="min-w-0 space-y-4">
           {/* Patient Info card */}
           {patientQuery.isLoading ? (
             <div className="skeleton h-64 rounded-xl" />
@@ -669,218 +671,282 @@ export function PatientChartDetailPage() {
               </p>
             )}
           </div>
+
+          {/* Incidents — compact rail list: same data, filters, and row
+              actions as the old full-width table, re-laid as two-line rows
+              for the narrow column. */}
+          <div>
+            <EntityPageHeader
+              icon={ClipboardList}
+              title="Incidents"
+              total={incidents.length}
+              unit="incident"
+              description="Clinical incidents (episodes of care) for this patient."
+            >
+              {canCreate && (
+                <Button
+                  onClick={() => setCreateOpen(true)}
+                  className="h-9 flex-1 gap-1.5 rounded-lg px-4 text-[13px] font-semibold sm:flex-none"
+                >
+                  <Plus className="size-4" />
+                  Add Incident
+                </Button>
+              )}
+            </EntityPageHeader>
+
+            {/* Filters — stacked for the rail */}
+            <div className="mt-3 space-y-2">
+              <EntityFilterPill
+                label="Status"
+                value={closedFilter}
+                onChange={(v) => setClosedFilter(v as ClosedFilter)}
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "open", label: "Open" },
+                  { value: "closed", label: "Closed" },
+                ]}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Combobox
+                  id="filter-type"
+                  label="Incident type"
+                  value={typeFilter}
+                  onChange={setTypeFilter}
+                  options={incidentTypeOptions ?? []}
+                  placeholder="All types"
+                />
+                <Combobox
+                  id="filter-dept"
+                  label="Department"
+                  value={deptFilter}
+                  onChange={setDeptFilter}
+                  options={departmentOptions ?? []}
+                  placeholder="All departments"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={transferOnly}
+                    onChange={(e) => setTransferOnly(e.target.checked)}
+                    className="rounded border-[var(--color-border)]"
+                  />
+                  <span>Transfers only</span>
+                </label>
+                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showDeleted}
+                    onChange={(e) => setShowDeleted(e.target.checked)}
+                    className="rounded border-[var(--color-border)]"
+                  />
+                  <span>Show deleted</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              {incidentsQuery.isLoading && allIncidents.length === 0 ? (
+                <EntityListLoading desktopColumns={RAIL_COLS} />
+              ) : incidents.length === 0 ? (
+                <EntityEmpty
+                  icon={ClipboardList}
+                  title="No incidents"
+                  body={
+                    closedFilter !== "all" || deptFilter || typeFilter || transferOnly || showDeleted
+                      ? "No incidents match the current filters."
+                      : "No incidents have been recorded for this patient yet."
+                  }
+                  action={
+                    canCreate ? (
+                      <Button
+                        onClick={() => setCreateOpen(true)}
+                        className="h-9 rounded-lg px-4 text-[13px]"
+                      >
+                        <Plus className="mr-1.5 size-4" />
+                        Add Incident
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ) : (
+                <EntityListCard>
+                  {incidents.map((incident, i) => (
+                    <EntityListRow
+                      key={incident.id}
+                      className={`${RAIL_COLS} cursor-pointer ${
+                        incident.id === activeIncidentId ? "bg-[var(--color-accent)]" : ""
+                      }`}
+                      isLast={i === incidents.length - 1}
+                      onClick={() => patientId && setActiveIncident(patientId, incident.id)}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-medium">
+                          {formatDate(incident.dateOfLoss)}
+                          <span className="text-[var(--color-muted-foreground)]">
+                            {" · "}
+                            {resolveLabel(incident.incidentTypeId, incidentTypeOptions)}
+                          </span>
+                        </p>
+                        <p className="truncate text-[12px] text-[var(--color-muted-foreground)]">
+                          {resolveLabel(incident.departmentId, departmentOptions)}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          <EntityStatusBadge tone={incident.isClosed ? "default" : "success"}>
+                            {incident.isClosed ? "Closed" : "Open"}
+                          </EntityStatusBadge>
+                          {incident.isTransfer && (
+                            <EntityStatusBadge tone="info">Transfer</EntityStatusBadge>
+                          )}
+                        </div>
+                      </div>
+                      <div
+                        className="flex items-start justify-end gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <IconShortcut label="View incident" onClick={() => setViewIncidentId(incident.id)}>
+                          <Eye className="size-4" />
+                        </IconShortcut>
+                        {canUpdate && (
+                          <IconShortcut
+                            label="Edit incident"
+                            onClick={() => setEditIncidentId(incident.id)}
+                          >
+                            <Pencil className="size-4" />
+                          </IconShortcut>
+                        )}
+                        {canClose && !incident.isClosed && (
+                          <IconShortcut
+                            label="Close incident"
+                            disabled={closeMutation.isPending}
+                            onClick={() => closeMutation.mutate(incident.id)}
+                          >
+                            <Lock className="size-4" />
+                          </IconShortcut>
+                        )}
+                        {canDelete && (
+                          <IconShortcut
+                            label="Delete incident"
+                            tone="destructive"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => deleteMutation.mutate(incident.id)}
+                          >
+                            <Trash2 className="size-4" />
+                          </IconShortcut>
+                        )}
+                      </div>
+                    </EntityListRow>
+                  ))}
+                </EntityListCard>
+              )}
+            </div>
+          </div>
+
+          {/* Patient Reports (for the active incident) — Add Report + rows.
+              The open-report pill strip moved to the right panel. */}
+          {canViewReports && (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                  <FileText className="size-3.5" />
+                  Patient Reports
+                </h2>
+                {canCreateReports && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild disabled={!activeIncident || createReportMutation.isPending}>
+                      <Button
+                        size="sm"
+                        className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
+                        disabled={!activeIncident || createReportMutation.isPending}
+                      >
+                        <FilePlus className="size-4" />
+                        Add Report
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="max-h-[min(340px,55vh)] w-56 overflow-y-auto">
+                      <DropdownMenuLabel>Report Type</DropdownMenuLabel>
+                      {(reportTypesQuery.data ?? []).length === 0 ? (
+                        <p className="px-3 py-3 text-[12px] text-[var(--color-muted-foreground)]">
+                          No report types defined.
+                        </p>
+                      ) : (
+                        (reportTypesQuery.data ?? []).map((t) => (
+                          <DropdownMenuItem key={t.id} onSelect={() => onAddReport(t.id)}>
+                            {t.name}
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+
+              {!activeIncident ? (
+                <p className="text-[12px] text-[var(--color-muted-foreground)]">
+                  Select an incident to view its reports.
+                </p>
+              ) : reportsQuery.isLoading ? (
+                <div className="skeleton h-16 rounded-lg" />
+              ) : (reportsQuery.data?.items ?? []).length === 0 ? (
+                <p className="text-[12px] text-[var(--color-muted-foreground)]">
+                  No reports for this incident yet.
+                </p>
+              ) : (
+                <ul className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)]">
+                  {(reportsQuery.data?.items ?? []).map((r) => (
+                    <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-[13px] font-medium">{reportTypeLabel(r.reportTypeId)}</p>
+                        <p className="text-[12px] text-[var(--color-muted-foreground)]">
+                          {formatDate(r.reportDate)}
+                          {r.signedByName ? ` · Signed by ${r.signedByName}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <EntityStatusBadge tone={r.isSigned ? "info" : "default"}>
+                          {r.workflowStatus}
+                        </EntityStatusBadge>
+                        <div className="flex items-center gap-1">
+                          <IconShortcut
+                            label="View report"
+                            onClick={() => patientId && openReport(patientId, r.id)}
+                          >
+                            <Eye className="size-4" />
+                          </IconShortcut>
+                          {canUpdateReports && !r.isSigned && (
+                            <IconShortcut
+                              label="Edit report"
+                              onClick={() => patientId && openReport(patientId, r.id)}
+                            >
+                              <Pencil className="size-4" />
+                            </IconShortcut>
+                          )}
+                          {canDeleteReports && (
+                            <IconShortcut
+                              label="Delete report"
+                              tone="destructive"
+                              disabled={deleteReportMutation.isPending}
+                              onClick={() => deleteReportMutation.mutate(r.id)}
+                            >
+                              <Trash2 className="size-4" />
+                            </IconShortcut>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ─── Right: incidents list ─── */}
-        <div>
-          <EntityPageHeader
-            icon={ClipboardList}
-            title="Incidents"
-            total={incidents.length}
-            unit="incident"
-            description="Clinical incidents (episodes of care) for this patient."
-          >
-            {canCreate && (
-              <Button
-                onClick={() => setCreateOpen(true)}
-                className="h-9 flex-1 gap-1.5 rounded-lg px-4 text-[13px] font-semibold sm:flex-none"
-              >
-                <Plus className="size-4" />
-                Add Incident
-              </Button>
-            )}
-          </EntityPageHeader>
-
-          {/* Filters */}
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <EntityFilterPill
-              label="Status"
-              value={closedFilter}
-              onChange={(v) => setClosedFilter(v as ClosedFilter)}
-              options={[
-                { value: "all", label: "All" },
-                { value: "open", label: "Open" },
-                { value: "closed", label: "Closed" },
-              ]}
-            />
-            <div className="w-44">
-              <Combobox
-                id="filter-type"
-                label="Incident type"
-                value={typeFilter}
-                onChange={setTypeFilter}
-                options={incidentTypeOptions ?? []}
-                placeholder="All types"
-              />
-            </div>
-            <div className="w-44">
-              <Combobox
-                id="filter-dept"
-                label="Department"
-                value={deptFilter}
-                onChange={setDeptFilter}
-                options={departmentOptions ?? []}
-                placeholder="All departments"
-              />
-            </div>
-            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={transferOnly}
-                onChange={(e) => setTransferOnly(e.target.checked)}
-                className="rounded border-[var(--color-border)]"
-              />
-              <span>Transfers only</span>
-            </label>
-            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showDeleted}
-                onChange={(e) => setShowDeleted(e.target.checked)}
-                className="rounded border-[var(--color-border)]"
-              />
-              <span>Show deleted</span>
-            </label>
-          </div>
-
-          <div className="mt-4">
-            {incidentsQuery.isLoading && allIncidents.length === 0 ? (
-              <EntityListLoading desktopColumns={DESKTOP_COLS} />
-            ) : incidents.length === 0 ? (
-              <EntityEmpty
-                icon={ClipboardList}
-                title="No incidents"
-                body={
-                  closedFilter !== "all" || deptFilter || typeFilter || transferOnly || showDeleted
-                    ? "No incidents match the current filters."
-                    : "No incidents have been recorded for this patient yet."
-                }
-                action={
-                  canCreate ? (
-                    <Button
-                      onClick={() => setCreateOpen(true)}
-                      className="h-9 rounded-lg px-4 text-[13px]"
-                    >
-                      <Plus className="mr-1.5 size-4" />
-                      Add Incident
-                    </Button>
-                  ) : undefined
-                }
-              />
-            ) : (
-              <EntityListCard>
-                <EntityListHeader className={DESKTOP_COLS}>
-                  <span>Date of Loss</span>
-                  <span>Incident Type</span>
-                  <span>Department</span>
-                  <span>Status</span>
-                  <span>Transfer</span>
-                  <span />
-                </EntityListHeader>
-
-                {incidents.map((incident, i) => (
-                  <EntityListRow
-                    key={incident.id}
-                    className={`${DESKTOP_COLS} cursor-pointer ${
-                      incident.id === activeIncidentId ? "bg-[var(--color-accent)]" : ""
-                    }`}
-                    isLast={i === incidents.length - 1}
-                    onClick={() => patientId && setActiveIncident(patientId, incident.id)}
-                  >
-                    <span className="text-[13px]">{formatDate(incident.dateOfLoss)}</span>
-                    <span className="truncate text-[13px] text-[var(--color-muted-foreground)]">
-                      {resolveLabel(incident.incidentTypeId, incidentTypeOptions)}
-                    </span>
-                    <span className="truncate text-[13px] text-[var(--color-muted-foreground)]">
-                      {resolveLabel(incident.departmentId, departmentOptions)}
-                    </span>
-                    <EntityStatusBadge tone={incident.isClosed ? "default" : "success"}>
-                      {incident.isClosed ? "Closed" : "Open"}
-                    </EntityStatusBadge>
-                    <EntityStatusBadge tone={incident.isTransfer ? "info" : "default"}>
-                      {incident.isTransfer ? "Yes" : "No"}
-                    </EntityStatusBadge>
-                    <div
-                      className="flex items-center justify-end gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <IconShortcut label="View incident" onClick={() => setViewIncidentId(incident.id)}>
-                        <Eye className="size-4" />
-                      </IconShortcut>
-                      {canUpdate && (
-                        <IconShortcut
-                          label="Edit incident"
-                          onClick={() => setEditIncidentId(incident.id)}
-                        >
-                          <Pencil className="size-4" />
-                        </IconShortcut>
-                      )}
-                      {canClose && !incident.isClosed && (
-                        <IconShortcut
-                          label="Close incident"
-                          disabled={closeMutation.isPending}
-                          onClick={() => closeMutation.mutate(incident.id)}
-                        >
-                          <Lock className="size-4" />
-                        </IconShortcut>
-                      )}
-                      {canDelete && (
-                        <IconShortcut
-                          label="Delete incident"
-                          tone="destructive"
-                          disabled={deleteMutation.isPending}
-                          onClick={() => deleteMutation.mutate(incident.id)}
-                        >
-                          <Trash2 className="size-4" />
-                        </IconShortcut>
-                      )}
-                    </div>
-                  </EntityListRow>
-                ))}
-              </EntityListCard>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Patient Reports (for the active incident) ─── */}
-      {canViewReports && (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-              <FileText className="size-3.5" />
-              Patient Reports
-            </h2>
-            {canCreateReports && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild disabled={!activeIncident || createReportMutation.isPending}>
-                  <Button
-                    size="sm"
-                    className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
-                    disabled={!activeIncident || createReportMutation.isPending}
-                  >
-                    <FilePlus className="size-4" />
-                    Add Report
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="max-h-[min(340px,55vh)] w-56 overflow-y-auto">
-                  <DropdownMenuLabel>Report Type</DropdownMenuLabel>
-                  {(reportTypesQuery.data ?? []).length === 0 ? (
-                    <p className="px-3 py-3 text-[12px] text-[var(--color-muted-foreground)]">
-                      No report types defined.
-                    </p>
-                  ) : (
-                    (reportTypesQuery.data ?? []).map((t) => (
-                      <DropdownMenuItem key={t.id} onSelect={() => onAddReport(t.id)}>
-                        {t.name}
-                      </DropdownMenuItem>
-                    ))
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-
+        {/* ─── Right: persistent report workspace (Part C) — pill tab strip
+            + the active report's editor rendered INLINE (no dialog), or an
+            empty state. Switching pills / navigating never closes a report;
+            only a pill's explicit × removes it from openReportIds. ─── */}
+        <div className="min-w-0">
           {openReportIds.length > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted-foreground)]">
@@ -920,64 +986,21 @@ export function PatientChartDetailPage() {
             </div>
           )}
 
-          {!activeIncident ? (
-            <p className="text-[12px] text-[var(--color-muted-foreground)]">
-              Select an incident to view its reports.
-            </p>
-          ) : reportsQuery.isLoading ? (
-            <div className="skeleton h-16 rounded-lg" />
-          ) : (reportsQuery.data?.items ?? []).length === 0 ? (
-            <p className="text-[12px] text-[var(--color-muted-foreground)]">
-              No reports for this incident yet.
-            </p>
+          {patientId && activeReportId ? (
+            <ReportEditorPanel patientId={patientId} reportId={activeReportId} />
           ) : (
-            <ul className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)]">
-              {(reportsQuery.data?.items ?? []).map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium">{reportTypeLabel(r.reportTypeId)}</p>
-                    <p className="text-[12px] text-[var(--color-muted-foreground)]">
-                      {formatDate(r.reportDate)}
-                      {r.signedByName ? ` · Signed by ${r.signedByName}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <EntityStatusBadge tone={r.isSigned ? "info" : "default"}>
-                      {r.workflowStatus}
-                    </EntityStatusBadge>
-                    <div className="flex items-center gap-1">
-                      <IconShortcut
-                        label="View report"
-                        onClick={() => patientId && openReport(patientId, r.id)}
-                      >
-                        <Eye className="size-4" />
-                      </IconShortcut>
-                      {canUpdateReports && !r.isSigned && (
-                        <IconShortcut
-                          label="Edit report"
-                          onClick={() => patientId && openReport(patientId, r.id)}
-                        >
-                          <Pencil className="size-4" />
-                        </IconShortcut>
-                      )}
-                      {canDeleteReports && (
-                        <IconShortcut
-                          label="Delete report"
-                          tone="destructive"
-                          disabled={deleteReportMutation.isPending}
-                          onClick={() => deleteReportMutation.mutate(r.id)}
-                        >
-                          <Trash2 className="size-4" />
-                        </IconShortcut>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="grid min-h-[280px] place-items-center rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] p-8 text-center">
+              <div>
+                <FileText className="mx-auto size-8 text-[var(--color-muted-foreground)]" />
+                <p className="mt-2 text-[14px] font-medium">No report open</p>
+                <p className="mt-1 text-[12px] text-[var(--color-muted-foreground)]">
+                  Select or add a report from the Patient Reports list.
+                </p>
+              </div>
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Create dialog */}
       {patientId && (
@@ -1100,18 +1123,6 @@ export function PatientChartDetailPage() {
         />
       )}
 
-      {/* Report editor dialog — keyed by the workspace context's
-          activeReportId. Closing this dialog (X/ESC/overlay click) only
-          clears which report is showing; it does NOT remove the report
-          from openReportIds — only the pill row's explicit close (×) does. */}
-      {patientId && activeReportId && (
-        <ReportEditorDialog
-          patientId={patientId}
-          reportId={activeReportId}
-          open
-          onClose={() => setActiveReport(patientId, null)}
-        />
-      )}
     </div>
   );
 }
