@@ -156,10 +156,9 @@ async function mockEditorLookups(page: Page) {
   await mockJsonResponse(page, "**/api/v1/administration/incident-types**", paged([]));
 }
 
-/** Seed the workspace so the chart page opens with the report dialog
- *  already active, then navigate to the chart (not the old report route,
- *  which no longer exists). */
-async function gotoReportDialog(page: Page): Promise<void> {
+/** Seed the workspace so the chart page opens with the report already
+ *  active in the right-hand panel, then navigate to the chart. */
+async function gotoReportPanel(page: Page): Promise<void> {
   await seedPatientWorkspace(page, [
     {
       patientId: PATIENT_ID,
@@ -183,9 +182,11 @@ test.describe("patient reports — editor", () => {
   test("draft report renders header, vitals, field sections and action bar", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, draftReport());
 
-    await gotoReportDialog(page);
+    await gotoReportPanel(page);
 
-    await expect(page.getByRole("dialog").getByText("Alice Q Vance", { exact: true })).toBeVisible();
+    await expect(
+      page.getByTestId("report-editor-panel").getByText("Alice Q Vance", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Vitals")).toBeVisible();
     // Field sections come from listReportFields, grouped by category.
     await expect(page.getByText("Subjective")).toBeVisible();
@@ -198,7 +199,7 @@ test.describe("patient reports — editor", () => {
   test("Save Draft sends field values + vitals in the PUT body", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, draftReport());
 
-    await gotoReportDialog(page);
+    await gotoReportPanel(page);
     await expect(page.getByText("Chief Complaint")).toBeVisible();
 
     await page.locator("#f-11").fill("Lower back pain for 3 weeks");
@@ -222,7 +223,7 @@ test.describe("patient reports — editor", () => {
   test("signed report renders read-only with signature + addendum composer", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, signedReport());
 
-    await gotoReportDialog(page);
+    await gotoReportPanel(page);
 
     await expect(page.getByText(/signed by/i)).toBeVisible();
     await expect(page.getByRole("img", { name: /^signature$/i })).toBeVisible();
@@ -255,7 +256,7 @@ test.describe("patient reports — editor", () => {
     // The create dialog's "Useable by" picker lists users.
     await mockJsonResponse(page, "**/api/v1/identity/users/search**", paged([]));
 
-    await gotoReportDialog(page);
+    await gotoReportPanel(page);
     await expect(page.getByText("Chief Complaint")).toBeVisible();
 
     // Open the first field's macro popover, then the create form.
@@ -317,7 +318,7 @@ test.describe("patient reports — editor", () => {
       ]),
     );
 
-    await gotoReportDialog(page);
+    await gotoReportPanel(page);
     await expect(page.getByText("Clinical Impression").first()).toBeVisible();
 
     await page.getByRole("button", { name: /import dx codes/i }).click();
@@ -328,7 +329,7 @@ test.describe("patient reports — editor", () => {
   test("signed report exposes Request Review and posts the reviewer", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, signedReport());
 
-    await gotoReportDialog(page);
+    await gotoReportPanel(page);
     await expect(page.getByText("Peer Review")).toBeVisible();
 
     // Pick a reviewer from the provider combobox.
