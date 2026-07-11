@@ -360,126 +360,27 @@ export function PatientChartDetailPage() {
   const reportsCardRef = useRef<HTMLDivElement | null>(null);
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="flex flex-col gap-3 lg:h-full">
       {/* Back link */}
       <Link
         to="/patient-charts"
-        className="inline-flex items-center gap-1.5 text-[13px] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+        className="inline-flex shrink-0 items-center gap-1.5 text-[13px] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
       >
         <ArrowLeft className="size-4" />
         Patient Chart
       </Link>
 
-      {/* Medical alerts surfaced from the problem list and patient notes */}
-      {((canViewProblems && medicalAlertProblems.length > 0) ||
-        (canViewNotes && medicalAlertNotes.length > 0)) && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-[oklch(from_var(--color-destructive)_l_c_h_/_0.3)] bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.06)] px-4 py-3">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--color-destructive)]" />
-          <div className="min-w-0">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-destructive)]">
-              Medical Alerts
-            </p>
-            <ul className="mt-0.5 space-y-0.5">
-              {medicalAlertProblems.map((p) => (
-                <li key={p.id} className="text-[13px]">
-                  <span className="font-medium">{p.diagnosticCode}</span>
-                  {p.diagnosticDescription ? ` — ${p.diagnosticDescription}` : ""}
-                </li>
-              ))}
-              {canViewNotes &&
-                medicalAlertNotes.map((n) => (
-                  <li key={n.id} className="text-[13px]">
-                    <span className="font-medium">{n.name}</span>
-                    {n.description ? ` — ${n.description}` : ""}
-                  </li>
-                ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* Chart actions — opens per-section dialogs (Problem List, Allergy, Medication,
-          Notes, Export Reports, Documents today; Outcome to follow). */}
-      <div className="flex flex-wrap items-center gap-2">
-        {canViewProblems && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
-            onClick={() => setProblemListOpen(true)}
-          >
-            <Stethoscope className="size-4" />
-            Problem List
-          </Button>
-        )}
-        {canViewAllergies && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
-            onClick={() => setAllergyListOpen(true)}
-          >
-            <Pill className="size-4" />
-            Allergy List
-          </Button>
-        )}
-        {canViewMedications && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
-            onClick={() => setMedicationListOpen(true)}
-          >
-            <Tablets className="size-4" />
-            Medication List
-          </Button>
-        )}
-        {canViewNotes && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
-            onClick={() => setNotesOpen(true)}
-          >
-            <StickyNote className="size-4" />
-            Patient Notes
-          </Button>
-        )}
-        {canViewDocuments && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
-            onClick={() => setDocumentsOpen(true)}
-          >
-            <FolderOpen className="size-4" />
-            Documents
-          </Button>
-        )}
-        {canExportReports && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
-            disabled={!activeIncident}
-            onClick={() => setExportReportsOpen(true)}
-          >
-            <FileDown className="size-4" />
-            Export Reports
-          </Button>
-        )}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
-        {/* ─── Left rail: patient info + incident shortcuts + incident list +
-            reports list (Part C: the incident list narrows into a rail; the
-            right column is the persistent report workspace) ─── */}
-        <div className="min-w-0 space-y-4">
+      <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+        {/* ─── Left rail: the Patient Info card (now also carrying the medical
+            alerts and the chart-action buttons, BackChart-style), the incident
+            shortcuts, and the reports list. On large screens the rail scrolls
+            independently of the report box on the right. ─── */}
+        <div className="min-w-0 space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           {/* Patient Info card */}
           {patientQuery.isLoading ? (
             <div className="skeleton h-64 rounded-xl" />
           ) : patient ? (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-[13px]">
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 text-[13px]">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
                   Patient Info
@@ -525,6 +426,35 @@ export function PatientChartDetailPage() {
                 </div>
               )}
 
+              {/* Medical alerts surfaced from the problem list and patient
+                  notes — BackChart carries this inside the patient card. */}
+              {((canViewProblems && medicalAlertProblems.length > 0) ||
+                (canViewNotes && medicalAlertNotes.length > 0)) && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-[oklch(from_var(--color-destructive)_l_c_h_/_0.3)] bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.06)] px-3 py-2">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-[var(--color-destructive)]" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-destructive)]">
+                      Medical Alerts
+                    </p>
+                    <ul className="mt-0.5 space-y-0.5">
+                      {medicalAlertProblems.map((p) => (
+                        <li key={p.id} className="text-[12px]">
+                          <span className="font-medium">{p.diagnosticCode}</span>
+                          {p.diagnosticDescription ? ` — ${p.diagnosticDescription}` : ""}
+                        </li>
+                      ))}
+                      {canViewNotes &&
+                        medicalAlertNotes.map((n) => (
+                          <li key={n.id} className="text-[12px]">
+                            <span className="font-medium">{n.name}</span>
+                            {n.description ? ` — ${n.description}` : ""}
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
               {/* Appointments / visit dates */}
               <div className="mt-3 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
                 <CalendarDays className="size-3.5" />
@@ -534,15 +464,94 @@ export function PatientChartDetailPage() {
                 <SidebarRow label="Last Visit" value={formatDate(patient.lastVisitDate)} />
                 <SidebarRow label="Next Visit" value={formatDate(patient.nextVisitDate)} />
               </div>
+
+              {/* Chart action shortcuts — BackChart parity: these live at the
+                  bottom of the patient card, opening their per-section dialogs. */}
+              {(canViewProblems ||
+                canViewAllergies ||
+                canViewMedications ||
+                canViewNotes ||
+                canViewDocuments ||
+                canExportReports) && (
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--color-border)] pt-3">
+                  {canViewProblems && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold"
+                      onClick={() => setProblemListOpen(true)}
+                    >
+                      <Stethoscope className="size-3.5" />
+                      Problem List
+                    </Button>
+                  )}
+                  {canViewAllergies && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold"
+                      onClick={() => setAllergyListOpen(true)}
+                    >
+                      <Pill className="size-3.5" />
+                      Allergy List
+                    </Button>
+                  )}
+                  {canViewMedications && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold"
+                      onClick={() => setMedicationListOpen(true)}
+                    >
+                      <Tablets className="size-3.5" />
+                      Medication List
+                    </Button>
+                  )}
+                  {canViewNotes && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold"
+                      onClick={() => setNotesOpen(true)}
+                    >
+                      <StickyNote className="size-3.5" />
+                      Patient Notes
+                    </Button>
+                  )}
+                  {canViewDocuments && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold"
+                      onClick={() => setDocumentsOpen(true)}
+                    >
+                      <FolderOpen className="size-3.5" />
+                      Documents
+                    </Button>
+                  )}
+                  {canExportReports && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold"
+                      disabled={!activeIncident}
+                      onClick={() => setExportReportsOpen(true)}
+                    >
+                      <FileDown className="size-3.5" />
+                      Export Reports
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-[13px] text-[var(--color-muted-foreground)]">
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 text-[13px] text-[var(--color-muted-foreground)]">
               Patient not found.
             </div>
           )}
 
           {/* Incident shortcuts card */}
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 text-[13px]">
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 text-[13px]">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
                 Incident
@@ -617,7 +626,7 @@ export function PatientChartDetailPage() {
           {canViewReports && (
             <div
               ref={reportsCardRef}
-              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3"
             >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
@@ -728,13 +737,15 @@ export function PatientChartDetailPage() {
           )}
         </div>
 
-        {/* ─── Right: persistent report workspace (Part C) — pill tab strip
-            + the active report's editor rendered INLINE (no dialog), or an
-            empty state. Switching pills / navigating never closes a report;
-            only a pill's explicit × removes it from openReportIds. ─── */}
-        <div className="min-w-0">
+        {/* ─── Right: persistent report workspace (Part C) — a self-contained
+            box whose interior is the only thing that scrolls (BackChart parity).
+            The pill tab strip stays pinned as the box header; the active
+            report's editor (rendered INLINE, no dialog) scrolls beneath it.
+            Switching pills / navigating never closes a report; only a pill's
+            explicit × removes it from openReportIds. ─── */}
+        <div className="flex min-w-0 flex-col rounded-xl border border-[var(--color-border)] lg:min-h-0 lg:h-full">
           {openReportIds.length > 0 && (
-            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--color-border)] p-3">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted-foreground)]">
                 Open reports
               </span>
@@ -772,19 +783,22 @@ export function PatientChartDetailPage() {
             </div>
           )}
 
-          {patientId && activeReportId ? (
-            <ReportEditorPanel patientId={patientId} reportId={activeReportId} />
-          ) : (
-            <div className="grid min-h-[280px] place-items-center rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] p-8 text-center">
-              <div>
-                <FileText className="mx-auto size-8 text-[var(--color-muted-foreground)]" />
-                <p className="mt-2 text-[14px] font-medium">No report open</p>
-                <p className="mt-1 text-[12px] text-[var(--color-muted-foreground)]">
-                  Select or add a report from the Patient Reports list.
-                </p>
+          {/* The only scroll region on the chart's right side. */}
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
+            {patientId && activeReportId ? (
+              <ReportEditorPanel patientId={patientId} reportId={activeReportId} />
+            ) : (
+              <div className="grid h-full min-h-[280px] place-items-center p-8 text-center">
+                <div>
+                  <FileText className="mx-auto size-8 text-[var(--color-muted-foreground)]" />
+                  <p className="mt-2 text-[14px] font-medium">No report open</p>
+                  <p className="mt-1 text-[12px] text-[var(--color-muted-foreground)]">
+                    Select or add a report from the Patient Reports list.
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
