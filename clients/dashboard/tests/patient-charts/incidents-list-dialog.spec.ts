@@ -70,9 +70,19 @@ const REPORT = {
 
 const REPORT_TYPES = [{ id: 1, name: "Initial Evaluation", displayOrder: 0, isActive: true }];
 
-async function mockChart(page: Page, incidents: unknown[]) {
+async function mockChart(page: Page, incidents: Array<Record<string, unknown>>) {
   await mockJsonResponse(page, "**/api/v1/patient/patients/" + PATIENT_ID, PATIENT);
+  // LIFO: the broad incidents glob also matches the detail URL, so the
+  // per-incident detail mocks must be registered AFTER it to win.
   await mockJsonResponse(page, "**/api/v1/patient/incidents**", paged(incidents));
+  for (const inc of incidents) {
+    await mockJsonResponse(page, `**/api/v1/patient/incidents/${inc.id}`, {
+      ...inc,
+      comments: "Lower back pain, gradual onset",
+      summaryOfCare: "Improving with therapy",
+      adherenceToPlan: 8,
+    });
+  }
   await mockJsonResponse(page, "**/api/v1/patient/reports**", paged([REPORT]));
   await mockJsonResponse(page, "**/api/v1/administration/report-types**", REPORT_TYPES);
   await mockJsonResponse(page, "**/api/v1/administration/departments**", paged([]));
@@ -119,6 +129,12 @@ test.describe("incidents dialog", () => {
     const dialog = incidentsDialog(page);
     await expect(dialog).toContainText("There are 1 incidents open for this patient.");
     await expect(dialog.getByRole("button", { name: "Select" })).toHaveCount(1);
+
+    // BackChart incident-view fields sourced from the detail DTO.
+    await expect(dialog).toContainText("Comments: Lower back pain, gradual onset");
+    await expect(dialog).toContainText("Adherence To Plan: 8");
+    await expect(dialog).toContainText("Patient Status: Active");
+    await expect(dialog).toContainText("Summary of Care: Improving with therapy");
 
     // Reports (n) expands into the incident's report rows.
     await dialog.getByRole("button", { name: "Reports (1)" }).click();

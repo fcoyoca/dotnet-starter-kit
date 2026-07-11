@@ -17,7 +17,6 @@ import {
   FileSearch,
   FileText,
   FolderOpen,
-  Lock,
   Pencil,
   Pill,
   Plus,
@@ -31,15 +30,9 @@ import { toast } from "sonner";
 import { getPatientById } from "@/api/patients";
 import {
   searchPatientIncidents,
-  closeIncident,
-  deleteIncident,
   type PatientIncidentListItemDto,
 } from "@/api/incidents";
-import {
-  listReportTypes,
-  useDepartmentOptions,
-  useIncidentTypeOptions,
-} from "@/api/administration";
+import { listReportTypes, useIncidentTypeOptions } from "@/api/administration";
 import { createReport, deleteReport, searchPatientReports } from "@/api/reports";
 import { searchPatientProblems } from "@/api/problems";
 import { searchPatientNotes } from "@/api/patient-notes";
@@ -62,16 +55,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Combobox,
-  EntityEmpty,
-  EntityFilterPill,
-  EntityListCard,
-  EntityListLoading,
-  EntityListRow,
-  EntityPageHeader,
-  EntityStatusBadge,
-} from "@/components/list";
+import { EntityStatusBadge } from "@/components/list";
 import { describe, formatDate } from "@/lib/list-helpers";
 import { cn } from "@/lib/cn";
 import { usePatientTab, usePatientWorkspace } from "@/state/patient-workspace-context";
@@ -79,7 +63,6 @@ import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
 import { DocumentsListDialog } from "@/pages/patient-charts/documents-list-dialog";
 import { ExportReportsDialog } from "@/pages/patient-charts/export-reports-dialog";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
-import { IncidentViewDialog } from "@/pages/patient-charts/incident-view-dialog";
 import { IncidentsListDialog } from "@/pages/patient-charts/incidents-list-dialog";
 import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
 import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
@@ -91,11 +74,6 @@ import {
   SelectAppointmentDialog,
   type AppointmentSelection,
 } from "@/pages/patient-charts/select-appointment-dialog";
-
-type ClosedFilter = "all" | "open" | "closed";
-
-/** Compact incident-row grid for the left rail: content column + actions. */
-const RAIL_COLS = "grid-cols-[minmax(0,1fr)_auto]";
 
 function resolveLabel(
   id: string | null | undefined,
@@ -169,15 +147,8 @@ export function PatientChartDetailPage() {
   const openReportIds = workspaceTab?.openReportIds ?? [];
   const activeReportId = workspaceTab?.activeReportId ?? null;
 
-  const [closedFilter, setClosedFilter] = useState<ClosedFilter>("all");
-  const [showDeleted, setShowDeleted] = useState(false);
-  const [transferOnly, setTransferOnly] = useState(false);
-  const [deptFilter, setDeptFilter] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
-
   const [createOpen, setCreateOpen] = useState(false);
   const [editIncidentId, setEditIncidentId] = useState<string | null>(null);
-  const [viewIncidentId, setViewIncidentId] = useState<string | null>(null);
   const [incidentsListOpen, setIncidentsListOpen] = useState(false);
   const [reportSearchOpen, setReportSearchOpen] = useState(false);
   // Report type chosen from "Add Report", pending appointment selection before creation.
@@ -185,8 +156,6 @@ export function PatientChartDetailPage() {
 
   const canCreate = user?.permissions?.includes(INCIDENT_PERMISSIONS.create) ?? false;
   const canUpdate = user?.permissions?.includes(INCIDENT_PERMISSIONS.update) ?? false;
-  const canClose = user?.permissions?.includes(INCIDENT_PERMISSIONS.close) ?? false;
-  const canDelete = user?.permissions?.includes(INCIDENT_PERMISSIONS.delete) ?? false;
 
   const canViewReports = user?.permissions?.includes(REPORT_PERMISSIONS.view) ?? false;
   const canCreateReports = user?.permissions?.includes(REPORT_PERMISSIONS.create) ?? false;
@@ -215,41 +184,14 @@ export function PatientChartDetailPage() {
     enabled: !!patientId,
   });
 
-  const isClosed = closedFilter === "all" ? null : closedFilter === "closed";
-
   const incidentsQuery = useQuery({
-    queryKey: ["incidents", patientId, closedFilter, showDeleted],
-    queryFn: () =>
-      searchPatientIncidents({
-        patientId: patientId!,
-        isClosed,
-        includeDeleted: showDeleted,
-        pageSize: 100,
-      }),
+    queryKey: ["incidents", patientId],
+    queryFn: () => searchPatientIncidents({ patientId: patientId!, pageSize: 100 }),
     enabled: !!patientId,
     placeholderData: keepPreviousData,
   });
 
-  const departmentOptions = useDepartmentOptions();
   const incidentTypeOptions = useIncidentTypeOptions();
-
-  const closeMutation = useMutation({
-    mutationFn: (id: string) => closeIncident(id),
-    onSuccess: () => {
-      toast.success("Incident closed.");
-      void queryClient.invalidateQueries({ queryKey: ["incidents", patientId] });
-    },
-    onError: (err) => toast.error("Failed to close incident.", { description: describe(err) }),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteIncident(id),
-    onSuccess: () => {
-      toast.success("Incident deleted.");
-      void queryClient.invalidateQueries({ queryKey: ["incidents", patientId] });
-    },
-    onError: (err) => toast.error("Failed to delete incident.", { description: describe(err) }),
-  });
 
   // ─── Patient reports (scoped to the active incident) ───
   const reportTypesQuery = useQuery({
@@ -368,19 +310,7 @@ export function PatientChartDetailPage() {
     openPatient(patientId, fullName || patient.patientCode);
   }, [patientId, patient, fullName, openPatient]);
 
-  const allIncidents = useMemo(() => incidentsQuery.data?.items ?? [], [incidentsQuery.data]);
-
-  // Client-side refinement (the API filters by closed/deleted; these narrow further).
-  const incidents = useMemo(
-    () =>
-      allIncidents.filter((x) => {
-        if (deptFilter && x.departmentId !== deptFilter) return false;
-        if (typeFilter && x.incidentTypeId !== typeFilter) return false;
-        if (transferOnly && !x.isTransfer) return false;
-        return true;
-      }),
-    [allIncidents, deptFilter, typeFilter, transferOnly],
-  );
+  const incidents = useMemo(() => incidentsQuery.data?.items ?? [], [incidentsQuery.data]);
 
   // Keep an active incident selected (mirrors BackChart's ActiveIncident).
   // The "which incident is active" pointer now lives in the persisted
@@ -410,7 +340,7 @@ export function PatientChartDetailPage() {
 
   // Open incidents feed the Incidents dialog (BackChart's chooser lists
   // open incidents only).
-  const openIncidents = useMemo(() => allIncidents.filter((x) => !x.isClosed), [allIncidents]);
+  const openIncidents = useMemo(() => incidents.filter((x) => !x.isClosed), [incidents]);
 
   // BackChart parity: when a patient chart first loads with more than one
   // open incident, the Incidents dialog pops up so the user picks which
@@ -536,18 +466,6 @@ export function PatientChartDetailPage() {
           >
             <FileDown className="size-4" />
             Export Reports
-          </Button>
-        )}
-        {canViewSuperBills && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 rounded-lg px-4 text-[13px] font-semibold"
-            disabled={!activeIncident}
-            onClick={() => setProceduresOpen(true)}
-          >
-            <ClipboardList className="size-4" />
-            Procedures
           </Button>
         )}
       </div>
@@ -689,180 +607,9 @@ export function PatientChartDetailPage() {
               </ul>
             ) : (
               <p className="text-[12px] text-[var(--color-muted-foreground)]">
-                No incident selected. Add one or pick a row from the list.
+                No incident selected. Add one or choose it from the Incidents dialog.
               </p>
             )}
-          </div>
-
-          {/* Incidents — compact rail list: same data, filters, and row
-              actions as the old full-width table, re-laid as two-line rows
-              for the narrow column. */}
-          <div>
-            <EntityPageHeader
-              icon={ClipboardList}
-              title="Incidents"
-              total={incidents.length}
-              unit="incident"
-              description="Clinical incidents (episodes of care) for this patient."
-            >
-              {canCreate && (
-                <Button
-                  onClick={() => setCreateOpen(true)}
-                  className="h-9 flex-1 gap-1.5 rounded-lg px-4 text-[13px] font-semibold sm:flex-none"
-                >
-                  <Plus className="size-4" />
-                  Add Incident
-                </Button>
-              )}
-            </EntityPageHeader>
-
-            {/* Filters — stacked for the rail */}
-            <div className="mt-3 space-y-2">
-              <EntityFilterPill
-                label="Status"
-                value={closedFilter}
-                onChange={(v) => setClosedFilter(v as ClosedFilter)}
-                options={[
-                  { value: "all", label: "All" },
-                  { value: "open", label: "Open" },
-                  { value: "closed", label: "Closed" },
-                ]}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Combobox
-                  id="filter-type"
-                  label="Incident type"
-                  value={typeFilter}
-                  onChange={setTypeFilter}
-                  options={incidentTypeOptions ?? []}
-                  placeholder="All types"
-                />
-                <Combobox
-                  id="filter-dept"
-                  label="Department"
-                  value={deptFilter}
-                  onChange={setDeptFilter}
-                  options={departmentOptions ?? []}
-                  placeholder="All departments"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={transferOnly}
-                    onChange={(e) => setTransferOnly(e.target.checked)}
-                    className="rounded border-[var(--color-border)]"
-                  />
-                  <span>Transfers only</span>
-                </label>
-                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showDeleted}
-                    onChange={(e) => setShowDeleted(e.target.checked)}
-                    className="rounded border-[var(--color-border)]"
-                  />
-                  <span>Show deleted</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              {incidentsQuery.isLoading && allIncidents.length === 0 ? (
-                <EntityListLoading desktopColumns={RAIL_COLS} />
-              ) : incidents.length === 0 ? (
-                <EntityEmpty
-                  icon={ClipboardList}
-                  title="No incidents"
-                  body={
-                    closedFilter !== "all" || deptFilter || typeFilter || transferOnly || showDeleted
-                      ? "No incidents match the current filters."
-                      : "No incidents have been recorded for this patient yet."
-                  }
-                  action={
-                    canCreate ? (
-                      <Button
-                        onClick={() => setCreateOpen(true)}
-                        className="h-9 rounded-lg px-4 text-[13px]"
-                      >
-                        <Plus className="mr-1.5 size-4" />
-                        Add Incident
-                      </Button>
-                    ) : undefined
-                  }
-                />
-              ) : (
-                <EntityListCard>
-                  {incidents.map((incident, i) => (
-                    <EntityListRow
-                      key={incident.id}
-                      className={`${RAIL_COLS} cursor-pointer ${
-                        incident.id === activeIncidentId ? "bg-[var(--color-accent)]" : ""
-                      }`}
-                      isLast={i === incidents.length - 1}
-                      onClick={() => patientId && setActiveIncident(patientId, incident.id)}
-                    >
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-medium">
-                          {formatDate(incident.dateOfLoss)}
-                          <span className="text-[var(--color-muted-foreground)]">
-                            {" · "}
-                            {resolveLabel(incident.incidentTypeId, incidentTypeOptions)}
-                          </span>
-                        </p>
-                        <p className="truncate text-[12px] text-[var(--color-muted-foreground)]">
-                          {resolveLabel(incident.departmentId, departmentOptions)}
-                        </p>
-                        <div className="mt-1 flex flex-wrap gap-1.5">
-                          <EntityStatusBadge tone={incident.isClosed ? "default" : "success"}>
-                            {incident.isClosed ? "Closed" : "Open"}
-                          </EntityStatusBadge>
-                          {incident.isTransfer && (
-                            <EntityStatusBadge tone="info">Transfer</EntityStatusBadge>
-                          )}
-                        </div>
-                      </div>
-                      <div
-                        className="flex items-start justify-end gap-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <IconShortcut label="View incident" onClick={() => setViewIncidentId(incident.id)}>
-                          <Eye className="size-4" />
-                        </IconShortcut>
-                        {canUpdate && (
-                          <IconShortcut
-                            label="Edit incident"
-                            onClick={() => setEditIncidentId(incident.id)}
-                          >
-                            <Pencil className="size-4" />
-                          </IconShortcut>
-                        )}
-                        {canClose && !incident.isClosed && (
-                          <IconShortcut
-                            label="Close incident"
-                            disabled={closeMutation.isPending}
-                            onClick={() => closeMutation.mutate(incident.id)}
-                          >
-                            <Lock className="size-4" />
-                          </IconShortcut>
-                        )}
-                        {canDelete && (
-                          <IconShortcut
-                            label="Delete incident"
-                            tone="destructive"
-                            disabled={deleteMutation.isPending}
-                            onClick={() => deleteMutation.mutate(incident.id)}
-                          >
-                            <Trash2 className="size-4" />
-                          </IconShortcut>
-                        )}
-                      </div>
-                    </EntityListRow>
-                  ))}
-                </EntityListCard>
-              )}
-            </div>
           </div>
 
           {/* Patient Reports (for the active incident) — Add Report + rows.
@@ -877,34 +624,48 @@ export function PatientChartDetailPage() {
                   <FileText className="size-3.5" />
                   Patient Reports
                 </h2>
-                {canCreateReports && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild disabled={!activeIncident || createReportMutation.isPending}>
-                      <Button
-                        size="sm"
-                        className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
-                        disabled={!activeIncident || createReportMutation.isPending}
-                      >
-                        <FilePlus className="size-4" />
-                        Add Report
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="max-h-[min(340px,55vh)] w-56 overflow-y-auto">
-                      <DropdownMenuLabel>Report Type</DropdownMenuLabel>
-                      {(reportTypesQuery.data ?? []).length === 0 ? (
-                        <p className="px-3 py-3 text-[12px] text-[var(--color-muted-foreground)]">
-                          No report types defined.
-                        </p>
-                      ) : (
-                        (reportTypesQuery.data ?? []).map((t) => (
-                          <DropdownMenuItem key={t.id} onSelect={() => onAddReport(t.id)}>
-                            {t.name}
-                          </DropdownMenuItem>
-                        ))
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                <div className="flex items-center gap-2">
+                  {canViewSuperBills && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
+                      disabled={!activeIncident}
+                      onClick={() => setProceduresOpen(true)}
+                    >
+                      <ClipboardList className="size-4" />
+                      Procedures
+                    </Button>
+                  )}
+                  {canCreateReports && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild disabled={!activeIncident || createReportMutation.isPending}>
+                        <Button
+                          size="sm"
+                          className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
+                          disabled={!activeIncident || createReportMutation.isPending}
+                        >
+                          <FilePlus className="size-4" />
+                          Add Report
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="max-h-[min(340px,55vh)] w-56 overflow-y-auto">
+                        <DropdownMenuLabel>Report Type</DropdownMenuLabel>
+                        {(reportTypesQuery.data ?? []).length === 0 ? (
+                          <p className="px-3 py-3 text-[12px] text-[var(--color-muted-foreground)]">
+                            No report types defined.
+                          </p>
+                        ) : (
+                          (reportTypesQuery.data ?? []).map((t) => (
+                            <DropdownMenuItem key={t.id} onSelect={() => onAddReport(t.id)}>
+                              {t.name}
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
 
               {!activeIncident ? (
@@ -1065,22 +826,6 @@ export function PatientChartDetailPage() {
           }}
         />
       )}
-
-      {/* View dialog */}
-      <IncidentViewDialog
-        incidentId={viewIncidentId}
-        open={!!viewIncidentId}
-        onClose={() => setViewIncidentId(null)}
-        onEdit={
-          canUpdate && viewIncidentId
-            ? () => {
-                const id = viewIncidentId;
-                setViewIncidentId(null);
-                setEditIncidentId(id);
-              }
-            : undefined
-        }
-      />
 
       {/* Problem List dialog (opens add/edit problem dialogs from within) */}
       {patientId && (

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, FileText } from "lucide-react";
-import type { PatientIncidentListItemDto } from "@/api/incidents";
+import { getPatientIncident, type PatientIncidentListItemDto } from "@/api/incidents";
 import {
   listCustomDiagnostics,
   listReportTypes,
@@ -95,6 +95,17 @@ export function IncidentsListDialog({ open, onClose, incidents, onSelect, onOpen
     })),
   });
 
+  // Comments / adherence / summary of care live on the incident detail DTO,
+  // not the list item, so each card fetches its detail (BackChart's incident
+  // view shows these). Keys match the chart's ["incident", incidentId].
+  const detailQueries = useQueries({
+    queries: incidents.map((incident) => ({
+      queryKey: ["incident", incident.id],
+      queryFn: () => getPatientIncident(incident.id),
+      enabled: open,
+    })),
+  });
+
   return (
     <Dialog open={open} onOpenChange={(o) => (!o ? onClose() : undefined)}>
       <DialogContent className="!max-w-2xl">
@@ -113,6 +124,7 @@ export function IncidentsListDialog({ open, onClose, incidents, onSelect, onOpen
 
           {incidents.map((incident, i) => {
             const reports = reportQueries[i]?.data?.items ?? [];
+            const detail = detailQueries[i]?.data;
             const expanded = expandedId === incident.id;
             return (
               <div
@@ -170,6 +182,27 @@ export function IncidentsListDialog({ open, onClose, incidents, onSelect, onOpen
                       </ul>
                     )}
                   </div>
+                  {/* BackChart incident-view fields, sourced from the detail DTO. */}
+                  <p className="whitespace-pre-wrap">
+                    <span className="font-semibold">Comments:</span>{" "}
+                    {detail?.comments || "—"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Adherence To Plan:</span>{" "}
+                    {detail?.adherenceToPlan ?? "—"}
+                    <br />
+                    <span className="text-[12px] text-[var(--color-muted-foreground)]">
+                      (0 = completely non-compliant, 10 = perfectly compliant)
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-semibold">Patient Status:</span>{" "}
+                    {detail?.patientStatus ?? incident.patientStatus}
+                  </p>
+                  <p className="whitespace-pre-wrap">
+                    <span className="font-semibold">Summary of Care:</span>{" "}
+                    {detail?.summaryOfCare || "—"}
+                  </p>
                 </div>
 
                 {canViewReports && (
