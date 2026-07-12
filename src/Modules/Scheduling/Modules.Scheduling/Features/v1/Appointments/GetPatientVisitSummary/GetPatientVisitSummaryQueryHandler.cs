@@ -25,7 +25,7 @@ public sealed class GetPatientVisitSummaryQueryHandler(SchedulingDbContext dbCon
         var lastVisit = await appointments
             .Where(a => a.Status == AppointmentStatus.CheckedIn || a.Status == AppointmentStatus.CheckedOut)
             .OrderByDescending(a => a.StartUtc)
-            .Select(a => new PatientVisitDto(a.Id, a.StartUtc))
+            .Select(a => new PatientVisitDto(a.Id, a.ClinicId, a.StartUtc))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -35,7 +35,7 @@ public sealed class GetPatientVisitSummaryQueryHandler(SchedulingDbContext dbCon
             .Where(a => a.Status == AppointmentStatus.Scheduled
                 && !a.Cancelled && !a.NoShow && a.StartUtc >= now)
             .OrderBy(a => a.StartUtc)
-            .Select(a => new PatientVisitDto(a.Id, a.StartUtc))
+            .Select(a => new PatientVisitDto(a.Id, a.ClinicId, a.StartUtc))
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 

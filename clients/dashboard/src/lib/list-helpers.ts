@@ -35,6 +35,26 @@ export function formatDateTime(iso: string | null | undefined) {
   return `${dateLong.format(new Date(iso))} · ${timeShort.format(new Date(iso))}`;
 }
 
+// "Apr 30, 2026 · 3:42 PM" rendered in a specific IANA timezone (e.g. the owning
+// clinic's) rather than the browser's. Use for schedule-derived instants so a
+// UTC time reads as the same clinic wall-clock for every viewer, wherever they are.
+export function formatDateTimeInTz(iso: string | null | undefined, timeZone: string) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const date = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(d);
+  const time = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
+  return `${date} · ${time}`;
+}
+
 // "3d ago", "2mo ago" — terse relative time for the secondary line.
 export function formatRelative(iso: string | null | undefined) {
   if (!iso) return "";

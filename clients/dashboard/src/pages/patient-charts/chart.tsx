@@ -33,7 +33,7 @@ import {
   searchPatientIncidents,
   type PatientIncidentListItemDto,
 } from "@/api/incidents";
-import { listReportTypes, useIncidentTypeOptions } from "@/api/administration";
+import { listReportTypes, useClinicTimeZones, useIncidentTypeOptions } from "@/api/administration";
 import { createReport, deleteReport, searchPatientReports } from "@/api/reports";
 import { searchPatientProblems } from "@/api/problems";
 import { searchPatientNotes } from "@/api/patient-notes";
@@ -57,7 +57,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EntityStatusBadge } from "@/components/list";
-import { describe, formatDate, formatDateTime } from "@/lib/list-helpers";
+import { describe, formatDate, formatDateTimeInTz } from "@/lib/list-helpers";
 import { cn } from "@/lib/cn";
 import { usePatientTab, usePatientWorkspace } from "@/state/patient-workspace-context";
 import { PatientTabStrip } from "@/components/layout/patient-tab-strip";
@@ -103,12 +103,17 @@ function ageFromDob(dob: string | null | undefined): string {
  */
 function VisitDateLink({
   appt,
+  clinicTimeZones,
   onOpen,
 }: {
   appt: PatientVisitRefDto | null | undefined;
+  clinicTimeZones: Map<string, string>;
   onOpen(appointmentId: string): void;
 }) {
   if (!appt) return <>—</>;
+  // Render the UTC instant in the owning clinic's timezone (matches the scheduler);
+  // fall back to UTC until the clinics list has loaded / if the clinic is unknown.
+  const timeZone = clinicTimeZones.get(appt.clinicId) ?? "UTC";
   return (
     <button
       type="button"
@@ -116,7 +121,7 @@ function VisitDateLink({
       onClick={() => onOpen(appt.appointmentId)}
       className="text-[var(--color-primary)] underline-offset-2 hover:underline"
     >
-      {formatDateTime(appt.startUtc)}
+      {formatDateTimeInTz(appt.startUtc, timeZone)}
     </button>
   );
 }
@@ -171,6 +176,8 @@ export function PatientChartDetailPage() {
   const { openPatient, setActiveIncident, openReport, closeReport, setActiveReport } =
     usePatientWorkspace();
   const workspaceTab = usePatientTab(patientId);
+  // clinicId → IANA tz, so the Last/Next visit rows render in the owning clinic's zone.
+  const clinicTimeZones = useClinicTimeZones();
   const activeIncidentId = workspaceTab?.activeIncidentId ?? null;
   const openReportIds = workspaceTab?.openReportIds ?? [];
   const activeReportId = workspaceTab?.activeReportId ?? null;
@@ -519,11 +526,11 @@ export function PatientChartDetailPage() {
               <div className="mt-1.5 space-y-1.5">
                 <SidebarRow
                   label="Last Visit"
-                  value={<VisitDateLink appt={patient.lastVisitAppointment} onOpen={openAppointment} />}
+                  value={<VisitDateLink appt={patient.lastVisitAppointment} clinicTimeZones={clinicTimeZones} onOpen={openAppointment} />}
                 />
                 <SidebarRow
                   label="Next Visit"
-                  value={<VisitDateLink appt={patient.nextVisitAppointment} onOpen={openAppointment} />}
+                  value={<VisitDateLink appt={patient.nextVisitAppointment} clinicTimeZones={clinicTimeZones} onOpen={openAppointment} />}
                 />
               </div>
 

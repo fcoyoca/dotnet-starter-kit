@@ -111,8 +111,8 @@ public sealed class GetPatientByIdQueryHandler(
             patient.ReceivesEmailReminders,
             patient.LastVisitDate,
             patient.NextVisitDate,
-            visits.LastVisit is null ? null : new PatientVisitRefDto(visits.LastVisit.AppointmentId, visits.LastVisit.StartUtc),
-            visits.NextVisit is null ? null : new PatientVisitRefDto(visits.NextVisit.AppointmentId, visits.NextVisit.StartUtc));
+            visits.LastVisit is null ? null : new PatientVisitRefDto(visits.LastVisit.AppointmentId, visits.LastVisit.ClinicId, visits.LastVisit.StartUtc),
+            visits.NextVisit is null ? null : new PatientVisitRefDto(visits.NextVisit.AppointmentId, visits.NextVisit.ClinicId, visits.NextVisit.StartUtc));
     }
 
     private static string? MaskSsn(string? ssn)

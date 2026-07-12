@@ -24,8 +24,9 @@ public sealed record PatientDetailDto(
     PatientVisitRefDto? LastVisitAppointment,
     PatientVisitRefDto? NextVisitAppointment);
 
-/// <summary>A visit derived from the schedule: the appointment behind it and its UTC start.</summary>
-public sealed record PatientVisitRefDto(Guid AppointmentId, DateTime StartUtc);
+/// <summary>A visit derived from the schedule: the appointment behind it, the owning clinic
+/// (whose timezone the dashboard renders the start in), and its UTC start.</summary>
+public sealed record PatientVisitRefDto(Guid AppointmentId, Guid ClinicId, DateTime StartUtc);
 
 public sealed record PatientDemographicsDto(
     string FirstName,

@@ -166,6 +166,8 @@ export type PatientDetailDto = {
 
 export type PatientVisitRefDto = {
   appointmentId: string;
+  // Owning clinic — the dashboard renders `startUtc` in this clinic's timezone.
+  clinicId: string;
   startUtc: string;
 };
 

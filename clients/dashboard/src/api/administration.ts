@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api-client";
 import type { ComboboxOption } from "@/components/list";
@@ -216,6 +217,23 @@ export function useClinicOptions(): ComboboxOption[] | undefined {
     staleTime: 5 * 60 * 1000,
   });
   return data ? data.items.map((c) => ({ value: c.id, label: c.name })) : undefined;
+}
+
+/**
+ * Map of clinicId → IANA timeZoneId for active clinics. Lets callers render a
+ * schedule-derived UTC instant in its owning clinic's timezone (the scheduler
+ * does the same, keyed on the selected clinic). Returns an empty map until loaded.
+ */
+export function useClinicTimeZones(): Map<string, string> {
+  const { data } = useQuery({
+    queryKey: ["administration.clinicOptions"],
+    queryFn: () => listClinics({ isActive: true, pageSize: 200, sortBy: "name", sortDir: "asc" }),
+    staleTime: 5 * 60 * 1000,
+  });
+  return useMemo(
+    () => new Map((data?.items ?? []).map((c) => [c.id, c.timeZoneId])),
+    [data],
+  );
 }
 
 // ─── Departments (tenant-scoped CRUD) ──────────────────────────────────
