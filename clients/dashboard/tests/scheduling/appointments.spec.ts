@@ -177,4 +177,35 @@ test.describe("scheduling/appointments", () => {
     await expect(dialog.getByRole("button", { name: /no-show/i })).toBeVisible();
     await expect(dialog.getByRole("button", { name: /delete/i })).toBeVisible();
   });
+
+  test("editing an existing appointment hides the Reserve time toggle", async ({ page }) => {
+    await mockScheduling(page);
+    await page.goto("/scheduling/appointments");
+
+    await page.getByText("Annual checkup").click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: /edit appointment/i })).toBeVisible();
+    // Reserve time is a create-time choice — a booked appointment can't become a reservation.
+    await expect(dialog.getByRole("switch", { name: /reserve time/i })).toHaveCount(0);
+  });
+
+  test("editing an existing reservation still shows the Reserve time toggle", async ({ page }) => {
+    const reservation = {
+      ...APPOINTMENT,
+      id: "00000000-0000-0000-0000-00000000e444",
+      notes: null,
+      isReservation: true,
+      reservationTitle: "Lunch break",
+    };
+    await mockScheduling(page, { appointments: [reservation] });
+    await page.goto("/scheduling/appointments");
+
+    await page.getByText("Lunch break").click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: /edit appointment/i })).toBeVisible();
+    // An existing reservation keeps the toggle so it can be turned back into an appointment.
+    await expect(dialog.getByRole("switch", { name: /reserve time/i })).toBeVisible();
+  });
 });

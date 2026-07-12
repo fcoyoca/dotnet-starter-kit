@@ -867,7 +867,10 @@ function AppointmentDialog({
               </Button>
             )}
 
-            {!rescheduling && !readOnly && (
+            {/* Reserve time is a create-time choice. In edit mode only an existing
+                reservation still shows the toggle (so it can be turned off) — a booked
+                patient appointment can no longer be converted into a reservation. */}
+            {!rescheduling && !readOnly && (!editing || editing.isReservation) && (
               <div className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2.5">
                 <div>
                   <p className="text-[13px] font-medium text-[var(--color-foreground)]">Reserve time</p>
