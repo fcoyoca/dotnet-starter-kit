@@ -153,6 +153,40 @@ test.describe("scheduling/appointments", () => {
     await expect(dialog.getByRole("button", { name: /search for patient/i })).toBeVisible();
   });
 
+  test("New appointment pre-fills the active patient tab", async ({ page }) => {
+    const activePatientId = "00000000-0000-0000-0000-0000000000b2";
+    // Seed the persistent workspace so a patient tab is "active" on load.
+    await page.addInitScript(
+      ([key, patientId]) => {
+        window.sessionStorage.setItem(
+          key,
+          JSON.stringify({
+            openTabs: [
+              {
+                patientId,
+                patientLabel: "Roe, Rick",
+                activeIncidentId: null,
+                openReportIds: [],
+                activeReportId: null,
+              },
+            ],
+            activePatientId: patientId,
+          }),
+        );
+      },
+      ["fsh.dashboard.patientWorkspace.v1", activePatientId],
+    );
+    await mockScheduling(page);
+    await page.goto("/scheduling/appointments");
+    await page.getByRole("button", { name: /new appointment/i }).click();
+
+    const dialog = page.getByRole("dialog");
+    // Pre-filled: the active patient shows as a chip with Change — not the empty button.
+    await expect(dialog.getByText("Roe, Rick")).toBeVisible();
+    await expect(dialog.getByRole("button", { name: /^change$/i })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: /search for patient/i })).toHaveCount(0);
+  });
+
   test("New appointment: searching and picking a patient collapses to a name + Change", async ({ page }) => {
     const patient = {
       id: "00000000-0000-0000-0000-0000000000a1",

@@ -42,6 +42,7 @@ import {
 } from "@/api/administration";
 import { getPatientById } from "@/api/patients";
 import { useRealtimeEvent } from "@/realtime/realtime-context";
+import { useActivePatientTab } from "@/state/patient-workspace-context";
 import { PatientPicker, patientLabel } from "@/components/scheduling/patient-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -290,6 +291,7 @@ function EventLabel({ event }: { event: CalEvent }) {
 
 export function AppointmentsPage() {
   const queryClient = useQueryClient();
+  const activePatientTab = useActivePatientTab();
 
   const { data: clinicsPage } = useQuery({
     queryKey: ["scheduling.clinics"],
@@ -509,6 +511,8 @@ export function AppointmentsPage() {
               ymd: localYmd(date),
               startTime: "09:00",
               endTime: "09:30",
+              patientId: activePatientTab?.patientId ?? null,
+              patientLabel: activePatientTab?.patientLabel ?? null,
             })
           }
         >
@@ -610,6 +614,8 @@ export function AppointmentsPage() {
                 ymd: localYmd(start),
                 startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
                 endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+                patientId: activePatientTab?.patientId ?? null,
+                patientLabel: activePatientTab?.patientLabel ?? null,
               });
             }}
             onSelectEvent={(event) => setDialog({ mode: "edit", appointment: event.appt })}
