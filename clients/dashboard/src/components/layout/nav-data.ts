@@ -33,7 +33,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { ALL_TRASH_PERMISSIONS } from "@/lib/trash-permissions";
-import { INCIDENT_PERMISSIONS } from "@/lib/patient-permissions";
+import { INCIDENT_PERMISSIONS, PATIENT_PERMISSIONS } from "@/lib/patient-permissions";
 
 export type NavSpec = {
   to: string;
@@ -200,6 +200,12 @@ export const administrationHubItems: NavSpec[] = [
     icon: Stethoscope,
     perm: "Permissions.Administration.Providers.View",
   },
+  {
+    to: "/administration/schedule",
+    label: "Schedule",
+    icon: CalendarClock,
+    perm: "Permissions.Administration.ScheduleConfig.View",
+  },
 ];
 
 /** Any one of these grants the sidebar's single "Administration" entry —
@@ -216,40 +222,51 @@ export const sections: NavSection[] = [
     caption: "Patients",
     icon: Stethoscope,
     items: [
-      { to: "/patient-charts", label: "Patient Chart", icon: ClipboardList, perm: INCIDENT_PERMISSIONS.view },
-    ],
-  },
-  {
-    id: "scheduling",
-    caption: "Scheduling",
-    icon: CalendarClock,
-    items: [
+      {
+        to: "/patient-charts",
+        label: "Charts",
+        icon: ClipboardList,
+        perm: PATIENT_PERMISSIONS.view
+      },
       {
         to: "/scheduling/appointments",
         label: "Appointments",
         icon: CalendarClock,
         perm: "Permissions.Scheduling.Appointments.View",
-      },
+      }
     ],
   },
-  {
-    // Clinic reference data (formerly "Administration"). Tenant-level
-    // configuration (Email Settings, Schedule) lives in the Settings
-    // section below instead. Collapsed to a single hub link — the 17
-    // section-level permission checks now gate which hub CARDS render
-    // (see pages/administration/hub.tsx) instead of gating nav items.
-    id: "administration",
-    caption: "Clinic Setup",
-    icon: Building2,
-    items: [
-      {
-        to: "/administration",
-        label: "Administration",
-        icon: Building2,
-        anyPerm: ALL_ADMINISTRATION_PERMISSIONS,
-      },
-    ],
-  },
+  // {
+  //   id: "scheduling",
+  //   caption: "Scheduling",
+  //   icon: CalendarClock,
+  //   items: [
+  //     {
+  //       to: "/scheduling/appointments",
+  //       label: "Appointments",
+  //       icon: CalendarClock,
+  //       perm: "Permissions.Scheduling.Appointments.View",
+  //     },
+  //   ],
+  // },
+  // {
+  //   // Clinic reference data (formerly "Administration"). Tenant-level
+  //   // configuration (Email Settings, Schedule) lives in the Settings
+  //   // section below instead. Collapsed to a single hub link — the 17
+  //   // section-level permission checks now gate which hub CARDS render
+  //   // (see pages/administration/hub.tsx) instead of gating nav items.
+  //   id: "administration",
+  //   caption: "Clinic Setup",
+  //   icon: Building2,
+  //   items: [
+  //     {
+  //       to: "/administration",
+  //       label: "Administration",
+  //       icon: Building2,
+  //       anyPerm: ALL_ADMINISTRATION_PERMISSIONS,
+  //     },
+  //   ],
+  // },
   {
     id: "helpdesk",
     caption: "Helpdesk",
@@ -258,6 +275,38 @@ export const sections: NavSection[] = [
       { to: "/tickets", label: "Tickets", icon: Ticket, perm: "Permissions.Tickets.View" },
     ],
   },
+  {
+    id: "operations",
+    caption: "Operations",
+    icon: Activity,
+    items: [
+      { to: "/invoices", label: "Invoices", icon: Receipt, perm: "Permissions.Billing.View" },
+      // Live activity is SSE-backed; the stream is auth-only (no permission), so no gate.
+      { to: "/activity", label: "Live activity", icon: Activity },
+      { to: "/subscription", label: "Subscription", icon: CreditCard, perm: "Permissions.Billing.View" },
+    ],
+  },
+  // {
+  //   // Tenant-level configuration. Distinct from the account-scoped
+  //   // /settings page pinned at the bottom of the sidebar (topNavBottom).
+  //   id: "settings",
+  //   caption: "Settings",
+  //   icon: Settings,
+  //   items: [
+  //     {
+  //       to: "/administration/email-settings",
+  //       label: "Email Settings",
+  //       icon: Mail,
+  //       perm: "Permissions.Administration.EmailSettings.View",
+  //     },
+  //     {
+  //       to: "/administration/schedule",
+  //       label: "Schedule",
+  //       icon: CalendarClock,
+  //       perm: "Permissions.Administration.ScheduleConfig.View",
+  //     },
+  //   ],
+  // },
   {
     id: "identity",
     caption: "Identity",
@@ -272,23 +321,20 @@ export const sections: NavSection[] = [
     ],
   },
   {
-    id: "operations",
-    caption: "Operations",
-    icon: Activity,
+    id: "system",
+    caption: "System",
+    icon: HeartPulse,
     items: [
-      { to: "/invoices", label: "Invoices", icon: Receipt, perm: "Permissions.Billing.View" },
-      // Live activity is SSE-backed; the stream is auth-only (no permission), so no gate.
-      { to: "/activity", label: "Live activity", icon: Activity },
-      { to: "/subscription", label: "Subscription", icon: CreditCard, perm: "Permissions.Billing.View" },
-    ],
-  },
-  {
-    // Tenant-level configuration. Distinct from the account-scoped
-    // /settings page pinned at the bottom of the sidebar (topNavBottom).
-    id: "settings",
-    caption: "Settings",
-    icon: Settings,
-    items: [
+      {
+        to: "/administration",
+        label: "Administration",
+        icon: Building2,
+        anyPerm: ALL_ADMINISTRATION_PERMISSIONS,
+      },
+      { to: "/system/audits", label: "Audit trail", icon: ScrollText, perm: "Permissions.AuditTrails.View" },
+      // Health hits the anonymous /health/ready probe — visible to everyone.
+      { to: "/system/health", label: "Health", icon: HeartPulse },
+      { to: "/system/sessions", label: "Sessions", icon: Wifi, perm: "Permissions.Sessions.ViewAll" },
       {
         to: "/administration/email-settings",
         label: "Email Settings",
@@ -301,17 +347,6 @@ export const sections: NavSection[] = [
         icon: CalendarClock,
         perm: "Permissions.Administration.ScheduleConfig.View",
       },
-    ],
-  },
-  {
-    id: "system",
-    caption: "System",
-    icon: HeartPulse,
-    items: [
-      { to: "/system/audits", label: "Audit trail", icon: ScrollText, perm: "Permissions.AuditTrails.View" },
-      // Health hits the anonymous /health/ready probe — visible to everyone.
-      { to: "/system/health", label: "Health", icon: HeartPulse },
-      { to: "/system/sessions", label: "Sessions", icon: Wifi, perm: "Permissions.Sessions.ViewAll" },
       // Trash fronts five tabs, each gated on a different resource's restore /
       // view-trash permission. Show the entry if the user can reach any tab; the
       // page hides the individual tabs they can't (see trash-permissions.ts).
