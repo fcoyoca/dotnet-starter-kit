@@ -4,9 +4,9 @@ import { closeAndPickFallback, usePatientWorkspace } from "@/state/patient-works
 import { cn } from "@/lib/cn";
 
 /**
- * Horizontal strip of open patient tabs — rendered under the Topbar in
- * AppShell (above the routed <Outlet/>), so it survives every route
- * change. Renders nothing when no patient tab is open.
+ * Horizontal strip of open patient tabs — rendered inside the patient chart
+ * page (under the "Patient Chart" back link), so it only appears while the
+ * user is working in a chart. Renders nothing when no patient tab is open.
  */
 export function PatientTabStrip() {
   const { openTabs, activePatientId, setActivePatient, closePatient } = usePatientWorkspace();
@@ -41,7 +41,7 @@ export function PatientTabStrip() {
       role="tablist"
       aria-label="Open patient charts"
       className={cn(
-        "flex h-9 shrink-0 items-center gap-1 overflow-x-auto border-b border-[var(--color-border)]",
+        "flex h-9 shrink-0 items-center gap-1 overflow-x-auto rounded-lg border border-[var(--color-border)]",
         "bg-[var(--color-muted)] px-2",
       )}
     >

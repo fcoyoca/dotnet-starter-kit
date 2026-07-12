@@ -364,7 +364,7 @@ function DiagnosticCategoryEditorDialog({ state, onClose }: { state: EditorState
                 id="dx-cat-name"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Cardiology"
+                placeholder="Medicaid Diagnosis"
                 autoFocus
                 required
                 maxLength={200}

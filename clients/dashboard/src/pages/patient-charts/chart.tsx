@@ -59,6 +59,7 @@ import { EntityStatusBadge } from "@/components/list";
 import { describe, formatDate } from "@/lib/list-helpers";
 import { cn } from "@/lib/cn";
 import { usePatientTab, usePatientWorkspace } from "@/state/patient-workspace-context";
+import { PatientTabStrip } from "@/components/layout/patient-tab-strip";
 import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
 import { DocumentsListDialog } from "@/pages/patient-charts/documents-list-dialog";
 import { ExportReportsDialog } from "@/pages/patient-charts/export-reports-dialog";
@@ -369,6 +370,10 @@ export function PatientChartDetailPage() {
         <ArrowLeft className="size-4" />
         Patient Chart
       </Link>
+
+      {/* Open patient-chart tabs — scoped to the chart page (they used to live
+          in the global AppShell and followed the user onto every route). */}
+      <PatientTabStrip />
 
       <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
         {/* ─── Left rail: the Patient Info card (now also carrying the medical

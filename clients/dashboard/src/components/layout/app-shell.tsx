@@ -1,7 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import { PatientTabStrip } from "@/components/layout/patient-tab-strip";
 import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 import { ExpiryBanner } from "@/components/layout/expiry-banner";
 import {
@@ -48,7 +47,6 @@ export function AppShell() {
             <Sidebar />
             <div className="flex min-w-0 flex-1 flex-col">
               <Topbar />
-              <PatientTabStrip />
               <main
                 id="main"
                 tabIndex={-1}

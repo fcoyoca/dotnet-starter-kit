@@ -52,7 +52,11 @@ export const DialogContent = React.forwardRef<
       ref={ref}
       data-slot="dialog-content"
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2",
+        "fixed left-1/2 top-1/2 z-50 flex w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col",
+        // Cap the height to the viewport and scroll internally so long content
+        // never pushes the header/footer (or the close button) off-screen —
+        // DialogHeader/DialogFooter stay pinned via `sticky`, the body scrolls.
+        "max-h-[calc(100dvh-2rem)] overflow-y-auto",
         "rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]",
         "shadow-xl outline-none sm:max-w-lg",
         "data-[state=open]:animate-fsh-dialog-in data-[state=closed]:animate-fsh-dialog-out",
@@ -60,20 +64,25 @@ export const DialogContent = React.forwardRef<
       )}
       {...props}
     >
+      {/* Pinned close — a zero-height sticky layer keeps the X anchored to the
+          top-right of the scroll viewport, so it stays reachable no matter how
+          far the body scrolls. */}
+      <div className="pointer-events-none sticky top-0 z-20 h-0">
+        <DialogPrimitive.Close
+          data-slot="dialog-close"
+          aria-label="Close"
+          className={cn(
+            "pointer-events-auto absolute top-3.5 right-3.5 size-9 rounded-lg flex items-center justify-center",
+            "text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.6)] hover:text-[var(--color-foreground)]",
+            "hover:bg-[var(--color-accent)] transition-colors cursor-pointer outline-none",
+            "focus-visible:border-[var(--color-ring)] focus-visible:ring-[3px] focus-visible:ring-[oklch(from_var(--color-ring)_l_c_h_/_0.5)]",
+            "[&_svg]:pointer-events-none [&_svg]:shrink-0",
+          )}
+        >
+          <X className="size-4" />
+        </DialogPrimitive.Close>
+      </div>
       {children}
-      <DialogPrimitive.Close
-        data-slot="dialog-close"
-        aria-label="Close"
-        className={cn(
-          "absolute top-3.5 right-3.5 size-9 rounded-lg flex items-center justify-center",
-          "text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.6)] hover:text-[var(--color-foreground)]",
-          "hover:bg-[var(--color-accent)] transition-colors cursor-pointer outline-none",
-          "focus-visible:border-[var(--color-ring)] focus-visible:ring-[3px] focus-visible:ring-[oklch(from_var(--color-ring)_l_c_h_/_0.5)]",
-          "[&_svg]:pointer-events-none [&_svg]:shrink-0",
-        )}
-      >
-        <X className="size-4" />
-      </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
 ));
@@ -82,7 +91,12 @@ DialogContent.displayName = "DialogContent";
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex flex-col gap-1.5 px-6 pb-3 pt-6 text-left", className)}
+      className={cn(
+        // `sticky` keeps the title/description pinned to the top of the
+        // scroll viewport when the body is taller than the dialog.
+        "sticky top-0 z-10 flex flex-col gap-1.5 bg-[var(--color-card)] px-6 pb-3 pt-6 text-left",
+        className,
+      )}
       {...props}
     />
   );
@@ -92,7 +106,9 @@ export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLD
   return (
     <div
       className={cn(
-        "flex flex-col-reverse gap-2 border-t border-[var(--color-border)] px-6 py-4",
+        // `sticky` keeps the actions pinned to the bottom of the scroll
+        // viewport so the buttons stay visible with long dialog bodies.
+        "sticky bottom-0 z-10 flex flex-col-reverse gap-2 border-t border-[var(--color-border)] bg-[var(--color-card)] px-6 py-4",
         "sm:flex-row sm:justify-end",
         className,
       )}

@@ -533,7 +533,7 @@ function RxNavImportDialog({ open, onClose }: { open: boolean; onClose(): void }
           {results.length > 0 && (
             <ul className="max-h-72 divide-y divide-[var(--color-border)] overflow-y-auto rounded-lg border border-[var(--color-border)]">
               {results.map((d) => (
-                <li key={d.rxCui} className="flex items-center gap-2 px-3 py-2">
+                <li key={d.rxCui} className="flex items-start gap-2 px-3 py-2">
                   <input
                     type="checkbox"
                     checked={!!selected[d.rxCui]}
@@ -545,10 +545,12 @@ function RxNavImportDialog({ open, onClose }: { open: boolean; onClose(): void }
                         return next;
                       })
                     }
-                    className="rounded border-[var(--color-border)]"
+                    className="mt-0.5 rounded border-[var(--color-border)]"
                   />
                   <div className="min-w-0">
-                    <p className="truncate text-[13px]">{d.name}</p>
+                    {/* Wrap, don't truncate — RxNorm concept names (e.g. multi-component
+                        vaccines) routinely run several lines long. */}
+                    <p className="break-words text-[13px]">{d.name}</p>
                     <p className="text-[12px] text-[var(--color-muted-foreground)]">
                       RxCUI {d.rxCui}
                       {d.tty ? ` · ${d.tty}` : ""}
