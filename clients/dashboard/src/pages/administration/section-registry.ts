@@ -32,6 +32,10 @@ export const ADMIN_SECTION_COMPONENTS: Record<string, LazyExoticComponent<Compon
   ),
   diagnostics: lazyNamed(() => import("@/pages/administration/diagnostics"), "DiagnosticsPage"),
   drugs: lazyNamed(() => import("@/pages/administration/drugs"), "DrugsPage"),
+  "email-settings": lazyNamed(
+    () => import("@/pages/administration/email-settings"),
+    "EmailSettingsPage",
+  ),
   "incident-types": lazyNamed(
     () => import("@/pages/administration/incident-types"),
     "IncidentTypesPage",
@@ -62,6 +66,7 @@ export const ADMIN_SECTION_COMPONENTS: Record<string, LazyExoticComponent<Compon
     "ProcedureCodesPage",
   ),
   providers: lazyNamed(() => import("@/pages/administration/providers"), "ProvidersPage"),
+  schedule: lazyNamed(() => import("@/pages/administration/schedule"), "SchedulePage"),
 };
 
 export type AdminHubSection = {
@@ -71,10 +76,10 @@ export type AdminHubSection = {
   perm?: string;
 };
 
-/** The 17 Administration hub entries, derived from nav-data.ts's
+/** The Administration hub entries, derived from nav-data.ts's
  *  `administrationHubItems` (single source of truth for labels/icons/
- *  permission strings — Email Settings and Schedule live in the Settings
- *  section, not here, and are unaffected by this feature). */
+ *  permission strings). The tenant-config pages Email Settings and Schedule
+ *  are hub sections too — no Administration page lives outside the hub. */
 export const ADMIN_HUB_SECTIONS: AdminHubSection[] = administrationHubItems.map((item) => ({
   slug: item.to.replace("/administration/", ""),
   label: item.label,

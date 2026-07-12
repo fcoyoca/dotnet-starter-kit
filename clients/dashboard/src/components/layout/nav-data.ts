@@ -147,6 +147,12 @@ export const administrationHubItems: NavSpec[] = [
     perm: "Permissions.Administration.Drugs.View",
   },
   {
+    to: "/administration/email-settings",
+    label: "Email Settings",
+    icon: Mail,
+    perm: "Permissions.Administration.EmailSettings.View",
+  },
+  {
     to: "/administration/incident-types",
     label: "Incident Types",
     icon: AlertTriangle,
@@ -335,18 +341,9 @@ export const sections: NavSection[] = [
       // Health hits the anonymous /health/ready probe — visible to everyone.
       { to: "/system/health", label: "Health", icon: HeartPulse },
       { to: "/system/sessions", label: "Sessions", icon: Wifi, perm: "Permissions.Sessions.ViewAll" },
-      {
-        to: "/administration/email-settings",
-        label: "Email Settings",
-        icon: Mail,
-        perm: "Permissions.Administration.EmailSettings.View",
-      },
-      {
-        to: "/administration/schedule",
-        label: "Schedule",
-        icon: CalendarClock,
-        perm: "Permissions.Administration.ScheduleConfig.View",
-      },
+      // Email Settings and Schedule are NOT listed here — both live inside the
+      // Administration hub (see administrationHubItems above), reached via the
+      // "Administration" entry at the top of this section.
       // Trash fronts five tabs, each gated on a different resource's restore /
       // view-trash permission. Show the entry if the user can reach any tab; the
       // page hides the individual tabs they can't (see trash-permissions.ts).

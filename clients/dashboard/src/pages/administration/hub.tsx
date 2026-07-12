@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
 
 /**
  * Pure content component: the Administration header + permission-gated
- * 17-card grid, rendered inside the global AdministrationDialogRoot.
+ * card grid, rendered inside the global AdministrationDialogRoot.
  * No routing hooks — a card click switches the dialog's view.
  */
 export function AdministrationHubGrid({
