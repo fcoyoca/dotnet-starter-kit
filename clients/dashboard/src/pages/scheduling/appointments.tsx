@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, dateFnsLocalizer, type View } from "react-big-calendar";
 import { format } from "date-fns/format";
@@ -10,7 +10,7 @@ import { endOfWeek } from "date-fns/endOfWeek";
 import { getDay } from "date-fns/getDay";
 import { enUS } from "date-fns/locale/en-US";
 import { CalendarClock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import {
@@ -22,6 +22,7 @@ import {
   createRecurringReservation,
   deleteAppointment,
   deleteReservationSeries,
+  getAppointment,
   noShowAppointment,
   listAppointments,
   rescheduleAppointment,
@@ -39,6 +40,7 @@ import {
   type ClinicDto,
   type ProviderDto,
 } from "@/api/administration";
+import { getPatientById } from "@/api/patients";
 import { useRealtimeEvent } from "@/realtime/realtime-context";
 import { PatientPicker, patientLabel } from "@/components/scheduling/patient-picker";
 import { Button } from "@/components/ui/button";
@@ -405,10 +407,64 @@ export function AppointmentsPage() {
   const step = config?.intervalMinutes ?? 30;
 
   const [dialog, setDialog] = useState<
-    | { mode: "create"; providerId: string; ymd: string; startTime: string; endTime: string }
+    | {
+        mode: "create";
+        providerId: string;
+        ymd: string;
+        startTime: string;
+        endTime: string;
+        patientId?: string | null;
+        patientLabel?: string | null;
+      }
     | { mode: "edit"; appointment: AppointmentDto }
     | null
   >(null);
+
+  // A patient chart can open the scheduler with the patient carried in router
+  // state (BackChart parity: the chart's "Schedule appointment" pre-seeds a New
+  // appointment). Consume it once providers are loaded — so the create dialog's
+  // provider select has a valid default — then clear the state so a refresh or
+  // back-navigation doesn't reopen the dialog.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const chartPatientConsumedRef = useRef(false);
+  useEffect(() => {
+    const state = location.state as
+      | { newApptPatientId?: string; newApptPatientLabel?: string | null }
+      | null;
+    if (!state?.newApptPatientId || chartPatientConsumedRef.current) return;
+    if (providers.length === 0) return;
+    chartPatientConsumedRef.current = true;
+    setDialog({
+      mode: "create",
+      providerId: activeProviderIds[0] ?? providers[0]?.id ?? "",
+      ymd: localYmd(date),
+      startTime: "09:00",
+      endTime: "09:30",
+      patientId: state.newApptPatientId,
+      patientLabel: state.newApptPatientLabel ?? null,
+    });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location, providers, activeProviderIds, date, navigate]);
+
+  // The chart's Last/Next visit links carry an appointment id to open directly.
+  // Fetch it, point the calendar at its clinic + day, and open the edit dialog.
+  const openAppointmentId =
+    (location.state as { openAppointmentId?: string } | null)?.openAppointmentId ?? null;
+  const openAppointmentConsumedRef = useRef(false);
+  const { data: appointmentToOpen } = useQuery({
+    queryKey: ["scheduling.appointment", openAppointmentId],
+    queryFn: () => getAppointment(openAppointmentId!),
+    enabled: Boolean(openAppointmentId) && !openAppointmentConsumedRef.current,
+  });
+  useEffect(() => {
+    if (!openAppointmentId || openAppointmentConsumedRef.current || !appointmentToOpen) return;
+    openAppointmentConsumedRef.current = true;
+    setClinicId(appointmentToOpen.clinicId);
+    setDate(new Date(appointmentToOpen.startUtc));
+    setDialog({ mode: "edit", appointment: appointmentToOpen });
+    navigate(location.pathname, { replace: true, state: null });
+  }, [openAppointmentId, appointmentToOpen, navigate, location.pathname]);
 
   const toggleProvider = (id: string) =>
     setSelectedProviders((prev) => {
@@ -562,7 +618,15 @@ export function AppointmentsPage() {
 // ─── create / edit dialog ───────────────────────────────────────────────
 
 type DialogState =
-  | { mode: "create"; providerId: string; ymd: string; startTime: string; endTime: string }
+  | {
+      mode: "create";
+      providerId: string;
+      ymd: string;
+      startTime: string;
+      endTime: string;
+      patientId?: string | null;
+      patientLabel?: string | null;
+    }
   | { mode: "edit"; appointment: AppointmentDto };
 
 function AppointmentDialog({
@@ -590,10 +654,25 @@ function AppointmentDialog({
   const ymd = editing ? ymdInTz(editing.startUtc, timeZone) : creating!.ymd;
   const readOnly = Boolean(editing?.rescheduledToAppointmentId);
 
+  // Resolve the edited appointment's patient name for the picker chip — the
+  // appointment only carries patientId. Shares the chart's ["patients", id]
+  // cache, so this is usually instant when arriving from a patient chart.
+  const { data: editPatient } = useQuery({
+    queryKey: ["patients", editing?.patientId],
+    queryFn: () => getPatientById(editing!.patientId!),
+    enabled: Boolean(editing?.patientId),
+    staleTime: 5 * 60 * 1000,
+  });
+  const editPatientLabel = editPatient
+    ? `${editPatient.demographics.lastName}, ${editPatient.demographics.firstName} · ${editPatient.patientCode}`
+    : null;
+
   const [providerId, setProviderId] = useState(editing ? editing.providerId : creating!.providerId);
   const [isReservation, setIsReservation] = useState(editing?.isReservation ?? false);
   const [reservationTitle, setReservationTitle] = useState(editing?.reservationTitle ?? "");
-  const [patientId, setPatientId] = useState<string | null>(editing?.patientId ?? null);
+  const [patientId, setPatientId] = useState<string | null>(
+    editing?.patientId ?? creating?.patientId ?? null,
+  );
   const [appointmentTypeId, setAppointmentTypeId] = useState<string>(editing?.appointmentTypeId ?? "");
   const [startTime, setStartTime] = useState(
     editing ? timeValueInTz(editing.startUtc, timeZone) : creating!.startTime,
@@ -892,7 +971,11 @@ function AppointmentDialog({
                 <Field id="appt-patient" label="Patient" hint="Optional — leave empty for a walk-in / hold.">
                   <PatientPicker
                     value={patientId}
-                    initialLabel={editing?.patientId ? "Selected patient" : null}
+                    initialLabel={
+                      editing?.patientId
+                        ? editPatientLabel ?? "Loading patient…"
+                        : creating?.patientLabel ?? null
+                    }
                     onChange={(id, p) => {
                       setPatientId(id);
                       if (p && !notes) setNotes(patientLabel(p));

@@ -17,8 +17,15 @@ public sealed record PatientDetailDto(
     bool HasNoKnownMedications,
     bool HasNoKnownAllergies,
     bool ReceivesEmailReminders,
+    // Manually-entered planned visit dates (editable on the patient form).
     DateTime? LastVisitDate,
-    DateTime? NextVisitDate);
+    DateTime? NextVisitDate,
+    // Visits derived from the Scheduling module's appointments (read-only, for the chart).
+    PatientVisitRefDto? LastVisitAppointment,
+    PatientVisitRefDto? NextVisitAppointment);
+
+/// <summary>A visit derived from the schedule: the appointment behind it and its UTC start.</summary>
+public sealed record PatientVisitRefDto(Guid AppointmentId, DateTime StartUtc);
 
 public sealed record PatientDemographicsDto(
     string FirstName,

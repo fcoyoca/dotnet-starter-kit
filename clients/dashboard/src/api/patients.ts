@@ -155,8 +155,18 @@ export type PatientDetailDto = {
   hasNoKnownMedications: boolean;
   hasNoKnownAllergies: boolean;
   receivesEmailReminders: boolean;
+  // Manually-entered planned visit dates (editable on the patient form).
   lastVisitDate?: string | null;
   nextVisitDate?: string | null;
+  // Visits derived from the schedule (read-only) — power the chart's Appointments
+  // rows and link to the underlying appointment.
+  lastVisitAppointment?: PatientVisitRefDto | null;
+  nextVisitAppointment?: PatientVisitRefDto | null;
+};
+
+export type PatientVisitRefDto = {
+  appointmentId: string;
+  startUtc: string;
 };
 
 export function getPatientById(id: string): Promise<PatientDetailDto> {

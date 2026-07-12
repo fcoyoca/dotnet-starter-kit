@@ -29,6 +29,12 @@ export function formatDateTimeMono(iso: string | null | undefined) {
   return `${formatDateMono(iso)} · ${timeShort.format(new Date(iso))}`;
 }
 
+// "Apr 30, 2026 · 3:42 PM" — date + local time, sentence-case for inline rows.
+export function formatDateTime(iso: string | null | undefined) {
+  if (!iso) return "—";
+  return `${dateLong.format(new Date(iso))} · ${timeShort.format(new Date(iso))}`;
+}
+
 // "3d ago", "2mo ago" — terse relative time for the secondary line.
 export function formatRelative(iso: string | null | undefined) {
   if (!iso) return "";

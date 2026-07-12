@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   keepPreviousData,
   useMutation,
@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   CalendarDays,
+  CalendarPlus,
   ClipboardList,
   Eye,
   FileDown,
@@ -27,7 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getPatientById } from "@/api/patients";
+import { getPatientById, type PatientVisitRefDto } from "@/api/patients";
 import {
   searchPatientIncidents,
   type PatientIncidentListItemDto,
@@ -56,7 +57,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EntityStatusBadge } from "@/components/list";
-import { describe, formatDate } from "@/lib/list-helpers";
+import { describe, formatDate, formatDateTime } from "@/lib/list-helpers";
 import { cn } from "@/lib/cn";
 import { usePatientTab, usePatientWorkspace } from "@/state/patient-workspace-context";
 import { PatientTabStrip } from "@/components/layout/patient-tab-strip";
@@ -93,6 +94,31 @@ function ageFromDob(dob: string | null | undefined): string {
   const m = now.getMonth() - d.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
   return String(age);
+}
+
+/**
+ * A derived visit (last/next) rendered as its date + local time. Clicking opens
+ * that appointment's dialog in the scheduler (BackChart parity). A patient with
+ * no matching appointment shows a plain "—".
+ */
+function VisitDateLink({
+  appt,
+  onOpen,
+}: {
+  appt: PatientVisitRefDto | null | undefined;
+  onOpen(appointmentId: string): void;
+}) {
+  if (!appt) return <>—</>;
+  return (
+    <button
+      type="button"
+      title="Open appointment"
+      onClick={() => onOpen(appt.appointmentId)}
+      className="text-[var(--color-primary)] underline-offset-2 hover:underline"
+    >
+      {formatDateTime(appt.startUtc)}
+    </button>
+  );
 }
 
 function SidebarRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -139,6 +165,7 @@ function IconShortcut({
 
 export function PatientChartDetailPage() {
   const { patientId } = useParams<{ patientId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { openPatient, setActiveIncident, openReport, closeReport, setActiveReport } =
@@ -302,6 +329,25 @@ export function PatientChartDetailPage() {
         .join(" ")
     : "";
 
+  // Calendar shortcut → scheduler with this patient carried in router state
+  // (BackChart parity: the chart's "View Schedule" pre-seeds a New appointment).
+  // The scheduler consumes the state once to open the create dialog pre-filled.
+  const scheduleForPatient = () => {
+    if (!patientId) return;
+    const label = patient
+      ? `${patient.demographics.lastName}, ${patient.demographics.firstName} · ${patient.patientCode}`
+      : null;
+    navigate("/scheduling/appointments", {
+      state: { newApptPatientId: patientId, newApptPatientLabel: label },
+    });
+  };
+
+  // Last/Next visit rows link to their appointment: navigate to the scheduler
+  // carrying the appointment id, which the scheduler opens in its edit dialog.
+  const openAppointment = (appointmentId: string) => {
+    navigate("/scheduling/appointments", { state: { openAppointmentId: appointmentId } });
+  };
+
   // Register/refresh this patient's workspace tab as soon as the patient
   // record loads — covers both "opened from search" (tab already exists,
   // just gets marked active) and a direct/bookmarked chart URL (creates
@@ -461,13 +507,24 @@ export function PatientChartDetailPage() {
               )}
 
               {/* Appointments / visit dates */}
-              <div className="mt-3 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-                <CalendarDays className="size-3.5" />
-                Appointments
+              <div className="mt-3 flex items-center justify-between gap-1.5">
+                <span className="flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                  <CalendarDays className="size-3.5" />
+                  Appointments
+                </span>
+                <IconShortcut label="Schedule appointment" onClick={scheduleForPatient}>
+                  <CalendarPlus className="size-4" />
+                </IconShortcut>
               </div>
               <div className="mt-1.5 space-y-1.5">
-                <SidebarRow label="Last Visit" value={formatDate(patient.lastVisitDate)} />
-                <SidebarRow label="Next Visit" value={formatDate(patient.nextVisitDate)} />
+                <SidebarRow
+                  label="Last Visit"
+                  value={<VisitDateLink appt={patient.lastVisitAppointment} onOpen={openAppointment} />}
+                />
+                <SidebarRow
+                  label="Next Visit"
+                  value={<VisitDateLink appt={patient.nextVisitAppointment} onOpen={openAppointment} />}
+                />
               </div>
 
               {/* Chart action shortcuts — BackChart parity: these live at the

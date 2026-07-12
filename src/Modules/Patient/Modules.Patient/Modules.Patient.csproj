@@ -16,6 +16,7 @@
 		<ProjectReference Include="..\Modules.Patient.Contracts\Modules.Patient.Contracts.csproj" />
 		<ProjectReference Include="..\..\Auditing\Modules.Auditing.Contracts\Modules.Auditing.Contracts.csproj" />
 		<ProjectReference Include="..\..\Administration\Modules.Administration.Contracts\Modules.Administration.Contracts.csproj" />
+		<ProjectReference Include="..\..\Scheduling\Modules.Scheduling.Contracts\Modules.Scheduling.Contracts.csproj" />
 	</ItemGroup>
 
 </Project>

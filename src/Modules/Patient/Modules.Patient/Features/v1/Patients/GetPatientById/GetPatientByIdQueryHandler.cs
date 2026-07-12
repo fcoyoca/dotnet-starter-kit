@@ -4,6 +4,7 @@ using FSH.Modules.Patient.Contracts.Dtos;
 using FSH.Modules.Patient.Contracts.v1.Patients;
 using FSH.Modules.Patient.Data;
 using FSH.Modules.Patient.Infrastructure;
+using FSH.Modules.Scheduling.Contracts.v1.Appointments;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +13,8 @@ namespace FSH.Modules.Patient.Features.v1.Patients.GetPatientById;
 public sealed class GetPatientByIdQueryHandler(
     PatientDbContext dbContext,
     IPhiEncryptor phi,
-    IAuditPublisher auditPublisher)
+    IAuditPublisher auditPublisher,
+    IMediator mediator)
     : IQueryHandler<GetPatientByIdQuery, PatientDetailDto>
 {
     public async ValueTask<PatientDetailDto> Handle(GetPatientByIdQuery query, CancellationToken cancellationToken)
@@ -58,6 +60,13 @@ public sealed class GetPatientByIdQueryHandler(
         string? decryptedSsn = phi.Decrypt(patient.PHI.Ssn);
         string? maskedSsn = MaskSsn(decryptedSsn);
 
+        // Derive the chart's Last/Next visit from the Scheduling module's appointments
+        // (cross-module read via Contracts). This is separate from the manually-entered
+        // LastVisitDate/NextVisitDate columns, which the patient form still owns.
+        var visits = await mediator
+            .Send(new GetPatientVisitSummaryQuery(patient.Id), cancellationToken)
+            .ConfigureAwait(false);
+
         return new PatientDetailDto(
             patient.Id,
             patient.PatientCode,
@@ -101,7 +110,9 @@ public sealed class GetPatientByIdQueryHandler(
             patient.HasNoKnownAllergies,
             patient.ReceivesEmailReminders,
             patient.LastVisitDate,
-            patient.NextVisitDate);
+            patient.NextVisitDate,
+            visits.LastVisit is null ? null : new PatientVisitRefDto(visits.LastVisit.AppointmentId, visits.LastVisit.StartUtc),
+            visits.NextVisit is null ? null : new PatientVisitRefDto(visits.NextVisit.AppointmentId, visits.NextVisit.StartUtc));
     }
 
     private static string? MaskSsn(string? ssn)
