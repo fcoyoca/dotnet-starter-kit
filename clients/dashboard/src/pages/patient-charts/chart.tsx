@@ -68,6 +68,7 @@ import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentsListDialog } from "@/pages/patient-charts/incidents-list-dialog";
 import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
 import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
+import { PatientInfoDialog } from "@/pages/patients/patient-info-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
 import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
 import { ReportEditorPanel } from "@/pages/patient-charts/report-editor-panel";
@@ -212,6 +213,7 @@ export function PatientChartDetailPage() {
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [exportReportsOpen, setExportReportsOpen] = useState(false);
   const [proceduresOpen, setProceduresOpen] = useState(false);
+  const [infoDialogOpen, setInfoDialogOpen] = useState(false);
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -447,14 +449,15 @@ export function PatientChartDetailPage() {
                   <EntityStatusBadge tone={patient.isActive ? "success" : "default"}>
                     {patient.isActive ? "Active" : "Inactive"}
                   </EntityStatusBadge>
-                  <Link
-                    to={`/patients/${patientId}`}
+                  <button
+                    type="button"
                     title="Edit patient info"
                     aria-label="Edit patient info"
+                    onClick={() => setInfoDialogOpen(true)}
                     className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-accent)]"
                   >
                     <Pencil className="size-4" />
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -877,6 +880,15 @@ export function PatientChartDetailPage() {
           patientId={patientId}
           open={createOpen}
           onClose={() => setCreateOpen(false)}
+        />
+      )}
+
+      {/* Patient Info edit dialog (replaces the old /patients/:id page) */}
+      {patientId && (
+        <PatientInfoDialog
+          patientId={patientId}
+          open={infoDialogOpen}
+          onClose={() => setInfoDialogOpen(false)}
         />
       )}
 
