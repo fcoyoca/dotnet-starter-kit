@@ -603,7 +603,7 @@ function DemographicsDialog({
             <DialogTitle>Edit demographics</DialogTitle>
             <DialogDescription>
               Core identity details for {fullName(patient)}. Status (active/inactive) is changed
-              from the hero actions instead.
+              from the action bar above instead.
             </DialogDescription>
           </DialogHeader>
 
