@@ -149,8 +149,34 @@ test.describe("scheduling/appointments", () => {
     await expect(dialog.getByLabel(/appointment type/i)).toBeVisible();
     await expect(dialog.getByLabel(/^start/i)).toBeVisible();
     await expect(dialog.getByLabel(/^end/i)).toBeVisible();
-    // Patient search input is present.
-    await expect(dialog.getByPlaceholder(/search by name or code/i)).toBeVisible();
+    // Empty patient state is a "Search for patient" button (opens the search popup).
+    await expect(dialog.getByRole("button", { name: /search for patient/i })).toBeVisible();
+  });
+
+  test("New appointment: searching and picking a patient collapses to a name + Change", async ({ page }) => {
+    const patient = {
+      id: "00000000-0000-0000-0000-0000000000a1",
+      patientCode: "P-1001",
+      firstName: "Jane",
+      lastName: "Doe",
+      dateOfBirth: "1990-04-05",
+      isActive: true,
+    };
+    await mockScheduling(page);
+    await mockJsonResponse(page, "**/api/v1/patient/patients**", paged([patient], { pageSize: 8 }));
+    await page.goto("/scheduling/appointments");
+    await page.getByRole("button", { name: /new appointment/i }).click();
+
+    // Empty state → open the nested search popup.
+    await page.getByRole("dialog").getByRole("button", { name: /search for patient/i }).click();
+
+    // Only the search popup has a text input; type and pick the result.
+    await page.getByPlaceholder(/search by name or code/i).fill("Doe");
+    await page.getByRole("option", { name: /Doe, Jane/ }).click();
+
+    // Collapses to a read-only chip with the patient name + a Change button.
+    await expect(page.getByText("Doe, Jane · P-1001")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^change$/i })).toBeVisible();
   });
 
   test("toggling Reserve swaps the patient/type fields for a Title field", async ({ page }) => {

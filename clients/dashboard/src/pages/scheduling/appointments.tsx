@@ -1001,6 +1001,7 @@ function AppointmentDialog({
                       setPatientId(id);
                       if (p && !notes) setNotes(patientLabel(p));
                     }}
+                    disabled={readOnly}
                   />
                 </Field>
 
