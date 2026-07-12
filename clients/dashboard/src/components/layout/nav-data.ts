@@ -33,7 +33,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { ALL_TRASH_PERMISSIONS } from "@/lib/trash-permissions";
-import { INCIDENT_PERMISSIONS, PATIENT_PERMISSIONS } from "@/lib/patient-permissions";
+import { PATIENT_PERMISSIONS } from "@/lib/patient-permissions";
 
 export type NavSpec = {
   to: string;
