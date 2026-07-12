@@ -190,6 +190,26 @@ test.describe("scheduling/appointments", () => {
     await expect(dialog.getByRole("switch", { name: /reserve time/i })).toHaveCount(0);
   });
 
+  test("a past, unconfirmed appointment is coloured as LATE (BackChart parity)", async ({ page }) => {
+    // Start one hour ago → past + Scheduled + unconfirmed + non-reservation = "late".
+    const late = {
+      ...APPOINTMENT,
+      id: "00000000-0000-0000-0000-00000000e555",
+      notes: "Late visit",
+      startUtc: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
+      endUtc: new Date(now.getTime() - 30 * 60 * 1000).toISOString(),
+    };
+    await mockScheduling(page, { appointments: [late] });
+    await page.goto("/scheduling/appointments");
+
+    // Month view renders the event regardless of the clinic's business hours.
+    await page.getByRole("button", { name: "Month" }).click();
+
+    const event = page.locator(".rbc-event", { hasText: "Late visit" });
+    // BackChart late colour is yellow #ffd31d → rgb(255, 211, 29).
+    await expect(event).toHaveCSS("background-color", "rgb(255, 211, 29)");
+  });
+
   test("editing an existing reservation still shows the Reserve time toggle", async ({ page }) => {
     const reservation = {
       ...APPOINTMENT,

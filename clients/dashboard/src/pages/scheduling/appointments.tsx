@@ -200,6 +200,24 @@ function clinicDateLabel(iso: string, timeZone: string): string {
   }).format(new Date(iso));
 }
 
+/**
+ * A booked patient appointment whose start time has passed while it is still
+ * unconfirmed and un-actioned (no check-in/out, not cancelled/no-show/rescheduled).
+ * Mirrors BackChart's `IsLate && has patient && !Confirmed` colour rule; shared by
+ * the tooltip banner and the event colour so the two never diverge.
+ */
+function isLate(a: AppointmentDto): boolean {
+  return (
+    !a.isReservation &&
+    !a.confirmedAtUtc &&
+    !a.cancelled &&
+    !a.noShow &&
+    !a.rescheduledToAppointmentId &&
+    a.status === "Scheduled" &&
+    new Date(a.startUtc) < new Date()
+  );
+}
+
 /** Multi-line hover text matching BackChart's tooltip format (banners → subject → time → type → notes). */
 function tooltipText(
   a: AppointmentDto,
@@ -215,9 +233,8 @@ function tooltipText(
 
   const lines: string[] = [];
   const confirmed = Boolean(a.confirmedAtUtc);
-  const isLate = !confirmed && new Date(a.startUtc) < new Date() && a.status === "Scheduled" && !a.cancelled && !a.noShow;
 
-  if (isLate) {
+  if (isLate(a)) {
     lines.push("!!    LATE    !!");
   } else if (confirmed) {
     lines.push("!!    CONFIRMED    !!");
@@ -245,6 +262,7 @@ function eventColor(a: AppointmentDto, typeColor: string | null | undefined): st
   if (a.noShow) return "#dd2c00"; // red
   if (a.status === "CheckedIn") return "#21bf73"; // green
   if (a.status === "CheckedOut") return "#929aab"; // gray
+  if (isLate(a)) return "#ffd31d"; // yellow — past-due & unconfirmed (BackChart parity)
   return typeColor || "#7045af"; // type color or default purple
 }
 
