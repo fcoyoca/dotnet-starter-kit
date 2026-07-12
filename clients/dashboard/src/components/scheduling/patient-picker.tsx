@@ -42,10 +42,10 @@ export function PatientPicker({
     if (value === null) {
       setSelected(null);
       setLabel(null);
-    } else if (initialLabel) {
+    } else if (initialLabel && !selected) {
       setLabel(initialLabel);
     }
-  }, [value, initialLabel]);
+  }, [value, initialLabel, selected]);
 
   const pick = (p: PatientListItemDto) => {
     setSelected(p);

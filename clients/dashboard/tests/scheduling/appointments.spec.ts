@@ -236,6 +236,61 @@ test.describe("scheduling/appointments", () => {
     await expect(event).toHaveCSS("background-color", "rgb(255, 211, 29)");
   });
 
+  test("editing an appointment: Change swaps the chip to the newly picked patient", async ({ page }) => {
+    // Regression test: the picker's initialLabel-sync effect used to re-fire on
+    // every `value` change and snap the chip back to the stale initialLabel
+    // (sourced from a query keyed on the ORIGINAL patientId, which never
+    // repoints) even after the user picked a different patient via Change.
+    const patientAId = "00000000-0000-0000-0000-0000000a1a1a";
+    const patientA = {
+      id: patientAId,
+      patientCode: "P-2001",
+      isActive: true,
+      demographics: {
+        firstName: "Alice",
+        middleInitial: null,
+        lastName: "Anders",
+        dateOfBirth: "1985-02-10",
+        gender: "F",
+      },
+      insurance: null,
+      lastVisitDate: null,
+      nextVisitDate: null,
+    };
+    const patientB = {
+      id: "00000000-0000-0000-0000-0000000b2b2b",
+      patientCode: "P-2002",
+      firstName: "Brian",
+      lastName: "Baxter",
+      dateOfBirth: "1978-11-22",
+      isActive: true,
+    };
+    const apt = { ...APPOINTMENT, patientId: patientAId, notes: "Annual checkup" };
+
+    await mockScheduling(page, { appointments: [apt] });
+    // Route ordering matters: Playwright matches the most-recently-registered
+    // handler first. Register the general search-list route (→ patient B)
+    // BEFORE the specific by-id route (→ patient A's detail), so the by-id
+    // URL resolves to A's detail while the search list resolves to [B].
+    await mockJsonResponse(page, "**/api/v1/patient/patients**", paged([patientB], { pageSize: 8 }));
+    await mockJsonResponse(page, "**/api/v1/patient/patients/" + patientAId + "**", patientA);
+
+    await page.goto("/scheduling/appointments");
+    await page.getByText("Annual checkup").click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: /edit appointment/i })).toBeVisible();
+    await expect(page.getByText("Anders, Alice · P-2001")).toBeVisible();
+
+    await dialog.getByRole("button", { name: /^change$/i }).click();
+    await page.getByPlaceholder(/search by name or code/i).fill("Baxter");
+    await page.getByRole("option", { name: /Baxter, Brian/ }).click();
+
+    // The chip must show the newly picked patient (B), not snap back to A.
+    await expect(page.getByText("Baxter, Brian · P-2002")).toBeVisible();
+    await expect(page.getByText("Anders, Alice · P-2001")).toHaveCount(0);
+  });
+
   test("editing an existing reservation still shows the Reserve time toggle", async ({ page }) => {
     const reservation = {
       ...APPOINTMENT,
