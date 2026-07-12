@@ -1,8 +1,8 @@
-// E2E coverage for the Patients detail page (including the Guardian
-// section's isMinor gating and the Next of Kin → Relation Role Code
-// coupling) and the not-found state. List-page coverage lives in
-// tests/patient-charts/search.spec.ts (search) and the create-patient
-// dialog tests.
+// E2E coverage for the patient info dialog (opened from the patient chart's
+// "Edit patient info" button) — including the Guardian section's isMinor
+// gating and the Next of Kin → Relation Role Code coupling — and the
+// not-found state. List-page coverage lives in tests/patient-charts/search.spec.ts
+// (search) and the create-patient dialog tests.
 //
 // Gotcha: getPatientById (GET) and updatePatient (PUT) hit the identical
 // URL `**/api/v1/patient/patients/{id}` — see tests/settings/profile.spec.ts
@@ -10,11 +10,19 @@
 // every method); instead let the beforeEach's unfiltered GET mock satisfy
 // the initial load, register a `{ method: "PUT" }`-filtered mock for the
 // save, and capture the body via page.waitForRequest.
+//
+// The editor now lives inside a dialog opened from the patient chart page
+// (`/patient-charts/:id`) rather than a standalone `/patients/:id` route —
+// every test below navigates to the chart first, then opens the dialog via
+// the "Edit patient info" button. That means each `beforeEach` also needs
+// the chart's own supporting mocks (incidents, departments, incident-types,
+// clinics) in addition to the administration lookups the section-edit
+// dialogs query.
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { mockJsonResponse } from "../helpers/api-mocks";
 import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
-import { installShellMocks } from "../helpers/shell-mocks";
+import { installShellMocks, paged } from "../helpers/shell-mocks";
 
 // ─── Administration lookup fixtures ──────────────────────────────────────
 
@@ -50,6 +58,39 @@ async function mockAdministrationLookups(page: Parameters<typeof mockJsonRespons
   await mockJsonResponse(page, "**/api/v1/administration/smoking-statuses**", SMOKING_STATUS_LOOKUP);
   await mockJsonResponse(page, "**/api/v1/administration/preferred-contact-methods**", CONTACT_METHOD_LOOKUP);
   await mockJsonResponse(page, "**/api/v1/administration/referral-types**", REFERRAL_TYPE_LOOKUP);
+}
+
+/**
+ * The patient chart page's own supporting queries — none of these are
+ * about patients per se, but the chart won't render without them (and an
+ * unmocked `administration/clinics` leaks to a real dev backend on
+ * localhost:7030 via useClinicTimeZones(), which can log the test session
+ * out mid-test). Mirrors mockChartLookups in tests/patient-charts/problems.spec.ts.
+ */
+async function mockChartSupportingLookups(page: Page) {
+  await mockJsonResponse(page, "**/api/v1/patient/incidents**", paged([]));
+  await mockJsonResponse(page, "**/api/v1/administration/departments**", paged([]));
+  await mockJsonResponse(page, "**/api/v1/administration/incident-types**", paged([]));
+  await mockJsonResponse(page, "**/api/v1/administration/clinics**", paged([]));
+}
+
+/**
+ * Navigate to the patient's chart, open the info dialog via the "Edit
+ * patient info" button, and return the dialog locator (scoped by the
+ * Demographics section heading, which only the info dialog contains).
+ *
+ * Generous timeout on the button's visibility (mirrors the "medical-alert
+ * banner" test in tests/patient-charts/problems.spec.ts): this is the
+ * chart's first paint after goto, which under heavy local test parallelism
+ * (many concurrent Vite/Chromium workers cold-compiling the same large
+ * lazy chunk) can take longer than the default 10s action timeout.
+ */
+async function openInfoDialog(page: Page, id: string) {
+  await page.goto(`/patient-charts/${id}`);
+  const editButton = page.getByRole("button", { name: /edit patient info/i });
+  await expect(editButton).toBeVisible({ timeout: 20_000 });
+  await editButton.click();
+  return page.getByRole("dialog").filter({ hasText: "Demographics" });
 }
 
 // ─── Fixtures ────────────────────────────────────────────────────────────
@@ -186,41 +227,43 @@ const PATIENT_NO_KIN = { ...PATIENT_ADULT, nextOfKin: null };
 
 // ─── Detail ──────────────────────────────────────────────────────────────
 
-test.describe("patients/:patientId — detail", () => {
+test.describe("patient info dialog — detail", () => {
   test.beforeEach(async ({ page }) => {
     await seedAuthedSession(page, TEST_USER);
     await installShellMocks(page);
     await mockAdministrationLookups(page);
+    await mockChartSupportingLookups(page);
   });
 
-  test("loads an adult patient: back link, name, next of kin, no Guardian section", async ({
-    page,
-  }) => {
+  test("loads an adult patient: name, next of kin, no Guardian section", async ({ page }) => {
     await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_ADULT_ID}`, PATIENT_ADULT);
 
-    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
+    const dialog = await openInfoDialog(page, PATIENT_ADULT_ID);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Alice Q Vance" })).toBeVisible();
 
-    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
-    await expect(page.getByRole("link", { name: /back to chart/i })).toBeVisible();
-
+    // Scoped from `page` (not the filtered `dialog` locator) — nesting a
+    // `.filter()`-derived locator as the base of a `has:`-based `.locator()`
+    // silently resolves to nothing. The section is unique on the page while
+    // the dialog is open, so this is unambiguous.
     const kinSection = page.locator("section", {
       has: page.getByRole("heading", { name: "Next of kin" }),
     });
     await expect(kinSection.getByText("Spouse")).toBeVisible();
     await expect(kinSection.getByText("SPS")).toBeVisible();
 
-    await expect(page.getByRole("heading", { name: "Guardian" })).toHaveCount(0);
+    await expect(dialog.getByRole("heading", { name: "Guardian" })).toHaveCount(0);
   });
 
   test("loads a minor patient: shows the Guardian section", async ({ page }) => {
     await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_MINOR_ID}`, PATIENT_MINOR);
 
-    await page.goto(`/patients/${PATIENT_MINOR_ID}`);
-
-    await expect(page.getByRole("heading", { name: "Casey Lee", level: 1 })).toBeVisible();
+    const dialog = await openInfoDialog(page, PATIENT_MINOR_ID);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Casey Lee" })).toBeVisible();
     // exact: true — "Minor" is a substring of the Guardian section's own
     // description ("...recorded as a minor."), which would otherwise match too.
-    await expect(page.getByText("Minor", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Minor", { exact: true })).toBeVisible();
 
     const guardianSection = page.locator("section", {
       has: page.getByRole("heading", { name: "Guardian" }),
@@ -229,37 +272,49 @@ test.describe("patients/:patientId — detail", () => {
     await expect(guardianSection.getByText("Dana Lee")).toBeVisible();
   });
 
-  test("shows the not-found panel when the patient lookup returns null", async ({ page }) => {
+  test("shows the not-found panel on the chart card when the patient lookup returns null", async ({
+    page,
+  }) => {
+    // The chart card and the info dialog share the same ["patients", id]
+    // GET, so there's no clean way to give the chart a valid patient while
+    // making only the dialog's lookup 404 — instead assert the chart
+    // card's own not-found path (same "Patient not found." text the old
+    // page's not-found panel asserted, just rendered by the card instead
+    // of a full page). With no patient, the "Edit patient info" button
+    // never renders, so there's nothing to open a dialog on.
     await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_ADULT_ID}`, null);
 
-    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
+    await page.goto(`/patient-charts/${PATIENT_ADULT_ID}`);
 
-    await expect(page.getByRole("heading", { name: /patient not found/i })).toBeVisible();
+    // Generous timeout — see openInfoDialog's comment above.
+    await expect(page.getByText("Patient not found.")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: /edit patient info/i })).toHaveCount(0);
   });
 });
 
 // ─── Next of kin — Relation / Relation Role Code coupling ─────────────────
 
-test.describe("patients/:patientId — next of kin relation/role-code coupling", () => {
+test.describe("patient info dialog — next of kin relation/role-code coupling", () => {
   test.beforeEach(async ({ page }) => {
     await seedAuthedSession(page, TEST_USER);
     await installShellMocks(page);
     await mockAdministrationLookups(page);
+    await mockChartSupportingLookups(page);
     // Unfiltered: satisfies the initial GET. The PUT-specific mock the test
     // registers later wins for the save and falls back to this one for GET.
     await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_ADULT_ID}`, PATIENT_NO_KIN);
   });
 
   test("selecting a relation sets the role code and saves both together", async ({ page }) => {
-    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
-    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
+    const infoDialog = await openInfoDialog(page, PATIENT_ADULT_ID);
+    await expect(infoDialog.getByRole("heading", { name: "Alice Q Vance" })).toBeVisible();
 
     const kinSection = page.locator("section", {
       has: page.getByRole("heading", { name: "Next of kin" }),
     });
     await kinSection.getByRole("button", { name: /edit/i }).click();
 
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog").filter({ hasText: "Edit next of kin" });
     await expect(dialog.getByRole("heading", { name: /edit next of kin/i })).toBeVisible();
 
     // Relation role code starts empty and read-only.
@@ -291,24 +346,25 @@ test.describe("patients/:patientId — next of kin relation/role-code coupling",
 
 // ─── Edit sections — dialog pre-fill + full-replace merge ────────────────
 
-test.describe("patients/:patientId — edit section dialogs", () => {
+test.describe("patient info dialog — edit section dialogs", () => {
   test.beforeEach(async ({ page }) => {
     await seedAuthedSession(page, TEST_USER);
     await installShellMocks(page);
     await mockAdministrationLookups(page);
+    await mockChartSupportingLookups(page);
     await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_ADULT_ID}`, PATIENT_ADULT);
   });
 
   test("Demographics dialog opens pre-filled with current values", async ({ page }) => {
-    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
-    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
+    const infoDialog = await openInfoDialog(page, PATIENT_ADULT_ID);
+    await expect(infoDialog.getByRole("heading", { name: "Alice Q Vance" })).toBeVisible();
 
     const section = page.locator("section", {
       has: page.getByRole("heading", { name: "Demographics" }),
     });
     await section.getByRole("button", { name: /edit/i }).click();
 
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog").filter({ hasText: "Edit demographics" });
     await expect(dialog.getByRole("heading", { name: /edit demographics/i })).toBeVisible();
     await expect(dialog.getByLabel("First name")).toHaveValue("Alice");
     await expect(dialog.getByLabel("Last name")).toHaveValue("Vance");
@@ -317,15 +373,15 @@ test.describe("patients/:patientId — edit section dialogs", () => {
   test("Demographics dialog save sends full-replace payload preserving untouched sections", async ({
     page,
   }) => {
-    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
-    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
+    const infoDialog = await openInfoDialog(page, PATIENT_ADULT_ID);
+    await expect(infoDialog.getByRole("heading", { name: "Alice Q Vance" })).toBeVisible();
 
     const section = page.locator("section", {
       has: page.getByRole("heading", { name: "Demographics" }),
     });
     await section.getByRole("button", { name: /edit/i }).click();
 
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog").filter({ hasText: "Edit demographics" });
     // Change only first name.
     await dialog.getByLabel("First name").fill("Alicia");
 
@@ -349,30 +405,30 @@ test.describe("patients/:patientId — edit section dialogs", () => {
   });
 
   test("Contact dialog opens pre-filled with current address", async ({ page }) => {
-    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
-    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
+    const infoDialog = await openInfoDialog(page, PATIENT_ADULT_ID);
+    await expect(infoDialog.getByRole("heading", { name: "Alice Q Vance" })).toBeVisible();
 
     const section = page.locator("section", {
       has: page.getByRole("heading", { name: "Contact" }),
     });
     await section.getByRole("button", { name: /edit/i }).click();
 
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog").filter({ hasText: "Edit contact info" });
     await expect(dialog.getByRole("heading", { name: /edit contact/i })).toBeVisible();
     await expect(dialog.getByLabel("Address line 1")).toHaveValue("123 Main St");
     await expect(dialog.getByLabel("City")).toHaveValue("Springfield");
   });
 
   test("Contact dialog save preserves demographics in the PUT body", async ({ page }) => {
-    await page.goto(`/patients/${PATIENT_ADULT_ID}`);
-    await expect(page.getByRole("heading", { name: "Alice Q Vance", level: 1 })).toBeVisible();
+    const infoDialog = await openInfoDialog(page, PATIENT_ADULT_ID);
+    await expect(infoDialog.getByRole("heading", { name: "Alice Q Vance" })).toBeVisible();
 
     const section = page.locator("section", {
       has: page.getByRole("heading", { name: "Contact" }),
     });
     await section.getByRole("button", { name: /edit/i }).click();
 
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog").filter({ hasText: "Edit contact info" });
     await dialog.getByLabel("City").fill("Shelbyville");
 
     await mockJsonResponse(page, `**/api/v1/patient/patients/${PATIENT_ADULT_ID}`, '""', {

@@ -121,10 +121,6 @@ const AdminDeepLinkOpener = lazyNamed(
   () => import("@/pages/administration/hub"),
   "AdminDeepLinkOpener",
 );
-const PatientDetailPage = lazyNamed(
-  () => import("@/pages/patients/patient-detail"),
-  "PatientDetailPage",
-);
 const AppointmentsPage = lazyNamed(
   () => import("@/pages/scheduling/appointments"),
   "AppointmentsPage",
@@ -235,7 +231,6 @@ export const router = createBrowserRouter([
           { path: "chat/:channelId", element: withSuspense(<ChatPage />) },
           { path: "tickets", element: withSuspense(<TicketsPage />) },
           { path: "tickets/:ticketId", element: withSuspense(<TicketDetailPage />) },
-          { path: "patients/:patientId", element: withSuspense(<PatientDetailPage />) },
           { path: "patient-charts", element: withSuspense(<PatientChartListPage />) },
           { path: "patient-charts/:patientId", element: withSuspense(<PatientChartDetailPage />) },
           { path: "scheduling", element: <Navigate to="/scheduling/appointments" replace /> },
