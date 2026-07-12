@@ -57,7 +57,7 @@ The dev server proxies `/api`, `/openapi`, and `/scalar` to `VITE_API_BASE_URL` 
 ```
 src/
 ├── api/                  # Typed API clients (billing, usage, subscription)
-├── auth/                 # JWT-backed auth (own localStorage prefix: fsh.dashboard.*)
+├── auth/                 # JWT-backed auth (sessionStorage, prefix: fsh.dashboard.*)
 ├── components/
 │   ├── layout/           # Sidebar, Topbar, AppShell
 │   ├── sse/              # SseStatusBadge, LiveFeed
@@ -94,7 +94,7 @@ The `SseProvider` in `src/sse/sse-context.tsx` is mounted inside `AppShell`, so 
 
 ## Authentication flow
 
-Identical to the admin app: JWT in `localStorage`, `Authorization: Bearer` + `tenant` headers, single-flight refresh on 401 via `POST /api/v1/identity/token/refresh`. Keys are namespaced `fsh.dashboard.*` so both apps can run side-by-side without clobbering each other's session.
+Same flow as the admin app — `Authorization: Bearer` + `tenant` headers, single-flight refresh on 401 via `POST /api/v1/identity/token/refresh` — but the JWT lives in `sessionStorage` (per-tab, nothing on disk; admin still uses `localStorage`). Keys are namespaced `fsh.dashboard.*` so both apps can run side-by-side without clobbering each other's session.
 
 ## Production build
 

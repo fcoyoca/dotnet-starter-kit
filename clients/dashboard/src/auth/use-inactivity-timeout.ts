@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { activityStore, evaluateInactivity, type InactivityPhase } from "@/auth/inactivity";
 
 // Genuine user-intent signals. Throttled before they touch storage so a
-// mousemove storm can't hammer localStorage.
+// mousemove storm can't hammer sessionStorage.
 const ACTIVITY_EVENTS = [
   "pointerdown",
   "keydown",
@@ -25,12 +25,11 @@ type Options = {
 };
 
 /**
- * Drives the inactivity state machine. Tracks a cross-tab "last activity"
- * timestamp, ticks once a second, and surfaces the current phase + seconds
- * left so a warning modal can render. Activity in any tab keeps every tab
- * alive; while THIS tab shows the warning it stops recording passive activity
- * so the prompt stays meaningful (only an explicit reset, or real activity in
- * another tab, dismisses it).
+ * Drives the inactivity state machine. Tracks a per-tab "last activity"
+ * timestamp (sessionStorage — each tab times out on its own), ticks once a
+ * second, and surfaces the current phase + seconds left so a warning modal
+ * can render. While the warning shows, the hook stops recording passive
+ * activity so the prompt stays meaningful (only an explicit reset dismisses it).
  */
 export function useInactivityTimeout({ enabled, idleMs, warningMs, onExpire }: Options) {
   const [phase, setPhase] = useState<InactivityPhase>("active");
@@ -92,12 +91,12 @@ export function useInactivityTimeout({ enabled, idleMs, warningMs, onExpire }: O
       return;
     }
 
-    // Seed the shared stamp on enable so a fresh login isn't instantly idle.
-    // The stamp lives in localStorage and survives logout, so a value left over
-    // from a previous (possibly expired) session would otherwise make the next
-    // login evaluate as "warning"/"expired" on the first tick and sign the user
-    // straight back out. Refresh it when it's missing OR already past the idle
-    // threshold; a still-fresh stamp from an active sibling tab is preserved.
+    // Seed the stamp on enable so a fresh login isn't instantly idle.
+    // The stamp lives in sessionStorage and survives logout within this tab,
+    // so a value left over from a previous (possibly expired) session would
+    // otherwise make the next login evaluate as "warning"/"expired" on the
+    // first tick and sign the user straight back out. Refresh it when it's
+    // missing OR already past the idle threshold.
     const seeded = activityStore.get();
     const stale = seeded <= 0 || Date.now() - seeded >= idleRef.current;
     if (stale) activityStore.set(Date.now());
@@ -106,13 +105,9 @@ export function useInactivityTimeout({ enabled, idleMs, warningMs, onExpire }: O
     for (const evt of ACTIVITY_EVENTS) {
       window.addEventListener(evt, recordActivity, { passive: true, capture: true });
     }
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === activityStore.key) evaluateNow();
-    };
     const onVisibility = () => {
       if (document.visibilityState === "visible") evaluateNow();
     };
-    window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisibility);
 
     evaluateNow();
@@ -125,7 +120,6 @@ export function useInactivityTimeout({ enabled, idleMs, warningMs, onExpire }: O
           capture: true,
         } as EventListenerOptions);
       }
-      window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [enabled, recordActivity, evaluateNow]);

@@ -1,7 +1,7 @@
 // E2E coverage for the /files page (src/pages/files/my-files.tsx): the file
 // list, the My files / Shared tab switch, the empty states, and the upload
 // dropzone affordance. All API calls are mocked via page.route; the authed
-// session is seeded into localStorage and the global shell calls are stubbed
+// session is seeded into sessionStorage and the global shell calls are stubbed
 // by installShellMocks. Browser: chromium only, run against the already-
 // running Vite dev server.
 //

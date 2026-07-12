@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
  * Seed an authenticated session on the page BEFORE React boots, so
  * tests targeting protected routes don't bounce to /login.
  *
- * We populate the same localStorage keys the runtime tokenStore writes
+ * We populate the same sessionStorage keys the runtime tokenStore writes
  * (see clients/dashboard/src/auth/token-store.ts). The token value is
  * a JWT-shaped string that decodes to the supplied user — useAuth's
  * decoder reads sub/email/given_name/family_name/tenant out of the
@@ -60,9 +60,9 @@ export async function seedAuthedSession(page: Page, user: SeededUser) {
 
   await page.addInitScript(
     ({ access, refresh, tenant, accessKey, refreshKey, tenantKey }) => {
-      localStorage.setItem(accessKey, access);
-      localStorage.setItem(refreshKey, refresh);
-      localStorage.setItem(tenantKey, tenant);
+      sessionStorage.setItem(accessKey, access);
+      sessionStorage.setItem(refreshKey, refresh);
+      sessionStorage.setItem(tenantKey, tenant);
     },
     {
       access: accessToken,

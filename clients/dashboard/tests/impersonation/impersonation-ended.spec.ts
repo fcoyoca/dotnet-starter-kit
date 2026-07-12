@@ -19,7 +19,7 @@ const REFRESH_KEY = "fsh.dashboard.refreshToken";
 const TENANT_KEY = "fsh.dashboard.tenant";
 
 /**
- * Seed an IMPERSONATION session into localStorage before React boots: an
+ * Seed an IMPERSONATION session into sessionStorage before React boots: an
  * access token carrying the `act_sub` actor claim, a target tenant, and —
  * critically — NO refresh token (token-store drops the refresh slot on
  * beginImpersonation). The missing refresh token is what makes a 401 propagate
@@ -46,10 +46,10 @@ async function seedImpersonationSession(page: Page): Promise<void> {
 
   await page.addInitScript(
     ({ access, accessKey, refreshKey, tenantKey }) => {
-      localStorage.setItem(accessKey, access);
+      sessionStorage.setItem(accessKey, access);
       // Defensive: ensure no refresh token lingers from a prior session.
-      localStorage.removeItem(refreshKey);
-      localStorage.setItem(tenantKey, "acme");
+      sessionStorage.removeItem(refreshKey);
+      sessionStorage.setItem(tenantKey, "acme");
     },
     { access: accessToken, accessKey: ACCESS_KEY, refreshKey: REFRESH_KEY, tenantKey: TENANT_KEY },
   );
@@ -96,7 +96,7 @@ test.describe("impersonation revoked mid-session", () => {
     await expect(page).toHaveURL(/\/login$/);
     // The dead impersonation token is cleared so a stale token can't bounce
     // the user straight back into a 401 loop.
-    const accessToken = await page.evaluate((key) => localStorage.getItem(key), ACCESS_KEY);
+    const accessToken = await page.evaluate((key) => sessionStorage.getItem(key), ACCESS_KEY);
     expect(accessToken).toBeNull();
   });
 });

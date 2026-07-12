@@ -48,8 +48,8 @@ mutation.mutate({ text, clientId: crypto.randomUUID() });
 
 ## Auth (`src/auth/`)
 
-`token-store.ts` (localStorage + pub/sub), `jwt.ts` (`decodeJwt`), `AuthProvider`/`useAuth()`, `ProtectedRoute`.
-Login `POST /api/v1/identity/token/issue` with header `X-FSH-App: "admin"|"dashboard"`. **localStorage keys are namespaced per app** (`fsh.admin.*` / `fsh.dashboard.*`) so both run side-by-side. Permission *source* differs per app — see the app files.
+`token-store.ts` (storage + pub/sub), `jwt.ts` (`decodeJwt`), `AuthProvider`/`useAuth()`, `ProtectedRoute`.
+Login `POST /api/v1/identity/token/issue` with header `X-FSH-App: "admin"|"dashboard"`. **Storage medium differs per app**: the dashboard keeps tokens (and all patient-adjacent state) in **sessionStorage** — per-tab sessions, nothing on disk; admin still uses **localStorage**. **Keys are namespaced per app** (`fsh.admin.*` / `fsh.dashboard.*`) so both run side-by-side. Permission *source* differs per app — see the app files.
 
 ## Design system (Tailwind v4, shadcn-style)
 
@@ -76,7 +76,7 @@ So "neutrals must be chroma 0" is a **dashboard** rule. Admin neutrals are inten
 
 - `playwright.config.ts`: `testDir: ./tests`, chromium, auto-boots `npm run dev`, no real backend.
 - Tests in `tests/{area}/{name}.spec.ts`; helpers in `tests/helpers/`.
-- **JWT seeding:** `seedAuthedSession(page, TEST_USER)` builds a fake JWT and `addInitScript`-writes `fsh.{app}.*` to localStorage before React boots (server isn't called, so signature is junk).
+- **JWT seeding:** `seedAuthedSession(page, TEST_USER)` builds a fake JWT and `addInitScript`-writes `fsh.{app}.*` to storage before React boots (sessionStorage on the dashboard, localStorage on admin; server isn't called, so signature is junk).
 - **Route mocking:** `mockJsonResponse(page, urlGlob, body)` / `mockProblemDetails(...)`. `installShellMocks(page)` stubs every call `AppShell` fires and **aborts** SSE/SignalR. Playwright matches most-recently-registered first → broad shell mocks in `beforeEach`, page-specific mocks after (they win).
 - `beforeEach`: `seedAuthedSession(page, TEST_USER)` → `installShellMocks(page)`.
 

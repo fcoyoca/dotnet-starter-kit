@@ -11,7 +11,8 @@ import {
 /**
  * One open patient tab. Mirrors BackChart-FE's per-patient scoped state
  * (active incident + open reports), persisted here in a single React
- * Context instead of two localStorage ID trees.
+ * Context instead of two storage ID trees. Persisted to sessionStorage —
+ * per-tab, never written to disk, cleared when the browser tab closes.
  */
 export type OpenPatientTab = {
   patientId: string;
@@ -44,7 +45,7 @@ const EMPTY_STATE: WorkspaceState = { openTabs: [], activePatientId: null };
 
 /** Replace the tab matching `patientId` via `updater`; no-op (same array
  *  reference) if no tab matches, so callers never trigger a redundant
- *  state update / localStorage write for a stale id. */
+ *  state update / sessionStorage write for a stale id. */
 function replaceTab(
   tabs: OpenPatientTab[],
   patientId: string,
@@ -94,7 +95,7 @@ function isOpenPatientTab(value: unknown): value is OpenPatientTab {
 function readStoredState(): WorkspaceState {
   if (typeof window === "undefined") return EMPTY_STATE;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return EMPTY_STATE;
     const parsed = JSON.parse(raw) as Partial<WorkspaceState>;
     const openTabs = Array.isArray(parsed.openTabs)
@@ -114,7 +115,7 @@ function readStoredState(): WorkspaceState {
 function writeStoredState(state: WorkspaceState): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     /* storage unavailable (private browsing / quota) — state stays in-memory only */
   }
@@ -123,7 +124,7 @@ function writeStoredState(state: WorkspaceState): void {
 const PatientWorkspaceContext = createContext<PatientWorkspaceContextValue | null>(null);
 
 /** Mount ABOVE the router `<Outlet/>` (see app-shell.tsx) so open patient
- *  tabs survive route changes; rehydrates from localStorage once on mount. */
+ *  tabs survive route changes; rehydrates from sessionStorage once on mount. */
 export function PatientWorkspaceProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<WorkspaceState>(() => readStoredState());
 

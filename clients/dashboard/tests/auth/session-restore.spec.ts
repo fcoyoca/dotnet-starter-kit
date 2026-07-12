@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Regression: a stale, EXPIRED access token left in localStorage (e.g. from a
-// session days ago, or before a DB reseed) must NOT make the app treat you as
-// signed in. The auth provider attempts ONE silent refresh at boot:
+// Regression: a stale, EXPIRED access token left in sessionStorage (e.g. from
+// an earlier login in this tab, or before a DB reseed) must NOT make the app
+// treat you as signed in. The auth provider attempts ONE silent refresh at boot:
 //   • refresh succeeds → session is restored, no /login bounce.
 //   • refresh fails    → the stale session is dropped and the app routes to
 //                        /login, instead of flashing the dashboard and firing
@@ -52,9 +52,9 @@ async function seedExpiredSession(page: Page) {
   );
   await page.addInitScript(
     ({ access, accessKey, refreshKey, tenantKey }) => {
-      localStorage.setItem(accessKey, access);
-      localStorage.setItem(refreshKey, "stale-refresh-token");
-      localStorage.setItem(tenantKey, "acme");
+      sessionStorage.setItem(accessKey, access);
+      sessionStorage.setItem(refreshKey, "stale-refresh-token");
+      sessionStorage.setItem(tenantKey, "acme");
     },
     { access: EXPIRED_TOKEN, accessKey: ACCESS_KEY, refreshKey: REFRESH_KEY, tenantKey: TENANT_KEY },
   );
@@ -100,10 +100,10 @@ test.describe("session restore — expired access token at boot", () => {
 
     // The silent refresh persisted the rotated tokens…
     await expect
-      .poll(async () => page.evaluate((k) => localStorage.getItem(k), ACCESS_KEY))
+      .poll(async () => page.evaluate((k) => sessionStorage.getItem(k), ACCESS_KEY))
       .toBe(FRESH_TOKEN);
     await expect
-      .poll(async () => page.evaluate((k) => localStorage.getItem(k), REFRESH_KEY))
+      .poll(async () => page.evaluate((k) => sessionStorage.getItem(k), REFRESH_KEY))
       .toBe("rotated-refresh-token");
     // …and the app did NOT bounce to /login.
     await expect(page).not.toHaveURL(/\/login$/);

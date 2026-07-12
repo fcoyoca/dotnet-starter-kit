@@ -1,12 +1,11 @@
 // Inactivity auto-logout — shared, app-agnostic primitives.
 //
-// localStorage/sessionStorage is per-origin, so the admin and dashboard apps
-// never share these keys (different hosts). That lets us use short, un-prefixed
-// key names without colliding — and, importantly, the activity heartbeat key
-// does NOT start with "fsh.{app}." so it won't trip each app's auth storage
-// listeners on every cross-tab tick.
+// Everything here lives in sessionStorage: per-tab AND per-origin, so the
+// admin and dashboard apps never share these keys, and each browser tab
+// times out independently (tabs no longer keep each other alive — matching
+// the per-tab auth session in token-store.ts).
 
-/** Shared "last user activity" timestamp — one value across every tab of this origin. */
+/** "Last user activity" timestamp for THIS tab. */
 const LAST_ACTIVITY_KEY = "fsh.lastActivity";
 /** Ephemeral, per-tab reason stash read once by the login page after a sign-out. */
 const SIGNED_OUT_REASON_KEY = "fsh.signedOutReason";
@@ -33,12 +32,11 @@ export function evaluateInactivity(
   return { phase: "active", secondsLeft: 0 };
 }
 
-/** Cross-tab shared activity timestamp. Writes are best-effort (private mode). */
+/** Per-tab activity timestamp. Writes are best-effort (private mode). */
 export const activityStore = {
-  key: LAST_ACTIVITY_KEY,
   get(): number {
     try {
-      const raw = localStorage.getItem(LAST_ACTIVITY_KEY);
+      const raw = sessionStorage.getItem(LAST_ACTIVITY_KEY);
       const parsed = raw ? Number(raw) : Number.NaN;
       return Number.isFinite(parsed) ? parsed : 0;
     } catch {
@@ -47,7 +45,7 @@ export const activityStore = {
   },
   set(ts: number): void {
     try {
-      localStorage.setItem(LAST_ACTIVITY_KEY, String(ts));
+      sessionStorage.setItem(LAST_ACTIVITY_KEY, String(ts));
     } catch {
       /* storage unavailable (private mode / quota) — degrade to single-tab timing */
     }

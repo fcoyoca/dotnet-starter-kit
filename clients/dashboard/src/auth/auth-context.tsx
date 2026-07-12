@@ -194,23 +194,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     const unsubscribe = tokenStore.subscribe(refresh);
 
-    // The token store's subscribe() only fires for in-app mutations. Storage
-    // changes from another tab fire a `storage` event, and same-tab manual
-    // clears (e.g. via DevTools) need to be picked up when the user returns
-    // to the tab — otherwise `isAuthenticated` stays true while the token
-    // is gone, and protected requests silently 401 with no header attached.
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === null || e.key.startsWith("fsh.dashboard.")) refresh();
-    };
+    // The token store's subscribe() only fires for in-app mutations. Tokens
+    // live in sessionStorage (per-tab — no cross-tab `storage` events), but
+    // same-tab manual clears (e.g. via DevTools) still need to be picked up
+    // when the user returns to the tab — otherwise `isAuthenticated` stays
+    // true while the token is gone, and protected requests silently 401
+    // with no header attached.
     const onVisibility = () => {
       if (document.visibilityState === "visible") refresh();
     };
-    window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       unsubscribe();
-      window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);

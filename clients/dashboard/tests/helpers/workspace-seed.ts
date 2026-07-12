@@ -17,7 +17,7 @@ export type SeededPatientTab = {
 const STORAGE_KEY = "fsh.dashboard.patientWorkspace.v1";
 
 /**
- * Seed the persistent patient-workspace localStorage key BEFORE React
+ * Seed the persistent patient-workspace sessionStorage key BEFORE React
  * boots, so a test can land directly on a patient's chart — optionally
  * with an incident and/or report dialog already active — without
  * re-driving every click through the UI. Mirrors seedAuthedSession's
@@ -38,7 +38,7 @@ export async function seedPatientWorkspace(page: Page, tabs: SeededPatientTab[])
 
   await page.addInitScript(
     ({ key, value }) => {
-      localStorage.setItem(key, value);
+      sessionStorage.setItem(key, value);
     },
     { key: STORAGE_KEY, value: JSON.stringify(state) },
   );

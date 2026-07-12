@@ -1,6 +1,6 @@
 // E2E coverage for Part C's draft persistence: unsaved report typing
 // survives switching between open report tabs (unmount flush) and a full
-// reload (debounced localStorage write), and a successful Save clears the
+// reload (debounced sessionStorage write), and a successful Save clears the
 // draft so it can't shadow the server copy.
 
 import { expect, test, type Page } from "@playwright/test";
@@ -132,10 +132,10 @@ async function seedBothReportsOpen(page: Page) {
   ]);
 }
 
-/** The parsed draft map from localStorage (empty object when unset). */
+/** The parsed draft map from sessionStorage (empty object when unset). */
 async function readDraftMap(page: Page): Promise<Record<string, unknown>> {
   return page.evaluate((key) => {
-    const raw = localStorage.getItem(key);
+    const raw = sessionStorage.getItem(key);
     return raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
   }, DRAFTS_KEY);
 }
@@ -164,13 +164,13 @@ test.describe("report drafts", () => {
     await expect(page.locator("#f-11")).toHaveValue("unsaved chief complaint text");
   });
 
-  test("typing survives a full reload via the debounced localStorage write", async ({ page }) => {
+  test("typing survives a full reload via the debounced sessionStorage write", async ({ page }) => {
     await seedBothReportsOpen(page);
     await page.goto(`/patient-charts/${PATIENT_ID}`);
 
     await page.locator("#f-11").fill("text that must survive a reload");
 
-    // Wait for the 500ms debounce to land in localStorage (a hard
+    // Wait for the 500ms debounce to land in sessionStorage (a hard
     // navigation skips React cleanup, so the flush-on-unmount can't help).
     await expect
       .poll(async () => {

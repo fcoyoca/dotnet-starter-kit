@@ -1,7 +1,7 @@
 // E2E coverage for the /chat shell (src/pages/chat/chat-page.tsx): the
 // channel rail, the active-channel pane (header + message list + composer),
 // and the no-channels empty state. All API calls are mocked via page.route;
-// the authed session is seeded into localStorage and the global shell calls
+// the authed session is seeded into sessionStorage and the global shell calls
 // are stubbed by installShellMocks.
 //
 // Chat is realtime-heavy. installShellMocks aborts the SSE / SignalR /

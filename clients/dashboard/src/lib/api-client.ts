@@ -167,7 +167,7 @@ export async function apiFetch<T = unknown>(
       mergedHeaders.set("Authorization", `Bearer ${accessToken}`);
     } else {
       // We're not anonymous (skipAuth=false) but the token is gone — likely a
-      // manual localStorage clear that AuthContext missed. Clear remaining
+      // manual sessionStorage clear that AuthContext missed. Clear remaining
       // session state and surface a clean 401 so the UI flips to /login
       // instead of repeatedly firing tokenless requests.
       tokenStore.clear();

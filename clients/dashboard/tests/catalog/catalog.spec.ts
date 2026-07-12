@@ -1,6 +1,6 @@
 // E2E coverage for the catalog pages: brands, categories, products (list),
 // and product detail. All catalog API calls are mocked via page.route; the
-// authed session is seeded into localStorage and the global shell calls are
+// authed session is seeded into sessionStorage and the global shell calls are
 // stubbed by installShellMocks. Browser: chromium only, run against the
 // already-running Vite dev server.
 //

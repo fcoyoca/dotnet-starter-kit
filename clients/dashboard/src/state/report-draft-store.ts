@@ -1,9 +1,10 @@
 /**
- * Per-report localStorage drafts — unsaved report-editor typing survives
- * switching report tabs, navigating away, and full reloads (Part C).
- * Local-only by design (matches BackChart, which also never auto-saved to
- * the server); the draft for a report is cleared the moment a Save/Sign
- * succeeds, so a stale draft can never shadow newer server data.
+ * Per-report sessionStorage drafts — unsaved report-editor typing survives
+ * switching report tabs, navigating away, and same-tab reloads (Part C).
+ * Per-tab and never written to disk: drafts are gone when the browser tab
+ * closes. Local-only by design (matches BackChart, which also never
+ * auto-saved to the server); the draft for a report is cleared the moment a
+ * Save/Sign succeeds, so a stale draft can never shadow newer server data.
  *
  * Keyed purely by reportId — deliberately NOT part of
  * patient-workspace-context.tsx (drafts don't need to know which patient
@@ -66,7 +67,7 @@ function isReportDraft(value: unknown): value is ReportDraft {
 function readAll(): DraftMap {
   if (typeof window === "undefined") return {};
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== "object") return {};
@@ -83,7 +84,7 @@ function readAll(): DraftMap {
 function writeAll(map: DraftMap): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   } catch {
     /* storage unavailable (private browsing / quota) — drafts stay in-memory only */
   }
