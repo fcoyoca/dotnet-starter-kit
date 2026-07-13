@@ -214,11 +214,24 @@ export function IncidentDialog({ patientId, open, onClose, incidentId }: Props) 
     setSelectedDxIds((prev) => prev.filter((x) => x !== id));
   };
 
+  // Resolve labels for the currently selected DX ids so each chip shows the code
+  // (not a truncated guid). Search results only cover codes just looked up; this
+  // covers edit-mode hydration and codes whose search list has since cleared.
+  const dxDetailsQuery = useQuery({
+    queryKey: ["custom-diagnostics", "by-ids", [...selectedDxIds].sort().join(",")],
+    queryFn: () => listCustomDiagnostics({ ids: selectedDxIds, pageSize: 200 }),
+    enabled: open && selectedDxIds.length > 0,
+  });
+
   const dxLabelMap = useMemo(() => {
     const map: Record<string, string> = {};
+    for (const d of dxDetailsQuery.data?.items ?? [])
+      map[d.id] = `${d.code}${d.description ? " — " + d.description : ""}`;
+    // Live search results override as a fast path for a just-added code whose
+    // by-ids fetch hasn't landed yet.
     for (const opt of dxOptions) map[opt.value] = opt.label;
     return map;
-  }, [dxOptions]);
+  }, [dxDetailsQuery.data, dxOptions]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => (!o ? onClose() : undefined)}>
