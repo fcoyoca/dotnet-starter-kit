@@ -186,6 +186,9 @@ export type LayoutDto = {
 };
 
 export type TenantThemeDto = {
+  /** Display name the tenant's apps render instead of the framework wordmark.
+   *  Null/empty falls back to the tenant's own name. */
+  appName?: string | null;
   lightPalette: PaletteDto;
   darkPalette: PaletteDto;
   brandAssets: BrandAssetsDto;

@@ -178,9 +178,53 @@ export function TenantBrandingCard({ tenantId }: { tenantId: string }) {
           />
         </div>
 
+        <BrandIdentityEditor
+          appName={draft.appName ?? ""}
+          onChange={(v) => setDraft((d) => (d ? { ...d, appName: v || null } : d))}
+        />
+
         <BrandAssetsEditor assets={draft.brandAssets} onChange={onAssets} />
       </div>
     </SettingsSection>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Brand identity — the wordmark this tenant's apps render in the chrome
+// ─────────────────────────────────────────────────────────────────────────
+
+function BrandIdentityEditor({
+  appName,
+  onChange,
+}: {
+  appName: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+      <div className="border-b border-[oklch(from_var(--color-border)_l_c_h_/_0.5)] px-4 py-2.5">
+        <h4 className="text-[12.5px] font-semibold tracking-tight text-[var(--color-foreground)]">
+          Brand identity
+        </h4>
+        <p className="mt-0.5 text-[11.5px] leading-relaxed text-[var(--color-muted-foreground)]">
+          Shown in the tenant dashboard's sidebar, mobile nav and sign-out
+          prompt. Leave blank to fall back to the tenant's own name.
+        </p>
+      </div>
+      <div className="p-4">
+        <Field id="app-name" label="App name">
+          <Input
+            id="app-name"
+            value={appName}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Acme Clinic"
+            maxLength={64}
+            spellCheck={false}
+            autoComplete="off"
+          />
+        </Field>
+      </div>
+    </div>
   );
 }
 
