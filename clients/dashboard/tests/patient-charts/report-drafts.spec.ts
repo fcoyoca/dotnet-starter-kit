@@ -20,6 +20,13 @@ const INCIDENT_ID = "00000000-0000-0000-0000-0000000c3333";
 const REPORT_1 = "00000000-0000-0000-0000-0000000d4444"; // Initial Evaluation (type 1, field 11)
 const REPORT_2 = "00000000-0000-0000-0000-0000000d5555"; // Progress Note (type 2, field 21)
 
+// Open-report tabs are labelled by report date, so the two reports need
+// distinct dates to be individually addressable.
+const REPORT_1_DATE = "2026-06-26T00:00:00Z";
+const REPORT_2_DATE = "2026-06-27T00:00:00Z";
+const REPORT_1_TAB = "Jun 26, 2026";
+const REPORT_2_TAB = "Jun 27, 2026";
+
 const DRAFTS_KEY = "fsh.dashboard.reportDrafts.v1";
 
 const PATIENT = {
@@ -63,13 +70,13 @@ const FIELDS_TYPE_2 = [
   { id: 21, reportTypeId: 2, name: "Progress", category: "Subjective", displayOrder: 0, isActive: true },
 ];
 
-function report(id: string, reportTypeId: number) {
+function report(id: string, reportTypeId: number, reportDate: string) {
   return {
     id,
     incidentId: INCIDENT_ID,
     patientId: PATIENT_ID,
     reportTypeId,
-    reportDate: "2026-06-26T00:00:00Z",
+    reportDate,
     version: 1,
     providerId: null,
     clinicId: null,
@@ -114,10 +121,10 @@ async function mockLookups(page: Page) {
   await mockJsonResponse(
     page,
     "**/api/v1/patient/reports**",
-    paged([report(REPORT_1, 1), report(REPORT_2, 2)]),
+    paged([report(REPORT_1, 1, REPORT_1_DATE), report(REPORT_2, 2, REPORT_2_DATE)]),
   );
-  await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_1, report(REPORT_1, 1));
-  await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_2, report(REPORT_2, 2));
+  await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_1, report(REPORT_1, 1, REPORT_1_DATE));
+  await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_2, report(REPORT_2, 2, REPORT_2_DATE));
 }
 
 async function seedBothReportsOpen(page: Page) {
@@ -155,12 +162,12 @@ test.describe("report drafts", () => {
     await page.locator("#f-11").fill("unsaved chief complaint text");
 
     // Switch to the second open report (unmounts the panel → flush write).
-    await page.getByRole("button", { name: "Progress Note", exact: true }).click();
+    await page.getByRole("button", { name: REPORT_2_TAB, exact: true }).click();
     await expect(page.locator("#f-21")).toBeVisible();
     await expect(page.locator("#f-21")).toHaveValue("");
 
     // Switch back — the draft (not the empty server copy) hydrates.
-    await page.getByRole("button", { name: "Initial Evaluation", exact: true }).click();
+    await page.getByRole("button", { name: REPORT_1_TAB, exact: true }).click();
     await expect(page.locator("#f-11")).toHaveValue("unsaved chief complaint text");
   });
 

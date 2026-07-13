@@ -898,7 +898,7 @@ export function PatientChartDetailPage() {
               </span>
               {openReportIds.map((id) => {
                 const r = reportsQuery.data?.items.find((x) => x.id === id);
-                const label = r ? reportTypeLabel(r.reportTypeId) : "Report";
+                const label = r ? formatDate(r.reportDate) : "Report";
                 return (
                   <span
                     key={id}
