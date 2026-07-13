@@ -259,8 +259,8 @@ test.describe("patient reports — editor", () => {
     await gotoReportPanel(page);
     await expect(page.getByText("Chief Complaint")).toBeVisible();
 
-    // Open the first field's macro popover, then the create form.
-    await page.getByRole("button", { name: "Insert macro" }).first().click();
+    // Open the first field's Macros dialog, then swap it to the create form.
+    await page.getByRole("button", { name: "Macro", exact: true }).first().click();
     await page.getByRole("button", { name: /create new macro/i }).click();
 
     const dialog = page.getByRole("dialog");

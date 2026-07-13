@@ -788,7 +788,8 @@ export function ReportEditorPanel({
                           <MacroInsert
                             reportFieldId={f.id}
                             fieldName={f.name}
-                            onInsert={(text) => insertMacro(f.id, text)}
+                            value={values[f.id] ?? ""}
+                            onCommit={(text) => setValues((prev) => ({ ...prev, [f.id]: text }))}
                           />
                         )}
                       </div>
