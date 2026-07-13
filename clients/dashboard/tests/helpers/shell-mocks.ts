@@ -47,6 +47,17 @@ export async function installShellMocks(page: Page): Promise<void> {
   await mockJsonResponse(page, "**/api/v1/identity/profile", DEFAULT_PROFILE);
   await mockJsonResponse(page, "**/api/v1/identity/permissions", []);
 
+  // Tenant branding — BrandingProvider wraps the whole app (App.tsx), so this
+  // fires on EVERY authenticated page. Unmocked it reaches the real API, 401s,
+  // and the refresh-then-logout path bounces the spec to /login (see below).
+  // Nulls = "tenant set no branding", i.e. the framework default chrome.
+  await mockJsonResponse(page, "**/api/v1/tenants/me/branding**", {
+    appName: null,
+    logoUrl: null,
+    logoDarkUrl: null,
+    faviconUrl: null,
+  });
+
   // Tenant status drives the global expiry/grace banner mounted in the
   // AppShell. Default to a healthy, far-future tenant so the banner stays
   // hidden; specs that exercise the banner override this after the call.
@@ -75,6 +86,9 @@ export async function installShellMocks(page: Page): Promise<void> {
   await mockJsonResponse(page, "**/api/v1/administration/report-types**", []);
   await mockJsonResponse(page, "**/api/v1/administration/insurance-companies**", paged([]));
   await mockJsonResponse(page, "**/api/v1/administration/insurance-types**", paged([]));
+  // useProcedureCategoryOptions() has no `enabled` gate, so it fires wherever
+  // it's mounted (the chart's procedures surface) regardless of permissions.
+  await mockJsonResponse(page, "**/api/v1/administration/procedure-categories**", paged([]));
 
   // A patient's insurance policies are a child collection, so the chart sidebar and the patient-info
   // Insurance panel both fetch them on load — for every patient page, not just insurance specs.
