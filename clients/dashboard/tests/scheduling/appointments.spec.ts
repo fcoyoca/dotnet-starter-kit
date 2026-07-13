@@ -287,7 +287,7 @@ test.describe("scheduling/appointments", () => {
         dateOfBirth: "1985-02-10",
         gender: "F",
       },
-      insurance: null,
+      referralTypeId: null,
       lastVisitDate: null,
       nextVisitDate: null,
     };

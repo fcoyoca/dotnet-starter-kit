@@ -640,6 +640,17 @@ export async function deleteInsuranceCompany(id: string): Promise<void> {
   });
 }
 
+/** Active insurance companies as combobox options — for the patient's insurance-policy payer picker. */
+export function useInsuranceCompanyOptions(): ComboboxOption[] | undefined {
+  const { data } = useQuery({
+    queryKey: ["administration.insuranceCompanyOptions"],
+    queryFn: () =>
+      listInsuranceCompanies({ isActive: true, pageSize: 200, sortBy: "name", sortDir: "asc" }),
+    staleTime: 5 * 60 * 1000,
+  });
+  return data ? data.items.map((c) => ({ value: c.id, label: c.name })) : undefined;
+}
+
 // ─── Diagnostic Categories (tenant-scoped CRUD) ────────────────────────
 
 export type DiagnosticCategoryDto = {

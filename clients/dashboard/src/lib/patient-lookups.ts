@@ -150,4 +150,6 @@ export {
   useSmokingStatusOptions,
   useContactMethodOptions,
   useReferralTypeOptions,
+  useInsuranceCompanyOptions,
+  useInsuranceTypeOptions,
 } from "@/api/administration";

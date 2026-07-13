@@ -64,9 +64,6 @@ export function emptyPatientFields(): PatientFields {
     nextOfKinPhone: null,
     nextOfKinRelation: null,
     nextOfKinRelationRoleCode: null,
-    insuredFullName: null,
-    insuredDateOfBirth: null,
-    insuredEmployerName: null,
     referralTypeId: null,
     hasNoKnownProblems: false,
     hasNoKnownMedications: false,
@@ -87,7 +84,7 @@ export function emptyPatientFields(): PatientFields {
  * enters one.
  */
 export function detailToFields(detail: PatientDetailDto): PatientFields {
-  const { demographics, contact, employment, guardian, nextOfKin, insurance } = detail;
+  const { demographics, contact, employment, guardian, nextOfKin } = detail;
   return {
     patientCode: detail.patientCode,
     isActive: detail.isActive,
@@ -150,10 +147,7 @@ export function detailToFields(detail: PatientDetailDto): PatientFields {
     nextOfKinPhone: nextOfKin?.phone ?? null,
     nextOfKinRelation: nextOfKin?.relation ?? null,
     nextOfKinRelationRoleCode: nextOfKin?.relationRoleCode ?? null,
-    insuredFullName: insurance?.insuredFullName ?? null,
-    insuredDateOfBirth: insurance?.insuredDateOfBirth ?? null,
-    insuredEmployerName: insurance?.insuredEmployerName ?? null,
-    referralTypeId: insurance?.referralTypeId ?? null,
+    referralTypeId: detail.referralTypeId ?? null,
     hasNoKnownProblems: detail.hasNoKnownProblems,
     hasNoKnownMedications: detail.hasNoKnownMedications,
     hasNoKnownAllergies: detail.hasNoKnownAllergies,

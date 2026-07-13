@@ -129,13 +129,6 @@ export type PatientNextOfKinDto = {
   relationRoleCode?: string | null;
 };
 
-export type PatientInsuranceDto = {
-  insuredFullName?: string | null;
-  insuredDateOfBirth?: string | null;
-  insuredEmployerName?: string | null;
-  referralTypeId?: number | null;
-};
-
 export type PatientDetailDto = {
   id: string;
   patientCode: string;
@@ -150,7 +143,9 @@ export type PatientDetailDto = {
   employment?: PatientEmploymentDto | null;
   guardian?: PatientGuardianDto | null;
   nextOfKin?: PatientNextOfKinDto | null;
-  insurance?: PatientInsuranceDto | null;
+  // How the patient came to the practice. Insurance policies are a separate collection —
+  // see @/api/patient-insurance — because a patient may hold more than one.
+  referralTypeId?: number | null;
   hasNoKnownProblems: boolean;
   hasNoKnownMedications: boolean;
   hasNoKnownAllergies: boolean;
@@ -250,10 +245,7 @@ export type PatientFields = {
   nextOfKinPhone?: string | null;
   nextOfKinRelation?: string | null;
   nextOfKinRelationRoleCode?: string | null;
-  // Insurance
-  insuredFullName?: string | null;
-  insuredDateOfBirth?: string | null;
-  insuredEmployerName?: string | null;
+  // Referral source
   referralTypeId?: number | null;
   // Flags
   hasNoKnownProblems: boolean;

@@ -73,6 +73,12 @@ export async function installShellMocks(page: Page): Promise<void> {
   await mockJsonResponse(page, "**/api/v1/administration/departments**", paged([]));
   await mockJsonResponse(page, "**/api/v1/administration/incident-types**", paged([]));
   await mockJsonResponse(page, "**/api/v1/administration/report-types**", []);
+  await mockJsonResponse(page, "**/api/v1/administration/insurance-companies**", paged([]));
+  await mockJsonResponse(page, "**/api/v1/administration/insurance-types**", paged([]));
+
+  // A patient's insurance policies are a child collection, so the chart sidebar and the patient-info
+  // Insurance panel both fetch them on load — for every patient page, not just insurance specs.
+  await mockJsonResponse(page, "**/api/v1/patient/insurance-policies**", paged([]));
 }
 
 /** Build a Playwright-shaped paged response body. */

@@ -29,7 +29,7 @@ const PATIENT = {
     dateOfBirth: "1990-04-12",
     gender: "F",
   },
-  insurance: null,
+  referralTypeId: null,
   lastVisitDate: null,
   nextVisitDate: null,
 };

@@ -44,7 +44,7 @@ const PATIENT = {
   employment: null,
   guardian: null,
   nextOfKin: null,
-  insurance: null,
+  referralTypeId: null,
   hasNoKnownProblems: false,
   hasNoKnownMedications: false,
   hasNoKnownAllergies: false,

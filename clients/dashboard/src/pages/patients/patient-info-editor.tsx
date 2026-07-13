@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Banknote,
   Briefcase,
@@ -11,6 +11,7 @@ import {
   Pencil,
   Power,
   PowerOff,
+  Share2,
   Trash2,
   Users,
   UserSquare2,
@@ -22,7 +23,9 @@ import {
   type PatientDetailDto,
   type UpdatePatientInput,
 } from "@/api/patients";
+import { searchPatientInsurancePolicies } from "@/api/patient-insurance";
 import { mergePatientUpdate } from "@/pages/patients/patient-mappers";
+import { InsurancePolicyListDialog } from "@/pages/patients/insurance-policy-list-dialog";
 import {
   GENDER_OPTIONS,
   MARITAL_STATUS_OPTIONS,
@@ -65,7 +68,8 @@ type DialogState =
   | { mode: "edit-employment" }
   | { mode: "edit-guardian" }
   | { mode: "edit-next-of-kin" }
-  | { mode: "edit-insurance" }
+  | { mode: "manage-insurance" }
+  | { mode: "edit-referral" }
   | { mode: "edit-flags" }
   | { mode: "toggle-status" }
   | { mode: "delete" };
@@ -174,9 +178,17 @@ export function PatientInfoEditor({
           <EntityDetailSection
             title="Insurance"
             icon={Banknote}
-            action={<EditButton onClick={() => setDialog({ mode: "edit-insurance" })} />}
+            description="Policies in coordination-of-benefits order. A patient may hold more than one."
+            action={<ManageButton onClick={() => setDialog({ mode: "manage-insurance" })} />}
           >
             <InsurancePanel patient={patient} />
+          </EntityDetailSection>
+          <EntityDetailSection
+            title="Referral"
+            icon={Share2}
+            action={<EditButton onClick={() => setDialog({ mode: "edit-referral" })} />}
+          >
+            <ReferralPanel patient={patient} />
           </EntityDetailSection>
         </div>
       </div>
@@ -188,7 +200,8 @@ export function PatientInfoEditor({
       <EmploymentDialog open={dialog.mode === "edit-employment"} patient={patient} onClose={() => setDialog({ mode: "closed" })} />
       <GuardianDialog open={dialog.mode === "edit-guardian"} patient={patient} onClose={() => setDialog({ mode: "closed" })} />
       <NextOfKinDialog open={dialog.mode === "edit-next-of-kin"} patient={patient} onClose={() => setDialog({ mode: "closed" })} />
-      <InsuranceDialog open={dialog.mode === "edit-insurance"} patient={patient} onClose={() => setDialog({ mode: "closed" })} />
+      <InsurancePolicyListDialog open={dialog.mode === "manage-insurance"} patient={patient} onClose={() => setDialog({ mode: "closed" })} />
+      <ReferralDialog open={dialog.mode === "edit-referral"} patient={patient} onClose={() => setDialog({ mode: "closed" })} />
       <FlagsDialog open={dialog.mode === "edit-flags"} patient={patient} onClose={() => setDialog({ mode: "closed" })} />
       <ToggleStatusDialog open={dialog.mode === "toggle-status"} patient={patient} onClose={() => setDialog({ mode: "closed" })} />
       <DeleteDialog
@@ -206,6 +219,16 @@ function EditButton({ onClick }: { onClick: () => void }) {
     <Button variant="outline" size="sm" onClick={onClick} className="gap-1.5">
       <Pencil className="h-3.5 w-3.5" />
       Edit
+    </Button>
+  );
+}
+
+/** Opens a collection editor rather than a single-record form — the section holds many rows. */
+function ManageButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button variant="outline" size="sm" onClick={onClick} className="gap-1.5">
+      <Pencil className="h-3.5 w-3.5" />
+      Manage
     </Button>
   );
 }
@@ -410,27 +433,53 @@ function GuardianPanel({ patient }: { patient: PatientDetailDto }) {
   );
 }
 
+/**
+ * Summarizes the patient's active insurance policies. Unlike the other panels here this reads a
+ * child collection rather than a field on the patient, so it fetches its own data — the patient
+ * record carries no insurance any more.
+ */
 function InsurancePanel({ patient }: { patient: PatientDetailDto }) {
-  const insurance = patient.insurance;
+  const { data, isLoading } = useQuery({
+    queryKey: ["patient-insurance-policies", patient.id, false],
+    queryFn: () => searchPatientInsurancePolicies({ patientId: patient.id, pageSize: 200 }),
+  });
+
+  if (isLoading) return <div className="skeleton h-12 rounded-lg" />;
+
+  const policies = data?.items ?? [];
+  if (policies.length === 0) {
+    return <EmptySection label="No insurance policies on file." />;
+  }
+
+  return (
+    <ul className="space-y-2 text-[13px]">
+      {policies.map((p) => (
+        <li key={p.id} className="flex items-baseline justify-between gap-3">
+          <span className="min-w-0 truncate">
+            {p.insuranceCompanyName ?? "Unknown insurer"}
+            {p.policyNumber ? (
+              <span className="text-[var(--color-muted-foreground)]"> · {p.policyNumber}</span>
+            ) : null}
+          </span>
+          <EntityStatusBadge tone="info">{p.priority}</EntityStatusBadge>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ReferralPanel({ patient }: { patient: PatientDetailDto }) {
   const referralTypeOptions = useReferralTypeOptions() ?? [];
-  if (!insurance || !insurance.insuredFullName) {
-    return <EmptySection label="No insurance info on file." />;
+  const label = findOptionLabel(
+    referralTypeOptions,
+    patient.referralTypeId != null ? String(patient.referralTypeId) : null,
+  );
+  if (!label) {
+    return <EmptySection label="No referral source on file." />;
   }
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-[13px] sm:grid-cols-2">
-      <MetaRow label="Insured name" value={insurance.insuredFullName ?? "—"} />
-      <MetaRow
-        label="Insured DOB"
-        value={insurance.insuredDateOfBirth ? formatDate(insurance.insuredDateOfBirth) : "—"}
-      />
-      <MetaRow label="Insured employer" value={insurance.insuredEmployerName ?? "—"} />
-      <MetaRow
-        label="Referral type"
-        value={
-          findOptionLabel(referralTypeOptions, insurance.referralTypeId != null ? String(insurance.referralTypeId) : null) ??
-          "—"
-        }
-      />
+      <MetaRow label="Referral type" value={label} />
     </dl>
   );
 }
@@ -1343,7 +1392,7 @@ function NextOfKinDialog({
   );
 }
 
-function InsuranceDialog({
+function ReferralDialog({
   open,
   patient,
   onClose,
@@ -1352,33 +1401,23 @@ function InsuranceDialog({
   patient: PatientDetailDto;
   onClose: () => void;
 }) {
-  const insurance = patient.insurance;
   const referralTypeOptions = useReferralTypeOptions() ?? [];
-  const [insuredFullName, setInsuredFullName] = useState(insurance?.insuredFullName ?? "");
-  const [insuredDateOfBirth, setInsuredDateOfBirth] = useState(toDateInputValue(insurance?.insuredDateOfBirth));
-  const [insuredEmployerName, setInsuredEmployerName] = useState(insurance?.insuredEmployerName ?? "");
   const [referralTypeId, setReferralTypeId] = useState<string | null>(
-    insurance?.referralTypeId != null ? String(insurance.referralTypeId) : null,
+    patient.referralTypeId != null ? String(patient.referralTypeId) : null,
   );
 
   useEffect(() => {
     if (open) {
-      setInsuredFullName(insurance?.insuredFullName ?? "");
-      setInsuredDateOfBirth(toDateInputValue(insurance?.insuredDateOfBirth));
-      setInsuredEmployerName(insurance?.insuredEmployerName ?? "");
-      setReferralTypeId(insurance?.referralTypeId != null ? String(insurance.referralTypeId) : null);
+      setReferralTypeId(patient.referralTypeId != null ? String(patient.referralTypeId) : null);
     }
-  }, [open, insurance]);
+  }, [open, patient.referralTypeId]);
 
-  const mutation = useUpdateMutation(patient, onClose, "Insurance info updated");
+  const mutation = useUpdateMutation(patient, onClose, "Referral source updated");
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     mutation.mutate(
       mergePatientUpdate(patient, {
-        insuredFullName: insuredFullName.trim() || null,
-        insuredDateOfBirth: fromDateInputValue(insuredDateOfBirth),
-        insuredEmployerName: insuredEmployerName.trim() || null,
         referralTypeId: referralTypeId != null ? Number(referralTypeId) : null,
       }),
     );
@@ -1389,20 +1428,11 @@ function InsuranceDialog({
       <DialogContent>
         <form onSubmit={onSubmit}>
           <DialogHeader>
-            <DialogTitle>Edit insurance info</DialogTitle>
-            <DialogDescription>Insured party and referral source for {fullName(patient)}.</DialogDescription>
+            <DialogTitle>Edit referral source</DialogTitle>
+            <DialogDescription>How {fullName(patient)} came to the practice.</DialogDescription>
           </DialogHeader>
 
           <DialogBody className="space-y-4">
-            <Field id="ins-name" label="Insured full name">
-              <Input id="ins-name" value={insuredFullName} onChange={(e) => setInsuredFullName(e.target.value)} autoFocus />
-            </Field>
-            <Field id="ins-dob" label="Insured date of birth">
-              <Input id="ins-dob" type="date" value={insuredDateOfBirth} onChange={(e) => setInsuredDateOfBirth(e.target.value)} />
-            </Field>
-            <Field id="ins-employer" label="Insured employer">
-              <Input id="ins-employer" value={insuredEmployerName} onChange={(e) => setInsuredEmployerName(e.target.value)} />
-            </Field>
             <Field id="ins-referral" label="Referral type">
               <Combobox
                 id="ins-referral"

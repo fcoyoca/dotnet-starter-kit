@@ -19,7 +19,7 @@ const PATIENT = {
   patientCode: "P-55501",
   isActive: true,
   demographics: { firstName: "Marco", middleInitial: "T", lastName: "Reyes", dateOfBirth: "1985-02-01", gender: "M" },
-  insurance: null,
+  referralTypeId: null,
   lastVisitDate: null,
   nextVisitDate: null,
   // Both derived visits belong to the Phoenix clinic (UTC-7). 15:00Z → 8:00 AM,

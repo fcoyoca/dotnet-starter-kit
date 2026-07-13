@@ -64,6 +64,7 @@ import { describe, formatDate, formatDateTimeInTz } from "@/lib/list-helpers";
 import { cn } from "@/lib/cn";
 import { usePatientTab, usePatientWorkspace } from "@/state/patient-workspace-context";
 import { PatientTabStrip } from "@/components/layout/patient-tab-strip";
+import { searchPatientInsurancePolicies } from "@/api/patient-insurance";
 import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
 import { DocumentsListDialog } from "@/pages/patient-charts/documents-list-dialog";
 import { ExportReportsDialog } from "@/pages/patient-charts/export-reports-dialog";
@@ -138,6 +139,33 @@ function SidebarRow({ label, value }: { label: string; value: React.ReactNode })
       <span className="text-[12px] font-medium text-[var(--color-muted-foreground)]">{label}</span>
       <span className="text-right text-[12px] font-medium">{value}</span>
     </div>
+  );
+}
+
+/**
+ * The chart sidebar's insurance line: the patient's active payers in coordination-of-benefits
+ * order. Insurance is a child collection, not a field on the patient, so this fetches its own data.
+ */
+function ChartInsuranceSummary({ patientId }: { patientId: string }) {
+  const { data } = useQuery({
+    queryKey: ["patient-insurance-policies", patientId, false],
+    queryFn: () => searchPatientInsurancePolicies({ patientId, pageSize: 200 }),
+  });
+
+  const policies = data?.items ?? [];
+  if (policies.length === 0) {
+    return <p className="mt-0.5 text-[13px]">—</p>;
+  }
+
+  return (
+    <ul className="mt-0.5 space-y-0.5">
+      {policies.map((p) => (
+        <li key={p.id} className="truncate text-[13px]">
+          {p.insuranceCompanyName ?? "Unknown insurer"}
+          <span className="text-[var(--color-muted-foreground)]"> · {p.priority}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -525,9 +553,7 @@ export function PatientChartDetailPage() {
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted-foreground)]">
                   Insurance
                 </p>
-                <p className="mt-0.5 text-[13px]">
-                  {patient.insurance?.insuredFullName || "—"}
-                </p>
+                <ChartInsuranceSummary patientId={patient.id} />
               </div>
 
               {patient.demographics.medicalAlertNotes && (

@@ -58,6 +58,15 @@ export const ALLERGY_PERMISSIONS = {
 
 export type AllergyPermissionKey = keyof typeof ALLERGY_PERMISSIONS;
 
+export const INSURANCE_PERMISSIONS = {
+  view:   "Permissions.Patient.InsurancePolicies.View",
+  create: "Permissions.Patient.InsurancePolicies.Create",
+  update: "Permissions.Patient.InsurancePolicies.Update",
+  delete: "Permissions.Patient.InsurancePolicies.Delete",
+} as const;
+
+export type InsurancePermissionKey = keyof typeof INSURANCE_PERMISSIONS;
+
 export const MEDICATION_PERMISSIONS = {
   view:   "Permissions.Patient.Medications.View",
   create: "Permissions.Patient.Medications.Create",
