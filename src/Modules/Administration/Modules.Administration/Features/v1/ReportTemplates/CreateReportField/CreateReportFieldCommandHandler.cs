@@ -23,7 +23,8 @@ public sealed class CreateReportFieldCommandHandler(AdministrationDbContext dbCo
         }
 
         ReportField entity = ReportField.Create(
-            command.ReportTypeId, command.Name, command.Category, command.DisplayOrder);
+            command.ReportTypeId, command.Name, command.Category, command.DisplayOrder,
+            defaultText: command.DefaultText);
         dbContext.ReportFields.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return entity.Id;

@@ -6,4 +6,5 @@ public sealed record ReportFieldDto(
     string Name,
     string? Category,
     int DisplayOrder,
-    bool IsActive);
+    bool IsActive,
+    string? DefaultText = null);

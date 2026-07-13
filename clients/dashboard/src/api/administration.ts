@@ -874,6 +874,8 @@ export type ReportFieldDto = {
   category?: string | null;
   displayOrder: number;
   isActive: boolean;
+  /** Boilerplate stamped into this field when a report is created. */
+  defaultText?: string | null;
 };
 
 export function listReportTypes(isActive?: boolean): Promise<ReportTypeDto[]> {
@@ -913,6 +915,7 @@ export type CreateReportFieldInput = {
   name: string;
   category?: string | null;
   displayOrder?: number;
+  defaultText?: string | null;
 };
 export type UpdateReportFieldInput = {
   id: number;
@@ -920,6 +923,7 @@ export type UpdateReportFieldInput = {
   category?: string | null;
   displayOrder: number;
   isActive: boolean;
+  defaultText?: string | null;
 };
 
 export function createReportField(input: CreateReportFieldInput): Promise<number> {
@@ -930,6 +934,7 @@ export function createReportField(input: CreateReportFieldInput): Promise<number
       name: input.name,
       category: input.category ?? null,
       displayOrder: input.displayOrder ?? 0,
+      defaultText: input.defaultText ?? null,
     }),
   });
 }
@@ -937,7 +942,11 @@ export function createReportField(input: CreateReportFieldInput): Promise<number
 export async function updateReportField(input: UpdateReportFieldInput): Promise<void> {
   await apiFetch<void>(`/api/v1/administration/report-fields/${input.id}`, {
     method: "PUT",
-    body: JSON.stringify({ ...input, category: input.category ?? null }),
+    body: JSON.stringify({
+      ...input,
+      category: input.category ?? null,
+      defaultText: input.defaultText ?? null,
+    }),
   });
 }
 

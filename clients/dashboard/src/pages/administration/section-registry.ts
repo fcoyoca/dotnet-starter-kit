@@ -49,6 +49,10 @@ export const ADMIN_SECTION_COMPONENTS: Record<string, LazyExoticComponent<Compon
     "InsuranceTypesPage",
   ),
   macros: lazyNamed(() => import("@/pages/administration/macros"), "MacrosPage"),
+  "report-default-text": lazyNamed(
+    () => import("@/pages/administration/report-default-text"),
+    "ReportDefaultTextPage",
+  ),
   "medication-dose-units": lazyNamed(
     () => import("@/pages/administration/medication-dose-units"),
     "MedicationDoseUnitsPage",

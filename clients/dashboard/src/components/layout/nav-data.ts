@@ -8,6 +8,7 @@ import {
   ClipboardList,
   ClipboardPlus,
   CreditCard,
+  FileSignature,
   FileText,
   FolderOpen,
   FolderTree,
@@ -181,6 +182,12 @@ export const administrationHubItems: NavSpec[] = [
     label: "Medication Dose Units",
     icon: Beaker,
     perm: "Permissions.Administration.MedicationDoseUnits.View",
+  },
+  {
+    to: "/administration/report-default-text",
+    label: "Report Default Text",
+    icon: FileSignature,
+    perm: "Permissions.Administration.ReportTemplates.View",
   },
   {
     to: "/administration/patient-document-types",

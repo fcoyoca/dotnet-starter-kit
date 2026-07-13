@@ -15,6 +15,7 @@ public sealed class ReportFieldConfiguration : IEntityTypeConfiguration<ReportFi
         builder.Property(x => x.Name).IsRequired().HasMaxLength(128);
         builder.Property(x => x.Category).HasMaxLength(128);
         builder.Property(x => x.IsActive).IsRequired();
+        builder.Property(x => x.DefaultText).HasMaxLength(16000);
         builder.Property(x => x.DeletedBy).HasMaxLength(64);
         builder.Property(x => x.LegacyId);
 

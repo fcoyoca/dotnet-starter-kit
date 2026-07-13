@@ -17,7 +17,7 @@ public sealed class UpdateReportFieldCommandHandler(AdministrationDbContext dbCo
             .ConfigureAwait(false)
             ?? throw new NotFoundException($"Report field {command.Id} not found.");
 
-        entity.Update(command.Name, command.Category, command.DisplayOrder, command.IsActive);
+        entity.Update(command.Name, command.Category, command.DisplayOrder, command.IsActive, command.DefaultText);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Unit.Value;
     }

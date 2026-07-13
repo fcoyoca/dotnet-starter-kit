@@ -11,5 +11,6 @@ public sealed class UpdateReportFieldCommandValidator : AbstractValidator<Update
         RuleFor(x => x.Name).NotEmpty().MaximumLength(128);
         RuleFor(x => x.Category).MaximumLength(128);
         RuleFor(x => x.DisplayOrder).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.DefaultText).MaximumLength(16000);
     }
 }

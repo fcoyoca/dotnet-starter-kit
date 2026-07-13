@@ -7,4 +7,5 @@ public sealed record UpdateReportFieldCommand(
     string Name,
     string? Category,
     int DisplayOrder,
-    bool IsActive) : ICommand<Unit>;
+    bool IsActive,
+    string? DefaultText = null) : ICommand<Unit>;

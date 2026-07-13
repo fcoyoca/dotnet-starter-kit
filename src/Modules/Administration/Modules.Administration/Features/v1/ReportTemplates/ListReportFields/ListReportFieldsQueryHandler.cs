@@ -23,7 +23,8 @@ public sealed class ListReportFieldsQueryHandler(AdministrationDbContext dbConte
 
         return await q
             .OrderBy(f => f.Category).ThenBy(f => f.DisplayOrder).ThenBy(f => f.Name)
-            .Select(f => new ReportFieldDto(f.Id, f.ReportTypeId, f.Name, f.Category, f.DisplayOrder, f.IsActive))
+            .Select(f => new ReportFieldDto(
+                f.Id, f.ReportTypeId, f.Name, f.Category, f.DisplayOrder, f.IsActive, f.DefaultText))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
     }
