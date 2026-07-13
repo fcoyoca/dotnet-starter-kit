@@ -62,6 +62,17 @@ export async function installShellMocks(page: Page): Promise<void> {
     expiryState: "Active",
     graceEndsUtc: new Date(Date.now() + 372 * 24 * 60 * 60 * 1000).toISOString(),
   });
+
+  // Administration lookups (Combobox options, clinic timezones, incident/report
+  // type labels). Pages across the app hydrate these on load; left unmocked they
+  // reach the real API, come back 401, and the client's refresh-then-logout path
+  // bounces the whole spec to /login. Empty defaults — specs needing real
+  // options re-mock these AFTER this call, which wins (LIFO).
+  await mockJsonResponse(page, "**/api/v1/administration/clinics**", paged([]));
+  await mockJsonResponse(page, "**/api/v1/administration/providers**", paged([]));
+  await mockJsonResponse(page, "**/api/v1/administration/departments**", paged([]));
+  await mockJsonResponse(page, "**/api/v1/administration/incident-types**", paged([]));
+  await mockJsonResponse(page, "**/api/v1/administration/report-types**", []);
 }
 
 /** Build a Playwright-shaped paged response body. */
