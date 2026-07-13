@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   keepPreviousData,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -36,7 +37,7 @@ import {
   type PatientIncidentListItemDto,
 } from "@/api/incidents";
 import { listReportTypes, useClinicTimeZones, useIncidentTypeOptions } from "@/api/administration";
-import { createReport, deleteReport, searchPatientReports } from "@/api/reports";
+import { createReport, deleteReport, getReport, searchPatientReports } from "@/api/reports";
 import { searchPatientProblems } from "@/api/problems";
 import { searchPatientNotes } from "@/api/patient-notes";
 import {
@@ -69,6 +70,7 @@ import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
 import { DocumentsListDialog } from "@/pages/patient-charts/documents-list-dialog";
 import { ExportReportsDialog } from "@/pages/patient-charts/export-reports-dialog";
 import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
+import { IncidentRef } from "@/pages/patient-charts/incident-ref";
 import { IncidentsListDialog } from "@/pages/patient-charts/incidents-list-dialog";
 import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
 import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
@@ -447,6 +449,36 @@ export function PatientChartDetailPage() {
   // open incidents only).
   const openIncidents = useMemo(() => incidents.filter((x) => !x.isClosed), [incidents]);
 
+  const incidentById = useMemo(() => new Map(incidents.map((x) => [x.id, x])), [incidents]);
+
+  // Each open report is fetched on its own rather than read out of
+  // `reportsQuery`, which only covers the ACTIVE incident: a report stays open
+  // across incident switches, so a report belonging to any other incident is
+  // absent from that list and used to fall back to the bare label "Report".
+  // Keyed ["report", id] — the same key ReportEditorPanel uses, so the active
+  // report is a cache hit and only genuinely other-incident reports cost a fetch.
+  const openReportQueries = useQueries({
+    queries: openReportIds.map((id) => ({
+      queryKey: ["report", id],
+      queryFn: () => getReport(id),
+      enabled: canViewReports,
+    })),
+  });
+
+  // Pill metadata per open report: its date, and the incident it belongs to.
+  // `isForeign` is the whole point — it flags a report from an incident other
+  // than the one the chart is currently working in.
+  const openReportTabs = openReportIds.map((id, i) => {
+    const report = openReportQueries[i]?.data;
+    const incident = report ? (incidentById.get(report.incidentId) ?? null) : null;
+    return {
+      id,
+      label: report ? formatDate(report.reportDate) : "Report",
+      incident,
+      isForeign: report != null && report.incidentId !== activeIncidentId,
+    };
+  });
+
   // BackChart parity: when a patient chart first loads with more than one
   // open incident, the Incidents dialog pops up so the user picks which
   // incident to load. Prompt once per patient visit — refetches and filter
@@ -538,7 +570,17 @@ export function PatientChartDetailPage() {
                 </div>
               </div>
 
+              {/* The chart's identity line. The incident's DOIV/DOL rides with
+                  the patient name so it's always clear WHICH incident the
+                  reports on this chart belong to. */}
               <p className="text-[15px] font-semibold leading-tight">{fullName}</p>
+              {activeIncident && (
+                <IncidentRef
+                  incident={activeIncident}
+                  testId="chart-incident-ref"
+                  className="mt-0.5 block text-[11px]"
+                />
+              )}
 
               <div className="mt-3 space-y-1.5">
                 <SidebarRow label="Code" value={patient.patientCode} />
@@ -747,6 +789,9 @@ export function PatientChartDetailPage() {
                     onClick={() => setIncidentsListOpen(true)}
                   >
                     DOIV: {formatDate(activeIncident.dateOfInitialVisit)}
+                    <span className="block text-[12px] font-normal text-[var(--color-muted-foreground)]">
+                      DOL: {formatDate(activeIncident.dateOfLoss)}
+                    </span>
                   </button>
                 </li>
                 <li>
@@ -896,19 +941,27 @@ export function PatientChartDetailPage() {
               <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted-foreground)]">
                 Open reports
               </span>
-              {openReportIds.map((id) => {
-                const r = reportsQuery.data?.items.find((x) => x.id === id);
-                const label = r ? formatDate(r.reportDate) : "Report";
-                return (
-                  <span
-                    key={id}
-                    className={cn(
-                      "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-medium",
-                      id === activeReportId
-                        ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
-                        : "border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)]",
-                    )}
-                  >
+              {openReportTabs.map(({ id, label, incident, isForeign }) => (
+                <span
+                  key={id}
+                  data-testid="open-report-tab"
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-medium",
+                    id === activeReportId
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                      : "border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)]",
+                  )}
+                >
+                  {isForeign && (
+                    <AlertTriangle
+                      aria-label="Belongs to a different incident than the one selected"
+                      className="size-3.5 shrink-0 text-[var(--color-destructive)]"
+                    />
+                  )}
+                  {/* The DOIV/DOL label sits OUTSIDE the select button on purpose:
+                      the button's accessible name must stay exactly the report
+                      date (the tab strip is addressed that way). */}
+                  <span className="flex flex-col items-start leading-tight">
                     <button
                       type="button"
                       onClick={() => patientId && setActiveReport(patientId, id)}
@@ -916,17 +969,22 @@ export function PatientChartDetailPage() {
                     >
                       {label}
                     </button>
-                    <button
-                      type="button"
-                      aria-label={`Close ${label} report tab`}
-                      onClick={() => patientId && closeReport(patientId, id)}
-                      className="grid size-3.5 place-items-center rounded-full opacity-70 hover:opacity-100"
-                    >
-                      <X className="size-3" />
-                    </button>
+                    <IncidentRef
+                      incident={incident}
+                      tone={isForeign ? "foreign" : "muted"}
+                      className="text-[10px] font-normal"
+                    />
                   </span>
-                );
-              })}
+                  <button
+                    type="button"
+                    aria-label={`Close ${label} report tab`}
+                    onClick={() => patientId && closeReport(patientId, id)}
+                    className="grid size-3.5 shrink-0 place-items-center rounded-full opacity-70 hover:opacity-100"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
             </div>
           )}
 

@@ -30,6 +30,7 @@ import {
   updateReport,
   type ReportFieldValue,
 } from "@/api/reports";
+import { getPatientIncident } from "@/api/incidents";
 import { searchPatientProblems, setReportProblems } from "@/api/problems";
 import { REPORT_PERMISSIONS, SUPERBILL_PERMISSIONS } from "@/lib/patient-permissions";
 import {
@@ -46,6 +47,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MacroInsert } from "@/components/ui/macro-insert";
 import { Combobox, Field } from "@/components/list";
 import { describe, formatDate, formatDateTimeMono } from "@/lib/list-helpers";
+import { IncidentRef } from "@/pages/patient-charts/incident-ref";
 import { ImportAllergiesDialog } from "@/pages/patient-charts/import-allergies-dialog";
 import { ImportMedicationsDialog } from "@/pages/patient-charts/import-medications-dialog";
 import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
@@ -140,6 +142,16 @@ export function ReportEditorPanel({
 
   const report = reportQuery.data;
   const isSigned = report?.isSigned ?? false;
+
+  // The report's OWN incident, resolved from the report rather than inherited
+  // from the chart's active incident: several reports from different incidents
+  // can sit open at once, and the header has to name the one THIS report is
+  // filed under.
+  const incidentQuery = useQuery({
+    queryKey: ["incident", report?.incidentId],
+    queryFn: () => getPatientIncident(report!.incidentId),
+    enabled: report != null,
+  });
 
   const fieldsQuery = useQuery({
     queryKey: ["report-fields", report?.reportTypeId],
@@ -490,6 +502,14 @@ export function ReportEditorPanel({
           </div>
           <div>
             <p className="text-[15px] font-semibold leading-tight">{fullName || "Patient"}</p>
+            {/* Which incident this report is filed under — sits with the patient
+                name so an open report can never be mistaken for one belonging to
+                another incident. */}
+            <IncidentRef
+              incident={incidentQuery.data}
+              testId="report-incident-ref"
+              className="block text-[11px] font-medium"
+            />
             <p className="text-[12px] text-[var(--color-muted-foreground)]">
               Report · {formatDate(report.reportDate)}
               {report.version > 1 ? ` · v${report.version}` : ""}
