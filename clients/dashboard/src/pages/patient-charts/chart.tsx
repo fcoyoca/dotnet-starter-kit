@@ -1004,40 +1004,44 @@ export function PatientChartDetailPage() {
                     key={id}
                     data-testid="open-report-tab"
                     className={cn(
-                      "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-medium",
+                      "flex items-center rounded-lg border text-[11.5px] font-medium",
                       id === activeReportId
                         ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
                         : "border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)]",
                     )}
                   >
-                    {isForeign && (
-                      <AlertTriangle
-                        aria-label="Belongs to a different incident than the one selected"
-                        className="size-3.5 shrink-0 text-[var(--color-destructive)]"
-                      />
-                    )}
-                    {/* The DOIV/DOL label sits OUTSIDE the select button on purpose:
-                        the button's accessible name must stay exactly the report
-                        date (the tab strip is addressed that way). */}
-                    <span className="flex flex-col items-start leading-tight">
-                      <button
-                        type="button"
-                        onClick={() => patientId && setActiveReport(patientId, id)}
-                        className="cursor-pointer"
-                      >
+                    {/* The whole pill selects the report — a button around just the
+                        date left the DOIV/DOL line and the pill's padding dead,
+                        which read as "this tab is disabled". The padding therefore
+                        lives on the button, not the pill. `aria-label` pins the
+                        accessible name to the date alone, so the tab strip is still
+                        addressed by date and not by date + DOIV + DOL. */}
+                    <button
+                      type="button"
+                      aria-label={label}
+                      onClick={() => patientId && setActiveReport(patientId, id)}
+                      className="flex min-w-0 cursor-pointer items-center gap-1.5 py-1 pl-2.5 pr-1.5 text-left"
+                    >
+                      {isForeign && (
+                        <AlertTriangle
+                          aria-label="Belongs to a different incident than the one selected"
+                          className="size-3.5 shrink-0 text-[var(--color-destructive)]"
+                        />
+                      )}
+                      <span className="flex flex-col items-start leading-tight">
                         {label}
-                      </button>
-                      <IncidentRef
-                        incident={incident}
-                        tone={isForeign ? "foreign" : "muted"}
-                        className="text-[10px] font-normal"
-                      />
-                    </span>
+                        <IncidentRef
+                          incident={incident}
+                          tone={isForeign ? "foreign" : "muted"}
+                          className="text-[10px] font-normal"
+                        />
+                      </span>
+                    </button>
                     <button
                       type="button"
                       aria-label={`Close ${label} report tab`}
                       onClick={() => patientId && closeReport(patientId, id)}
-                      className="grid size-3.5 shrink-0 place-items-center rounded-full opacity-70 hover:opacity-100"
+                      className="grid shrink-0 place-items-center self-stretch rounded-r-lg pl-0.5 pr-2 opacity-70 hover:opacity-100"
                     >
                       <X className="size-3" />
                     </button>

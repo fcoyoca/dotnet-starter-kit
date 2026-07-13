@@ -199,6 +199,17 @@ test.describe("incident DOIV/DOL labels", () => {
     await expect(tabA.getByLabel(FOREIGN)).toHaveCount(0);
   });
 
+  test("the whole open-report tab selects it, not just the date text", async ({ page }) => {
+    await openChart(page);
+    const panel = page.getByTestId("report-editor-panel");
+    await expect(panel.getByTestId("report-incident-ref")).toHaveText(A_REF);
+
+    // Click the tab's DOIV/DOL line — outside the date, inside the pill. When
+    // only the date was clickable this did nothing, which read as a disabled tab.
+    await page.getByTestId("open-report-tab").filter({ hasText: REPORT_B_TAB }).getByText(B_REF).click();
+    await expect(panel.getByTestId("report-incident-ref")).toHaveText(B_REF);
+  });
+
   test("the open report's header names the incident the report is filed under", async ({ page }) => {
     await openChart(page);
 
