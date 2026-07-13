@@ -187,23 +187,43 @@ test.describe("report field macros", () => {
 
     await page.getByRole("button", { name: /Normal Exam/ }).click();
 
-    // Staged, appended to the existing text…
-    await expect(stagingField(page)).toHaveValue(new RegExp(MACRO_FIELD.text));
-    await expect(stagingField(page)).toHaveValue(new RegExp(EXISTING));
+    // Staged, appended to the existing text — on the SAME line. A macro continues
+    // the sentence the clinician is writing; it does not start a new paragraph.
+    await expect(stagingField(page)).toHaveValue(EXISTING + MACRO_FIELD.text);
     // …but the report itself has not changed yet.
     await expect(reportField(page)).toHaveValue(EXISTING);
 
     // Several macros can be composed into the one staged edit before committing.
     await page.getByRole("button", { name: /Signature Block/ }).click();
-    await expect(stagingField(page)).toHaveValue(new RegExp(MACRO_GENERAL.text));
+    await expect(stagingField(page)).toHaveValue(
+      EXISTING + MACRO_FIELD.text + MACRO_GENERAL.text,
+    );
 
     await page.getByRole("button", { name: "Complete" }).click();
     await expect(page.getByRole("dialog", { name: "Macros" })).toBeHidden();
 
     // Complete is what writes the staged text back to the field.
-    await expect(reportField(page)).toHaveValue(new RegExp(EXISTING));
-    await expect(reportField(page)).toHaveValue(new RegExp(MACRO_FIELD.text));
-    await expect(reportField(page)).toHaveValue(new RegExp(MACRO_GENERAL.text));
+    await expect(reportField(page)).toHaveValue(
+      EXISTING + MACRO_FIELD.text + MACRO_GENERAL.text,
+    );
+  });
+
+  test("a macro inserts at the caret, splitting the line rather than breaking it", async ({ page }) => {
+    await openChart(page);
+    await openMacros(page);
+
+    // Put the caret right after "Patient reports " and insert there.
+    const caret = "Patient reports ".length;
+    await stagingField(page).click();
+    await stagingField(page).evaluate((el: HTMLTextAreaElement, at: number) => {
+      el.setSelectionRange(at, at);
+    }, caret);
+
+    await page.getByRole("button", { name: /Normal Exam/ }).click();
+
+    await expect(stagingField(page)).toHaveValue(
+      EXISTING.slice(0, caret) + MACRO_FIELD.text + EXISTING.slice(caret),
+    );
   });
 
   test("the staged text is editable before it is committed", async ({ page }) => {

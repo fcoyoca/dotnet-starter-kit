@@ -59,6 +59,12 @@ export function MacroInsert({
   const [mode, setMode] = useState<"pick" | "create">("pick");
   const [draft, setDraft] = useState("");
   const stagingRef = useRef<HTMLTextAreaElement | null>(null);
+  // Whether the clinician has put the caret somewhere in the staging box. Until
+  // they have, a macro appends at the end rather than at the textarea's default
+  // position 0.
+  const caretPlacedRef = useRef(false);
+  // Where to leave the caret once the next staged insert has rendered.
+  const pendingCaretRef = useRef<number | null>(null);
 
   // Re-seed from the field on every open, so a discarded edit never lingers and
   // a draft never shadows text typed into the field since the last visit.
@@ -66,6 +72,8 @@ export function MacroInsert({
     if (!open) return;
     setDraft(value);
     setMode("pick");
+    caretPlacedRef.current = false;
+    pendingCaretRef.current = null;
     // `value` is deliberately not a dep: re-seeding mid-edit would wipe the
     // staged text the moment the field's own state changed underneath.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,16 +114,33 @@ export function MacroInsert({
   /** Splice at the caret when the staging field is focused; otherwise append. */
   const stageMacro = (text: string) => {
     const ta = stagingRef.current;
+    // The caret survives the blur that clicking a macro causes, so selectionStart
+    // still holds where the clinician left it — but only once they've actually put
+    // it somewhere. An untouched textarea reports position 0, which would prepend.
+    const placed = caretPlacedRef.current && ta != null;
     setDraft((prev) => {
-      if (ta && document.activeElement === ta) {
-        const start = ta.selectionStart ?? prev.length;
-        const end = ta.selectionEnd ?? prev.length;
-        return prev.slice(0, start) + text + prev.slice(end);
-      }
-      const sep = prev && !prev.endsWith("\n") ? "\n" : "";
-      return prev + sep + text;
+      const start = placed ? Math.min(ta.selectionStart ?? prev.length, prev.length) : prev.length;
+      const end = placed ? Math.min(ta.selectionEnd ?? prev.length, prev.length) : prev.length;
+      // Spliced in as-is, with no separator: a macro continues the line being
+      // written rather than starting a new one.
+      pendingCaretRef.current = start + text.length;
+      return prev.slice(0, start) + text + prev.slice(end);
     });
   };
+
+  // Put the caret back after the text just inserted, so the clinician can keep
+  // typing there and a second macro chains on instead of re-inserting at the old
+  // spot. Runs after the new draft has been committed to the textarea.
+  useEffect(() => {
+    const pos = pendingCaretRef.current;
+    if (pos == null) return;
+    pendingCaretRef.current = null;
+    const ta = stagingRef.current;
+    if (!ta) return;
+    ta.focus();
+    ta.setSelectionRange(pos, pos);
+    caretPlacedRef.current = true;
+  }, [draft]);
 
   const onComplete = () => {
     onCommit(draft);
@@ -162,6 +187,9 @@ export function MacroInsert({
                       ref={stagingRef}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
+                      onFocus={() => {
+                        caretPlacedRef.current = true;
+                      }}
                       rows={14}
                       maxLength={16000}
                       placeholder="Pick a macro, or type here…"
