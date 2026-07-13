@@ -71,10 +71,8 @@ public sealed record UpdatePatientCommand(
     string? NextOfKinPhone,
     string? NextOfKinRelation,
     string? NextOfKinRelationRoleCode,
-    // Insurance
-    string? InsuredFullName,
-    DateTime? InsuredDateOfBirth,
-    string? InsuredEmployerName,
+    // Referral source. Insurance policies are managed separately — see
+    // /patient/insurance-policies — because a patient may hold more than one.
     int? ReferralTypeId,
     // Flags
     bool HasNoKnownProblems = false,

@@ -12,7 +12,9 @@ public sealed record PatientDetailDto(
     PatientEmploymentDto? Employment,
     PatientGuardianDto? Guardian,
     PatientNextOfKinDto? NextOfKin,
-    PatientInsuranceDto? Insurance,
+    // How the patient came to the practice (Administration.ReferralType). Insurance policies are a
+    // separate collection under /patient/insurance-policies, not part of the patient record.
+    int? ReferralTypeId,
     bool HasNoKnownProblems,
     bool HasNoKnownMedications,
     bool HasNoKnownAllergies,
@@ -98,9 +100,3 @@ public sealed record PatientNextOfKinDto(
     string? Phone,
     string? Relation,
     string? RelationRoleCode);
-
-public sealed record PatientInsuranceDto(
-    string? InsuredFullName,
-    DateTime? InsuredDateOfBirth,
-    string? InsuredEmployerName,
-    int? ReferralTypeId);

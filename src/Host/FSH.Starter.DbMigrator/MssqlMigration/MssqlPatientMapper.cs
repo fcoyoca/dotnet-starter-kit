@@ -89,9 +89,6 @@ internal static class MssqlPatientMapper
             pRelativePhone,
             pRelativeRelation,
             pRelativeRelationRoleCode,
-            pInsuredFullName,
-            pInsuredDOB,
-            pInsuredEmployerName,
             pReferralTypeID,
             pNoProblems,
             pNoMedications,
@@ -159,9 +156,10 @@ internal static class MssqlPatientMapper
                 CONVERT(NVARCHAR(256), DECRYPTBYKEY(p.pRelativePhone))      AS pRelativePhone,
                 p.pRelativeRelation,
                 p.pRelativeRelationRoleCode,
-                CONVERT(NVARCHAR(256), DECRYPTBYKEY(p.pInsuredFullName))    AS pInsuredFullName,
-                CONVERT(datetime, CONVERT(NVARCHAR(256), DECRYPTBYKEY(p.pInsuredDOB))) AS pInsuredDOB,
-                p.pInsuredEmployerName,
+                -- The legacy Patients row also carries pInsuredFullName/pInsuredDOB/pInsuredEmployerName.
+                -- They are a denormalized copy of the subscriber on one policy; the authoritative record
+                -- is dbo.PatientInsurance (many rows per patient), which imports separately into
+                -- patient.PatientInsurancePolicies. Not read here, so the copy can't shadow the real data.
                 p.pReferralTypeID,
                 p.pNoProblems,
                 p.pNoMedications,
@@ -250,9 +248,6 @@ internal static class MssqlPatientMapper
             NextOfKinPhone: GetString(r, "pRelativePhone"),
             NextOfKinRelation: GetString(r, "pRelativeRelation"),
             NextOfKinRelationRoleCode: GetString(r, "pRelativeRelationRoleCode"),
-            InsuredFullName: GetString(r, "pInsuredFullName"),
-            InsuredDateOfBirth: GetDate(r, "pInsuredDOB"),
-            InsuredEmployerName: GetString(r, "pInsuredEmployerName"),
             ReferralTypeId: GetInt(r, "pReferralTypeID"),
             HasNoKnownProblems: GetBoolOrDefault(r, "pNoProblems", false),
             HasNoKnownMedications: GetBoolOrDefault(r, "pNoMedications", false),

@@ -102,9 +102,7 @@ public sealed class GetPatientByIdQueryHandler(
             patient.NextOfKin is null ? null : new PatientNextOfKinDto(
                 patient.NextOfKin.FirstName, patient.NextOfKin.LastName,
                 patient.NextOfKin.Phone, patient.NextOfKin.Relation, patient.NextOfKin.RelationRoleCode),
-            patient.Insurance is null ? null : new PatientInsuranceDto(
-                patient.Insurance.InsuredFullName, patient.Insurance.InsuredDateOfBirth,
-                patient.Insurance.InsuredEmployerName, patient.Insurance.ReferralTypeId),
+            patient.ReferralTypeId,
             patient.HasNoKnownProblems,
             patient.HasNoKnownMedications,
             patient.HasNoKnownAllergies,

@@ -28,7 +28,13 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
     public PatientEmployment? Employment { get; private set; }
     public PatientGuardian? Guardian { get; private set; }
     public PatientNextOfKin? NextOfKin { get; private set; }
-    public PatientInsurance? Insurance { get; private set; }
+
+    /// <summary>
+    /// How the patient came to the practice — <c>Administration.ReferralType</c>. Legacy hung this off
+    /// the insurance record; it is a property of the patient, not of any one policy, so it lives here.
+    /// Insurance policies themselves are a separate collection (<see cref="PatientInsurancePolicy"/>).
+    /// </summary>
+    public int? ReferralTypeId { get; private set; }
 
     public bool HasNoKnownProblems { get; private set; }
     public bool HasNoKnownMedications { get; private set; }
@@ -48,7 +54,7 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
         PatientEmployment? employment,
         PatientGuardian? guardian,
         PatientNextOfKin? nextOfKin,
-        PatientInsurance? insurance,
+        int? referralTypeId,
         bool hasNoKnownProblems,
         bool hasNoKnownMedications,
         bool hasNoKnownAllergies,
@@ -79,7 +85,7 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
             Employment = employment,
             Guardian = guardian,
             NextOfKin = nextOfKin,
-            Insurance = insurance,
+            ReferralTypeId = referralTypeId,
             HasNoKnownProblems = hasNoKnownProblems,
             HasNoKnownMedications = hasNoKnownMedications,
             HasNoKnownAllergies = hasNoKnownAllergies,
@@ -104,7 +110,7 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
         PatientEmployment? employment,
         PatientGuardian? guardian,
         PatientNextOfKin? nextOfKin,
-        PatientInsurance? insurance,
+        int? referralTypeId,
         bool hasNoKnownProblems,
         bool hasNoKnownMedications,
         bool hasNoKnownAllergies,
@@ -130,7 +136,7 @@ public sealed class Patient : AggregateRoot<Guid>, ISoftDeletable
         Employment = employment;
         Guardian = guardian;
         NextOfKin = nextOfKin;
-        Insurance = insurance;
+        ReferralTypeId = referralTypeId;
         HasNoKnownProblems = hasNoKnownProblems;
         HasNoKnownMedications = hasNoKnownMedications;
         HasNoKnownAllergies = hasNoKnownAllergies;

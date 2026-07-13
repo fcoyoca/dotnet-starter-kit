@@ -74,16 +74,10 @@ public sealed class CreatePatientCommandHandler(
                 command.NextOfKinRelation, command.NextOfKinRelationRoleCode)
             : null;
 
-        PatientInsurance? insurance = HasInsurance(command)
-            ? PatientInsurance.Create(
-                command.InsuredFullName, command.InsuredDateOfBirth,
-                command.InsuredEmployerName, command.ReferralTypeId)
-            : null;
-
         var patient = Domain.Patient.Create(
             patientCode, command.IsActive,
             demographics, contact, phiValue,
-            employment, guardian, nextOfKin, insurance,
+            employment, guardian, nextOfKin, command.ReferralTypeId,
             command.HasNoKnownProblems, command.HasNoKnownMedications, command.HasNoKnownAllergies,
             command.ReceivesEmailReminders, command.LastVisitDate, command.NextVisitDate,
             command.LegacyUniqueId);
@@ -98,7 +92,4 @@ public sealed class CreatePatientCommandHandler(
 
     private static bool HasNextOfKin(CreatePatientCommand c) =>
         !string.IsNullOrWhiteSpace(c.NextOfKinFirstName) || !string.IsNullOrWhiteSpace(c.NextOfKinLastName);
-
-    private static bool HasInsurance(CreatePatientCommand c) =>
-        !string.IsNullOrWhiteSpace(c.InsuredFullName) || c.ReferralTypeId.HasValue;
 }

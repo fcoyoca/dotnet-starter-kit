@@ -8,6 +8,11 @@ using FSH.Modules.Patient.Features.v1.PatientAllergies.CreatePatientAllergy;
 using FSH.Modules.Patient.Features.v1.PatientAllergies.GetPatientAllergyById;
 using FSH.Modules.Patient.Features.v1.PatientAllergies.SearchPatientAllergies;
 using FSH.Modules.Patient.Features.v1.PatientAllergies.UpdatePatientAllergy;
+using FSH.Modules.Patient.Features.v1.PatientInsurancePolicies.CreatePatientInsurancePolicy;
+using FSH.Modules.Patient.Features.v1.PatientInsurancePolicies.DeletePatientInsurancePolicy;
+using FSH.Modules.Patient.Features.v1.PatientInsurancePolicies.GetPatientInsurancePolicyById;
+using FSH.Modules.Patient.Features.v1.PatientInsurancePolicies.SearchPatientInsurancePolicies;
+using FSH.Modules.Patient.Features.v1.PatientInsurancePolicies.UpdatePatientInsurancePolicy;
 using FSH.Modules.Patient.Features.v1.PatientMedications.CreatePatientMedication;
 using FSH.Modules.Patient.Features.v1.PatientMedications.GetMedicationReconciledDates;
 using FSH.Modules.Patient.Features.v1.PatientMedications.GetPatientMedicationById;
@@ -163,6 +168,13 @@ public sealed class PatientModule : IModule
         group.MapCreatePatientAllergyEndpoint();
         group.MapGetPatientAllergyByIdEndpoint();
         group.MapUpdatePatientAllergyEndpoint();
+
+        // Insurance policy endpoints — literal /insurance-policies collection route before /{id:guid}
+        group.MapSearchPatientInsurancePoliciesEndpoint();
+        group.MapCreatePatientInsurancePolicyEndpoint();
+        group.MapGetPatientInsurancePolicyByIdEndpoint();
+        group.MapUpdatePatientInsurancePolicyEndpoint();
+        group.MapDeletePatientInsurancePolicyEndpoint();
 
         // Medication endpoints — literal /medications collection route before /medications/{id:guid}
         group.MapSearchPatientMedicationsEndpoint();

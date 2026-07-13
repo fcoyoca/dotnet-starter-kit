@@ -82,16 +82,10 @@ public sealed class UpdatePatientCommandHandler(PatientDbContext dbContext, IPhi
                 command.NextOfKinRelation, command.NextOfKinRelationRoleCode)
             : null;
 
-        PatientInsurance? insurance = HasInsurance(command)
-            ? PatientInsurance.Create(
-                command.InsuredFullName, command.InsuredDateOfBirth,
-                command.InsuredEmployerName, command.ReferralTypeId)
-            : null;
-
         patient.Update(
             command.PatientCode, command.IsActive,
             demographics, contact, phiValue,
-            employment, guardian, nextOfKin, insurance,
+            employment, guardian, nextOfKin, command.ReferralTypeId,
             command.HasNoKnownProblems, command.HasNoKnownMedications, command.HasNoKnownAllergies,
             command.ReceivesEmailReminders, command.LastVisitDate, command.NextVisitDate);
 
@@ -104,7 +98,4 @@ public sealed class UpdatePatientCommandHandler(PatientDbContext dbContext, IPhi
 
     private static bool HasNextOfKin(UpdatePatientCommand c) =>
         !string.IsNullOrWhiteSpace(c.NextOfKinFirstName) || !string.IsNullOrWhiteSpace(c.NextOfKinLastName);
-
-    private static bool HasInsurance(UpdatePatientCommand c) =>
-        !string.IsNullOrWhiteSpace(c.InsuredFullName) || c.ReferralTypeId.HasValue;
 }

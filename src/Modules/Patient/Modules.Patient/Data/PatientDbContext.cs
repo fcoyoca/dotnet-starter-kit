@@ -59,6 +59,7 @@ public sealed class PatientDbContext : BaseDbContext
     public DbSet<Domain.PatientReport> PatientReports => Set<Domain.PatientReport>();
     public DbSet<Domain.PatientProblem> PatientProblems => Set<Domain.PatientProblem>();
     public DbSet<Domain.PatientAllergy> PatientAllergies => Set<Domain.PatientAllergy>();
+    public DbSet<Domain.PatientInsurancePolicy> PatientInsurancePolicies => Set<Domain.PatientInsurancePolicy>();
     public DbSet<Domain.PatientMedication> PatientMedications => Set<Domain.PatientMedication>();
     public DbSet<Domain.PatientNote> PatientNotes => Set<Domain.PatientNote>();
     public DbSet<Domain.PatientDocument> PatientDocuments => Set<Domain.PatientDocument>();
@@ -82,6 +83,8 @@ public sealed class PatientDbContext : BaseDbContext
         modelBuilder.ApplyConfiguration(new PatientReportProblemConfiguration());
         modelBuilder.ApplyConfiguration(new PatientProblemConfiguration());
         modelBuilder.ApplyConfiguration(new PatientAllergyConfiguration());
+        // Also requires IPhiEncryptor (subscriber SSN) — applied directly, like PatientConfiguration.
+        modelBuilder.ApplyConfiguration(new PatientInsurancePolicyConfiguration(_phi));
         modelBuilder.ApplyConfiguration(new PatientMedicationConfiguration());
         modelBuilder.ApplyConfiguration(new PatientNoteConfiguration());
         modelBuilder.ApplyConfiguration(new PatientDocumentConfiguration());

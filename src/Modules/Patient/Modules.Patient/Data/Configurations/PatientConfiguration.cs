@@ -136,13 +136,5 @@ public sealed class PatientConfiguration : IEntityTypeConfiguration<Domain.Patie
             n.Property(x => x.Relation).HasMaxLength(50).HasColumnName("NextOfKinRelation");
             n.Property(x => x.RelationRoleCode).HasMaxLength(20).HasColumnName("NextOfKinRelationRoleCode");
         });
-
-        // Insurance (owned — same table, nullable)
-        builder.OwnsOne(x => x.Insurance, i =>
-        {
-            i.Property(x => x.InsuredFullName).HasMaxLength(200).HasColumnName("InsuredFullName");
-            i.Property(x => x.InsuredDateOfBirth).HasColumnType("date");
-            i.Property(x => x.InsuredEmployerName).HasMaxLength(200).HasColumnName("InsuredEmployerName");
-        });
     }
 }

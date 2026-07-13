@@ -38,7 +38,7 @@ public sealed class CreatePatientCommandValidatorTests
         GuardianEmployerCity: null, GuardianEmployerState: null, GuardianEmployerZipCode: null,
         NextOfKinFirstName: null, NextOfKinLastName: null, NextOfKinPhone: null,
         NextOfKinRelation: null, NextOfKinRelationRoleCode: null,
-        InsuredFullName: null, InsuredDateOfBirth: null, InsuredEmployerName: null, ReferralTypeId: null,
+        ReferralTypeId: null,
         HasNoKnownProblems: false, HasNoKnownMedications: false, HasNoKnownAllergies: false,
         ReceivesEmailReminders: false,
         LastVisitDate: null, NextVisitDate: null);

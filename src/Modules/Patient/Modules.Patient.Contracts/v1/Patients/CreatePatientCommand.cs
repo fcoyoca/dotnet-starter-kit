@@ -69,10 +69,8 @@ public sealed record CreatePatientCommand(
     string? NextOfKinPhone,
     string? NextOfKinRelation,
     string? NextOfKinRelationRoleCode,
-    // Insurance (optional)
-    string? InsuredFullName,
-    DateTime? InsuredDateOfBirth,
-    string? InsuredEmployerName,
+    // Referral source (optional). Insurance policies are managed separately — see
+    // /patient/insurance-policies — because a patient may hold more than one.
     int? ReferralTypeId,
     // Flags
     bool HasNoKnownProblems = false,

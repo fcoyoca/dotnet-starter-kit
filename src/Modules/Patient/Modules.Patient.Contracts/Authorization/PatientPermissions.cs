@@ -54,6 +54,15 @@ public static class PatientPermissions
         public const string Delete = $"Permissions.{Resource}.Delete";
     }
 
+    public static class InsurancePolicies
+    {
+        public const string Resource = "Patient.InsurancePolicies";
+        public const string View   = $"Permissions.{Resource}.View";
+        public const string Create = $"Permissions.{Resource}.Create";
+        public const string Update = $"Permissions.{Resource}.Update";
+        public const string Delete = $"Permissions.{Resource}.Delete";
+    }
+
     public static class Medications
     {
         public const string Resource = "Patient.Medications";
@@ -116,6 +125,10 @@ public static class PatientPermissions
         new("Create Allergies", ActionConstants.Create, Allergies.Resource),
         new("Update Allergies", ActionConstants.Update, Allergies.Resource),
         new("Delete Allergies", ActionConstants.Delete, Allergies.Resource),
+        new("View Insurance Policies",   ActionConstants.View,   InsurancePolicies.Resource, IsBasic: true),
+        new("Create Insurance Policies", ActionConstants.Create, InsurancePolicies.Resource),
+        new("Update Insurance Policies", ActionConstants.Update, InsurancePolicies.Resource),
+        new("Delete Insurance Policies", ActionConstants.Delete, InsurancePolicies.Resource),
         new("View Medications",   ActionConstants.View,   Medications.Resource, IsBasic: true),
         new("Create Medications", ActionConstants.Create, Medications.Resource),
         new("Update Medications", ActionConstants.Update, Medications.Resource),
