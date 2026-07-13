@@ -241,7 +241,13 @@ test.describe("incident DOIV/DOL labels", () => {
     await page.getByRole("button", { name: REPORT_B_TAB, exact: true }).click();
     await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
 
+    // The switch locks report A (open on the current incident), so it's confirmed
+    // first — see incident-switch-confirm.spec.ts.
     await panel.getByRole("button", { name: "Switch to this incident" }).click();
+    await page
+      .getByTestId("incident-switch-confirm")
+      .getByRole("button", { name: "Switch incident" })
+      .click();
 
     // B is now the chart's active incident: the report is editable, the notice
     // is gone, and the chart's identity line has followed.

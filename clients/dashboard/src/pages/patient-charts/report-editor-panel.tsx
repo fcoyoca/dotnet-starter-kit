@@ -42,7 +42,8 @@ import {
   type ReportDraft,
 } from "@/state/report-draft-store";
 import { useAuth } from "@/auth/use-auth";
-import { usePatientTab, usePatientWorkspace } from "@/state/patient-workspace-context";
+import { usePatientTab } from "@/state/patient-workspace-context";
+import { useIncidentSwitch } from "@/pages/patient-charts/incident-switch-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -163,7 +164,10 @@ export function ReportEditorPanel({
   //
   // A null activeIncidentId means "not resolved yet" (the chart picks one on
   // load), NOT "mismatch" — locking on that would flash a spurious banner.
-  const { setActiveIncident } = usePatientWorkspace();
+  // Switching back goes through the chart's guard, not straight to
+  // setActiveIncident: it locks whatever is open on the current incident, so the
+  // user confirms that trade first.
+  const { requestIncidentSwitch } = useIncidentSwitch();
   const activeIncidentId = usePatientTab(patientId)?.activeIncidentId ?? null;
   const isForeignIncident =
     report != null && activeIncidentId != null && report.incidentId !== activeIncidentId;
@@ -575,7 +579,7 @@ export function ReportEditorPanel({
             size="sm"
             variant="outline"
             className="shrink-0"
-            onClick={() => setActiveIncident(patientId, report.incidentId)}
+            onClick={() => requestIncidentSwitch(report.incidentId)}
           >
             Switch to this incident
           </Button>
