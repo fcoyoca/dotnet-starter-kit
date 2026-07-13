@@ -224,6 +224,43 @@ test.describe("incident switch confirmation", () => {
     await expect(panel.getByRole("button", { name: "Save Draft" })).toHaveCount(0);
   });
 
+  test("after the switch, the newly active incident's own report is editable", async ({ page }) => {
+    // Both incidents' reports open, A active: A's report is editable, B's locked.
+    // Switching to B must flip that — locking is only ever about the incident the
+    // chart LEFT, never about the one it landed on.
+    await seedPatientWorkspace(page, [
+      {
+        patientId: PATIENT_ID,
+        patientLabel: "Alice Q Vance",
+        activeIncidentId: INCIDENT_A,
+        openReportIds: [REPORT_A, REPORT_B],
+        activeReportId: REPORT_B,
+      },
+    ]);
+    await openChart(page);
+
+    const panel = page.getByTestId("report-editor-panel");
+    await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
+
+    await selectIncidentBFromChooser(page);
+    await confirmDialog(page).getByRole("button", { name: "Switch incident" }).click();
+    await expect(page.getByTestId("chart-incident-ref")).toHaveText(B_REF);
+
+    // B's report — on the now-active incident — is editable: no notice, live
+    // fields, Save/Sign back.
+    await expect(panel.getByTestId("foreign-incident-notice")).toBeHidden();
+    await expect(panel.locator("#f-21")).toBeEnabled();
+    await expect(panel.locator("#rpt-date")).toBeEnabled();
+    await expect(panel.getByRole("button", { name: "Save Draft" })).toBeVisible();
+
+    // Only A's report (the one the chart left behind) is locked.
+    const banner = page.getByTestId("foreign-reports-lock-banner");
+    await expect(banner).toContainText("1 report belongs to another incident");
+    await page.getByRole("button", { name: "Jun 26, 2026", exact: true }).click();
+    await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
+    await expect(panel.locator("#f-11")).toBeDisabled();
+  });
+
   test("cancelling a switch from the read-only report's own banner leaves it locked", async ({ page }) => {
     // A active; A's report open (editable) and B's report open (foreign).
     await seedPatientWorkspace(page, [
