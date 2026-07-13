@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { getPatientById } from "@/api/patients";
 import {
+  listCustomDiagnostics,
   listReportFields,
   useClinicOptions,
   useProviderOptions,
@@ -171,6 +172,30 @@ export function ReportEditorPanel({
   const activeIncidentId = usePatientTab(patientId)?.activeIncidentId ?? null;
   const isForeignIncident =
     report != null && activeIncidentId != null && report.incidentId !== activeIncidentId;
+
+  // The dx codes shown on the report are the ones recorded on its OWN incident
+  // (what the Diagnostic Codes dialog edits) — not the report's associated
+  // problems. The incident stores bare ids, so they're resolved to codes here.
+  const incidentDxIds = useMemo(
+    () => incidentQuery.data?.diagnosticIds ?? [],
+    [incidentQuery.data],
+  );
+
+  const dxQuery = useQuery({
+    queryKey: ["custom-diagnostics", "by-ids", [...incidentDxIds].sort().join(",")],
+    queryFn: () => listCustomDiagnostics({ ids: incidentDxIds, pageSize: 200 }),
+    enabled: incidentDxIds.length > 0,
+  });
+
+  // Kept in the incident's own order, and any id that no longer resolves to a
+  // live diagnostic is dropped rather than rendered as a blank chip.
+  const incidentDx = useMemo(() => {
+    const byId = new Map((dxQuery.data?.items ?? []).map((d) => [d.id, d]));
+    return incidentDxIds.flatMap((id) => {
+      const d = byId.get(id);
+      return d ? [d] : [];
+    });
+  }, [incidentDxIds, dxQuery.data]);
 
   const fieldsQuery = useQuery({
     queryKey: ["report-fields", report?.reportTypeId],
@@ -537,6 +562,28 @@ export function ReportEditorPanel({
               testId="report-incident-ref"
               className="block text-[11px] font-medium"
             />
+            {/* What this visit is being coded against, in view while the note is
+                written. Renders even when empty — an absent line reads as "still
+                loading" rather than "no codes on this incident". */}
+            <p
+              data-testid="report-dx-codes"
+              className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-[var(--color-muted-foreground)]"
+            >
+              <span className="font-semibold uppercase tracking-wider">Dx Codes</span>
+              {dxQuery.isLoading ? null : incidentDx.length === 0 ? (
+                <span>—</span>
+              ) : (
+                incidentDx.map((d) => (
+                  <span
+                    key={d.id}
+                    title={d.description ?? d.longDescription ?? d.code}
+                    className="font-medium tabular-nums text-[var(--color-foreground)]"
+                  >
+                    {d.code}
+                  </span>
+                ))
+              )}
+            </p>
             <p className="text-[12px] text-[var(--color-muted-foreground)]">
               Report · {formatDate(report.reportDate)}
               {report.version > 1 ? ` · v${report.version}` : ""}
