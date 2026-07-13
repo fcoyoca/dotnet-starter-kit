@@ -266,6 +266,7 @@ public sealed class TenantThemeService : ITenantThemeService
     {
         return new TenantThemeDto
         {
+            AppName = entity.AppName,
             LightPalette = new PaletteDto
             {
                 Primary = entity.PrimaryColor,
@@ -314,6 +315,10 @@ public sealed class TenantThemeService : ITenantThemeService
 
     private static void MapDtoToEntity(TenantThemeDto dto, TenantTheme entity)
     {
+        // Brand Identity — blank collapses to null so clients fall back to the tenant Name
+        // rather than rendering an empty wordmark.
+        entity.AppName = string.IsNullOrWhiteSpace(dto.AppName) ? null : dto.AppName.Trim();
+
         // Light Palette
         entity.PrimaryColor = dto.LightPalette.Primary;
         entity.SecondaryColor = dto.LightPalette.Secondary;

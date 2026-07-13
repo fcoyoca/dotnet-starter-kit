@@ -25,6 +25,7 @@ public sealed class TenantThemeTests : IAsyncLifetime
 
     private const string ThemePath = $"{TestConstants.TenantsBasePath}/theme";
     private const string ThemeResetPath = $"{TestConstants.TenantsBasePath}/theme/reset";
+    private const string BrandingPath = $"{TestConstants.TenantsBasePath}/me/branding";
 
     private readonly FshWebApplicationFactory _factory;
     private readonly AuthHelper _auth;
@@ -126,6 +127,144 @@ public sealed class TenantThemeTests : IAsyncLifetime
         theme.ShouldNotBeNull();
         theme.LightPalette.Primary.ShouldBe("#2563EB");
         theme.Typography.FontSizeBase.ShouldBe(14);
+    }
+
+    #endregion
+
+    #region Branding
+
+    [Fact]
+    public async Task GetBranding_Should_FallBackToTenantName_When_NoAppNameSet()
+    {
+        // Arrange — tenant B was created with name "Theme {id}" and no custom theme.
+        using var client = await _auth.CreateAuthenticatedClientAsync(
+            _tenantBAdminEmail, TestConstants.DefaultPassword, _tenantB);
+
+        // Act
+        var response = await client.GetAsync(BrandingPath);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var branding = await response.Content.ReadFromJsonAsync<TenantBrandingDto>(Json);
+        branding.ShouldNotBeNull();
+        branding.AppName.ShouldBe($"Theme {_tenantB}");
+        branding.LogoUrl.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetBranding_Should_ReturnAppName_When_AppNameSet()
+    {
+        // Arrange
+        using var client = await _auth.CreateAuthenticatedClientAsync(
+            _tenantAAdminEmail, TestConstants.DefaultPassword, _tenantA);
+        var update = await client.PutAsJsonAsync(ThemePath, ValidTheme(appName: "Acme Clinic"));
+        update.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        // Act
+        var response = await client.GetAsync(BrandingPath);
+
+        // Assert — the operator-set app name wins over the tenant's own name.
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var branding = await response.Content.ReadFromJsonAsync<TenantBrandingDto>(Json);
+        branding.ShouldNotBeNull();
+        branding.AppName.ShouldBe("Acme Clinic");
+    }
+
+    [Fact]
+    public async Task GetBranding_Should_FallBackToTenantName_After_ThemeReset()
+    {
+        // Arrange — set an app name, then reset the theme.
+        using var client = await _auth.CreateAuthenticatedClientAsync(
+            _tenantAAdminEmail, TestConstants.DefaultPassword, _tenantA);
+        var update = await client.PutAsJsonAsync(ThemePath, ValidTheme(appName: "Temporary Name"));
+        update.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var reset = await client.PostAsync(ThemeResetPath, content: null);
+        reset.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        // Act
+        var response = await client.GetAsync(BrandingPath);
+
+        // Assert — reset clears AppName, so we fall back to the tenant's name.
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var branding = await response.Content.ReadFromJsonAsync<TenantBrandingDto>(Json);
+        branding.ShouldNotBeNull();
+        branding.AppName.ShouldBe($"Theme {_tenantA}");
+    }
+
+    [Fact]
+    public async Task GetBranding_Should_Return400_When_AppNameExceedsMaxLength()
+    {
+        // Arrange — AppName is capped at 64 chars.
+        using var client = await _auth.CreateAuthenticatedClientAsync(
+            _tenantAAdminEmail, TestConstants.DefaultPassword, _tenantA);
+        var payload = ValidTheme(appName: new string('x', 65));
+
+        // Act
+        var response = await client.PutAsJsonAsync(ThemePath, payload);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task GetBranding_Should_ReturnNullAppName_When_CallerIsRootTenant()
+    {
+        // Arrange — root is the framework's own tenant, so its name ("Root") is not a
+        // brand. It must not leak into the wordmark; the client keeps the default.
+        using var rootClient = await _auth.CreateRootAdminClientAsync();
+
+        // Act
+        var response = await rootClient.GetAsync(BrandingPath);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var branding = await response.Content.ReadFromJsonAsync<TenantBrandingDto>(Json);
+        branding.ShouldNotBeNull();
+        branding.AppName.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetBranding_Should_Return401_When_NotAuthenticated()
+    {
+        // Arrange
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("tenant", _tenantA);
+
+        // Act
+        var response = await client.GetAsync(BrandingPath);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task GetBranding_Should_StayInOwnTenant_When_TenantBAdminSendsTenantAHeader()
+    {
+        // Arrange — tenant A gets a distinctive app name.
+        const string marker = "Tenant A Secret Brand";
+        using (var clientA = await _auth.CreateAuthenticatedClientAsync(
+            _tenantAAdminEmail, TestConstants.DefaultPassword, _tenantA))
+        {
+            var update = await clientA.PutAsJsonAsync(ThemePath, ValidTheme(appName: marker));
+            update.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        }
+
+        // Tenant B admin tries to read A's branding by spoofing the header.
+        var tokenB = await GetTokenWithRetryAsync(_tenantBAdminEmail, TestConstants.DefaultPassword, _tenantB);
+        using var clientB = _factory.CreateClient();
+        clientB.DefaultRequestHeaders.Authorization = new("Bearer", tokenB.AccessToken);
+        clientB.DefaultRequestHeaders.Add("tenant", _tenantA); // spoof attempt — must be ignored
+
+        // Act
+        var response = await clientB.GetAsync(BrandingPath);
+
+        // Assert — the override is gated to root, so B stays in B.
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var branding = await response.Content.ReadFromJsonAsync<TenantBrandingDto>(Json);
+        branding.ShouldNotBeNull();
+        branding.AppName.ShouldNotBe(marker);
+        branding.AppName.ShouldBe($"Theme {_tenantB}");
     }
 
     #endregion
@@ -331,10 +470,12 @@ public sealed class TenantThemeTests : IAsyncLifetime
         string primary = "#2563EB",
         double fontSize = 14,
         string fontFamily = "Inter, sans-serif",
-        string borderRadius = "4px")
+        string borderRadius = "4px",
+        string? appName = null)
     {
         return new
         {
+            appName,
             lightPalette = new
             {
                 primary,
@@ -428,6 +569,13 @@ public sealed class TenantThemeTests : IAsyncLifetime
             await Task.Delay(1000);
         }
         throw new TimeoutException($"Tenant {tenantId} did not finish provisioning.");
+    }
+
+    // Local copy of the branding response shape.
+    private sealed record TenantBrandingDto
+    {
+        public string? AppName { get; init; }
+        public string? LogoUrl { get; init; }
     }
 
     // Local copy of the theme response shape — only the fields these tests assert on.

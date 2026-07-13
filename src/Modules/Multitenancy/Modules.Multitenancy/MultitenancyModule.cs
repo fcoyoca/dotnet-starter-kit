@@ -16,6 +16,7 @@ using FSH.Modules.Multitenancy.Data;
 using FSH.Modules.Multitenancy.Features.v1.AdjustTenantValidity;
 using FSH.Modules.Multitenancy.Features.v1.ChangeTenantActivation;
 using FSH.Modules.Multitenancy.Features.v1.CreateTenant;
+using FSH.Modules.Multitenancy.Features.v1.GetMyBranding;
 using FSH.Modules.Multitenancy.Features.v1.GetMyTenantStatus;
 using FSH.Modules.Multitenancy.Features.v1.GetTenantMigrations;
 using FSH.Modules.Multitenancy.Features.v1.GetTenants;
@@ -233,6 +234,9 @@ public sealed class MultitenancyModule : IModule
         GetTenantThemeEndpoint.Map(group);
         UpdateTenantThemeEndpoint.Map(group);
         ResetTenantThemeEndpoint.Map(group);
+
+        // Branding — the permission-free slice of the theme every tenant user can read.
+        GetMyBrandingEndpoint.Map(group);
 
         var jobManager = endpoints.ServiceProvider.GetService<IRecurringJobManager>();
         if (jobManager is not null)

@@ -13,6 +13,11 @@ public partial class UpdateTenantThemeCommandValidator : AbstractValidator<Updat
             .NotNull()
             .WithMessage("Theme is required.");
 
+        RuleFor(x => x.Theme.AppName)
+            .MaximumLength(64)
+            .WithMessage("AppName must be 64 characters or fewer.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Theme.AppName));
+
         RuleFor(x => x.Theme.LightPalette)
             .NotNull()
             .SetValidator(new PaletteValidator());

@@ -28,6 +28,13 @@ public class TenantTheme : BaseEntity<Guid>, IHasTenant, IAuditableEntity
     public string DarkSuccessColor { get; set; } = "#22C55E";
     public string DarkInfoColor { get; set; } = "#38BDF8";
 
+    // Brand Identity
+    /// <summary>
+    /// Display name the tenant's apps render in place of the framework wordmark.
+    /// Null means "not set" — callers fall back to the tenant's Name.
+    /// </summary>
+    public string? AppName { get; set; }
+
     // Brand Assets
     public string? LogoUrl { get; set; }
     public string? LogoDarkUrl { get; set; }
@@ -94,6 +101,9 @@ public class TenantTheme : BaseEntity<Guid>, IHasTenant, IAuditableEntity
         DarkWarningColor = "#FBBF24";
         DarkSuccessColor = "#22C55E";
         DarkInfoColor = "#38BDF8";
+
+        // Brand Identity
+        AppName = null;
 
         // Brand Assets
         LogoUrl = null;

@@ -12,6 +12,12 @@ namespace FSH.Modules.Multitenancy.Contracts.Dtos;
 [ImmutableObject(true)]
 public sealed record TenantThemeDto
 {
+    /// <summary>
+    /// Display name the tenant's apps render in place of the framework wordmark.
+    /// Null means "not set" — clients fall back to the tenant's Name.
+    /// </summary>
+    public string? AppName { get; init; }
+
     public PaletteDto LightPalette { get; init; } = new();
     public PaletteDto DarkPalette { get; init; } = new();
     public BrandAssetsDto BrandAssets { get; init; } = new();

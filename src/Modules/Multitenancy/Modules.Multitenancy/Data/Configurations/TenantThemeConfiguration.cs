@@ -44,6 +44,9 @@ public class TenantThemeConfiguration : IEntityTypeConfiguration<TenantTheme>
         builder.Property(t => t.DarkSuccessColor).HasMaxLength(9).IsRequired();
         builder.Property(t => t.DarkInfoColor).HasMaxLength(9).IsRequired();
 
+        // Brand Identity
+        builder.Property(t => t.AppName).HasMaxLength(64);
+
         // Brand Assets (URLs can be long with S3/CDN paths)
         builder.Property(t => t.LogoUrl).HasMaxLength(2048);
         builder.Property(t => t.LogoDarkUrl).HasMaxLength(2048);
