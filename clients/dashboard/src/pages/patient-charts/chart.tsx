@@ -21,10 +21,12 @@ import {
   Pencil,
   Pill,
   Plus,
+  Search,
   Stethoscope,
   StickyNote,
   Tablets,
   Trash2,
+  UserPlus,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -43,6 +45,7 @@ import {
   INCIDENT_PERMISSIONS,
   MEDICATION_PERMISSIONS,
   NOTE_PERMISSIONS,
+  PATIENT_PERMISSIONS,
   PROBLEM_PERMISSIONS,
   REPORT_PERMISSIONS,
   SUPERBILL_PERMISSIONS,
@@ -68,6 +71,8 @@ import { IncidentDialog } from "@/pages/patient-charts/incident-dialog";
 import { IncidentsListDialog } from "@/pages/patient-charts/incidents-list-dialog";
 import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
 import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
+import { PatientSearchDialog } from "@/pages/patient-charts/patient-search-dialog";
+import { CreatePatientDialog } from "@/pages/patients/create-patient-dialog";
 import { PatientInfoDialog } from "@/pages/patients/patient-info-dialog";
 import { ProblemListDialog } from "@/pages/patient-charts/problem-list-dialog";
 import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
@@ -193,6 +198,9 @@ export function PatientChartDetailPage() {
   const canCreate = user?.permissions?.includes(INCIDENT_PERMISSIONS.create) ?? false;
   const canUpdate = user?.permissions?.includes(INCIDENT_PERMISSIONS.update) ?? false;
 
+  const canViewPatients = user?.permissions?.includes(PATIENT_PERMISSIONS.view) ?? false;
+  const canCreatePatients = user?.permissions?.includes(PATIENT_PERMISSIONS.create) ?? false;
+
   const canViewReports = user?.permissions?.includes(REPORT_PERMISSIONS.view) ?? false;
   const canCreateReports = user?.permissions?.includes(REPORT_PERMISSIONS.create) ?? false;
   const canUpdateReports = user?.permissions?.includes(REPORT_PERMISSIONS.update) ?? false;
@@ -214,6 +222,8 @@ export function PatientChartDetailPage() {
   const [exportReportsOpen, setExportReportsOpen] = useState(false);
   const [proceduresOpen, setProceduresOpen] = useState(false);
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+  const [patientSearchOpen, setPatientSearchOpen] = useState(false);
+  const [createPatientOpen, setCreatePatientOpen] = useState(false);
 
   const patientQuery = useQuery({
     queryKey: ["patients", patientId],
@@ -351,6 +361,17 @@ export function PatientChartDetailPage() {
     });
   };
 
+  // "Search for Patient" / "Add New Patient" both land on another patient's
+  // chart: register the tab (so the strip shows it right away, with the label
+  // we already have) and route to it. A newly registered patient has no label
+  // here — the chart's openPatient effect fills it in once the record loads.
+  const openPatientChart = (id: string, label?: string) => {
+    if (label) openPatient(id, label);
+    setPatientSearchOpen(false);
+    setCreatePatientOpen(false);
+    navigate(`/patient-charts/${id}`);
+  };
+
   // Last/Next visit rows link to their appointment: navigate to the scheduler
   // carrying the appointment id, which the scheduler opens in its edit dialog.
   const openAppointment = (appointmentId: string) => {
@@ -417,14 +438,42 @@ export function PatientChartDetailPage() {
 
   return (
     <div className="flex flex-col gap-3 lg:h-full">
-      {/* Back link */}
-      <Link
-        to="/patient-charts"
-        className="inline-flex shrink-0 items-center gap-1.5 text-[13px] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-      >
-        <ArrowLeft className="size-4" />
-        Patient Chart
-      </Link>
+      {/* Back link + chart-workspace actions. BackChart parity: its chart page
+          carries "Search for Patient" / "Add New Patient" in the upper right,
+          so more patients can be pulled into the workspace (here: more tabs)
+          without leaving the chart. */}
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <Link
+          to="/patient-charts"
+          className="inline-flex items-center gap-1.5 text-[13px] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+        >
+          <ArrowLeft className="size-4" />
+          Patient Chart
+        </Link>
+        <div className="flex items-center gap-2">
+          {canViewPatients && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
+              onClick={() => setPatientSearchOpen(true)}
+            >
+              <Search className="size-4" />
+              Search for Patient
+            </Button>
+          )}
+          {canCreatePatients && (
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
+              onClick={() => setCreatePatientOpen(true)}
+            >
+              <UserPlus className="size-4" />
+              Add New Patient
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Open patient-chart tabs — scoped to the chart page (they used to live
           in the global AppShell and followed the user onto every route). */}
@@ -873,6 +922,26 @@ export function PatientChartDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Pull another patient into the workspace — picking one opens it as an
+          additional chart tab (BackChart's multi-patient chart cards). */}
+      <PatientSearchDialog
+        open={patientSearchOpen}
+        onClose={() => setPatientSearchOpen(false)}
+        onSelect={(p) =>
+          openPatientChart(
+            p.id,
+            [p.firstName, p.middleInitial, p.lastName].filter(Boolean).join(" ") || p.patientCode,
+          )
+        }
+      />
+
+      {/* Register a patient without leaving the chart; the new chart opens on save. */}
+      <CreatePatientDialog
+        open={createPatientOpen}
+        onClose={() => setCreatePatientOpen(false)}
+        onCreated={(id) => openPatientChart(id)}
+      />
 
       {/* Create dialog */}
       {patientId && (
