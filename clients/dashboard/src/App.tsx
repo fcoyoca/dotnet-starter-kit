@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { queryClient } from "@/lib/query-client";
 import { AuthProvider } from "@/auth/auth-context";
+import { BrandingProvider } from "@/components/branding/branding-context";
 import { ThemeProvider, useTheme } from "@/components/theme/theme-provider";
 import { CommandPaletteProvider } from "@/components/command-palette/command-palette";
 import { router } from "@/routes";
@@ -19,10 +20,13 @@ export function App() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <CommandPaletteProvider>
-            <RouterProvider router={router} />
-            <FshToaster />
-          </CommandPaletteProvider>
+          {/* Inside AuthProvider: branding is fetched per signed-in tenant. */}
+          <BrandingProvider>
+            <CommandPaletteProvider>
+              <RouterProvider router={router} />
+              <FshToaster />
+            </CommandPaletteProvider>
+          </BrandingProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeProvider>

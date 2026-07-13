@@ -38,6 +38,7 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { getMyProfile } from "@/api/identity";
 import { useAuth } from "@/auth/use-auth";
+import { useBranding } from "@/components/branding/branding-context";
 import { useSseStatus } from "@/sse/sse-context";
 import { useTheme } from "@/components/theme/theme-provider";
 import { cn } from "@/lib/cn";
@@ -148,6 +149,7 @@ function SimpleMenuItem({
 
 export function Topbar() {
   const { user, logout } = useAuth();
+  const { appName } = useBranding();
   // Shared with the Profile settings page (same query key), so changing the
   // photo there invalidates this and the topbar avatar updates live.
   const { data: profile } = useQuery({
@@ -365,7 +367,7 @@ export function Topbar() {
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Sign out of fullstackhero?</DialogTitle>
+            <DialogTitle>Sign out of {appName}?</DialogTitle>
             <DialogDescription>
               You'll need to sign in again to access this tenant. Any unsaved
               work in this session will be lost.
