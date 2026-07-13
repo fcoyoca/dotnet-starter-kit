@@ -44,6 +44,12 @@ import { getPatientById } from "@/api/patients";
 import { useRealtimeEvent } from "@/realtime/realtime-context";
 import { useActivePatientTab } from "@/state/patient-workspace-context";
 import { PatientPicker, patientLabel } from "@/components/scheduling/patient-picker";
+import {
+  ProviderAvatar,
+  ProviderFilter,
+  ProviderSelect,
+  providerName as rosterName,
+} from "@/components/scheduling/provider-picker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -287,6 +293,29 @@ function EventLabel({ event }: { event: CalEvent }) {
   );
 }
 
+/** A day-view column: one provider. Carries the provider so the header can show their face. */
+type CalResource = { id: string; title: string; provider: ProviderDto };
+
+/** Day-view column header — avatar + name + specialty, so columns stay identifiable at a glance. */
+function ResourceHeader({ resource }: { resource: CalResource }) {
+  const { provider } = resource;
+  return (
+    <span className="flex items-center justify-center gap-1.5 py-1">
+      <ProviderAvatar provider={provider} size="xs" />
+      <span className="min-w-0">
+        <span className="block truncate text-[12px] font-medium text-[var(--color-foreground)]">
+          {resource.title}
+        </span>
+        {provider.specialty && (
+          <span className="block truncate text-[10.5px] font-normal text-[var(--color-muted-foreground)]">
+            {provider.specialty}
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
 // ─── page ───────────────────────────────────────────────────────────────
 
 export function AppointmentsPage() {
@@ -387,7 +416,7 @@ export function AppointmentsPage() {
 
   const providerName = (id: string) => {
     const p = providers.find((x) => x.id === id);
-    return p ? `${p.lastName}, ${p.firstName}` : "Unknown";
+    return p ? rosterName(p) : "Unknown";
   };
 
   const events: CalEvent[] = useMemo(() => {
@@ -410,9 +439,11 @@ export function AppointmentsPage() {
       });
   }, [appointments, activeProviderIds, typesById, timeZone]);
 
-  const resources = useMemo(
-    () => providers.filter((p) => activeProviderIds.includes(p.id)).map((p) => ({ id: p.id, title: providerName(p.id) })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const resources: CalResource[] = useMemo(
+    () =>
+      providers
+        .filter((p) => activeProviderIds.includes(p.id))
+        .map((p) => ({ id: p.id, title: rosterName(p), provider: p })),
     [providers, activeProviderIds],
   );
 
@@ -486,14 +517,6 @@ export function AppointmentsPage() {
     navigate(location.pathname, { replace: true, state: null });
   }, [openAppointmentId, appointmentToOpen, navigate, location.pathname]);
 
-  const toggleProvider = (id: string) =>
-    setSelectedProviders((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
   return (
     <div className="space-y-4">
       <EntityPageHeader
@@ -537,25 +560,12 @@ export function AppointmentsPage() {
         <span className="text-[12px] text-[var(--color-muted-foreground)]">{timeZone}</span>
 
         {providers.length > 0 && (
-          <div className="ml-auto flex flex-wrap items-center gap-1">
-            {providers.map((p) => {
-              const on = selectedProviders.size === 0 || selectedProviders.has(p.id);
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => toggleProvider(p.id)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[12px] transition-colors",
-                    on
-                      ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
-                      : "border-[var(--color-border)] text-[var(--color-muted-foreground)]",
-                  )}
-                >
-                  {p.lastName}
-                </button>
-              );
-            })}
+          <div className="ml-auto">
+            <ProviderFilter
+              providers={providers}
+              selected={selectedProviders}
+              onChange={setSelectedProviders}
+            />
           </div>
         )}
       </div>
@@ -567,7 +577,7 @@ export function AppointmentsPage() {
         </div>
       ) : (
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2" style={{ height: 680 }}>
-          <Calendar<CalEvent, { id: string; title: string }>
+          <Calendar<CalEvent, CalResource>
             localizer={localizer}
             events={events}
             startAccessor="start"
@@ -586,7 +596,7 @@ export function AppointmentsPage() {
             resources={view === "day" ? resources : undefined}
             resourceIdAccessor="id"
             resourceTitleAccessor="title"
-            components={{ event: EventLabel }}
+            components={{ event: EventLabel, resourceHeader: ResourceHeader }}
             tooltipAccessor={(event) =>
               tooltipText(
                 event.appt,
@@ -907,19 +917,13 @@ function AppointmentDialog({
             )}
 
             <Field id="appt-provider" label="Provider">
-              <select
+              <ProviderSelect
                 id="appt-provider"
+                providers={providers}
                 value={providerId}
-                onChange={(e) => setProviderId(e.target.value)}
+                onChange={setProviderId}
                 disabled={readOnly}
-                className="h-9 w-full rounded-lg border border-[var(--color-input)] bg-transparent px-2 text-[13px] disabled:opacity-60"
-              >
-                {providers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.lastName}, {p.firstName}
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
 
             {rescheduling ? (
