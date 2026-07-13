@@ -213,4 +213,41 @@ test.describe("incident DOIV/DOL labels", () => {
     // The chart's own identity line still shows the active incident, A.
     await expect(page.getByTestId("chart-incident-ref")).toHaveText(A_REF);
   });
+
+  test("a report from a non-active incident is read-only — no saving or signing", async ({ page }) => {
+    await openChart(page);
+    const panel = page.getByTestId("report-editor-panel");
+
+    // The active report (A) is on the active incident: fully editable.
+    await expect(panel.getByTestId("foreign-incident-notice")).toBeHidden();
+    await expect(panel.getByRole("button", { name: "Save Draft" })).toBeVisible();
+    await expect(panel.locator("#f-11")).toBeEnabled();
+
+    // Switch to B's report — filed under an incident the chart isn't in.
+    await page.getByRole("button", { name: REPORT_B_TAB, exact: true }).click();
+    await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
+
+    // Saving/signing is gone, and the form itself is locked.
+    await expect(panel.getByRole("button", { name: "Save Draft" })).toHaveCount(0);
+    await expect(panel.getByRole("button", { name: "Sign Report" })).toHaveCount(0);
+    await expect(panel.locator("#f-21")).toBeDisabled();
+    await expect(panel.locator("#rpt-date")).toBeDisabled();
+  });
+
+  test("switching to the report's own incident unlocks it", async ({ page }) => {
+    await openChart(page);
+    const panel = page.getByTestId("report-editor-panel");
+
+    await page.getByRole("button", { name: REPORT_B_TAB, exact: true }).click();
+    await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
+
+    await panel.getByRole("button", { name: "Switch to this incident" }).click();
+
+    // B is now the chart's active incident: the report is editable, the notice
+    // is gone, and the chart's identity line has followed.
+    await expect(panel.getByTestId("foreign-incident-notice")).toBeHidden();
+    await expect(panel.locator("#f-21")).toBeEnabled();
+    await expect(panel.getByRole("button", { name: "Save Draft" })).toBeVisible();
+    await expect(page.getByTestId("chart-incident-ref")).toHaveText(B_REF);
+  });
 });

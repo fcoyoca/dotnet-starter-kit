@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   CheckCircle2,
   ClipboardList,
   FileDown,
@@ -41,6 +42,7 @@ import {
   type ReportDraft,
 } from "@/state/report-draft-store";
 import { useAuth } from "@/auth/use-auth";
+import { usePatientTab, usePatientWorkspace } from "@/state/patient-workspace-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -152,6 +154,19 @@ export function ReportEditorPanel({
     queryFn: () => getPatientIncident(report!.incidentId),
     enabled: report != null,
   });
+
+  // A report stays open across incident switches, so the report on screen may
+  // belong to an incident OTHER than the one the chart is currently working in.
+  // Editing it then would file changes against an incident the user isn't
+  // looking at — the exact mix-up the DOIV/DOL labels warn about — so the whole
+  // report goes read-only until its incident is made active again.
+  //
+  // A null activeIncidentId means "not resolved yet" (the chart picks one on
+  // load), NOT "mismatch" — locking on that would flash a spurious banner.
+  const { setActiveIncident } = usePatientWorkspace();
+  const activeIncidentId = usePatientTab(patientId)?.activeIncidentId ?? null;
+  const isForeignIncident =
+    report != null && activeIncidentId != null && report.incidentId !== activeIncidentId;
 
   const fieldsQuery = useQuery({
     queryKey: ["report-fields", report?.reportTypeId],
@@ -277,6 +292,11 @@ export function ReportEditorPanel({
   const isSignedRef = useRef(isSigned);
   isSignedRef.current = isSigned;
 
+  // Read via a ref for the same reason as isSigned: the draft effect below
+  // keys off form state, not these flags, and must not re-run when they flip.
+  const isForeignIncidentRef = useRef(isForeignIncident);
+  isForeignIncidentRef.current = isForeignIncident;
+
   // Debounced draft write on any form change. The hydration effect above
   // arms `suppress`, so the snapshot change IT causes is skipped; only
   // real typing marks the draft dirty and schedules a write.
@@ -286,7 +306,7 @@ export function ReportEditorPanel({
       suppressDraftWriteRef.current = false;
       return;
     }
-    if (isSignedRef.current || !canUpdate) return;
+    if (isSignedRef.current || !canUpdate || isForeignIncidentRef.current) return;
     draftDirtyRef.current = true;
     const t = window.setTimeout(() => {
       writeReportDraft(reportId, draftSnapshotRef.current);
@@ -409,6 +429,9 @@ export function ReportEditorPanel({
 
   const onSave = () => {
     if (!reportId || !reportDate) return;
+    // Belt-and-braces: the buttons are already gone when the report isn't on the
+    // active incident, but never let a save slip through against another one.
+    if (isForeignIncident) return;
     saveMutation.mutate({
       reportId,
       reportDate,
@@ -429,7 +452,7 @@ export function ReportEditorPanel({
   };
 
   const onSign = () => {
-    if (!reportId) return;
+    if (!reportId || isForeignIncident) return;
     // Persist any pending edits first, then sign.
     onSave();
     signMutation.mutate(reportId);
@@ -489,7 +512,7 @@ export function ReportEditorPanel({
     );
   }
 
-  const readOnly = isSigned || !canUpdate;
+  const readOnly = isSigned || !canUpdate || isForeignIncident;
   const isPending = saveMutation.isPending || signMutation.isPending;
 
   return (
@@ -526,6 +549,38 @@ export function ReportEditorPanel({
           {report.workflowStatus}
         </span>
       </div>
+
+      {/* Locked out: this report is filed under an incident the chart isn't
+          working in. Saving here would write against the wrong incident, so the
+          form is read-only until the user switches to the report's own incident
+          — which is one click away rather than a hunt through the chooser. */}
+      {isForeignIncident && (
+        <div
+          data-testid="foreign-incident-notice"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[oklch(from_var(--color-destructive)_l_c_h_/_0.3)] bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.06)] p-4"
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--color-destructive)]" />
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-[var(--color-destructive)]">
+                Read-only — a different incident is selected
+              </p>
+              <p className="mt-0.5 text-[12px] text-[var(--color-muted-foreground)]">
+                This report belongs to another incident, so it can't be edited or signed
+                from here. Switch to its incident to make changes.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            onClick={() => setActiveIncident(patientId, report.incidentId)}
+          >
+            Switch to this incident
+          </Button>
+        </div>
+      )}
 
       {/* Header fields */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
@@ -729,7 +784,7 @@ export function ReportEditorPanel({
                       type="checkbox"
                       checked={associatedProblemIds.includes(p.id)}
                       onChange={() => toggleProblem(p.id)}
-                      disabled={!canUpdate}
+                      disabled={!canUpdate || isForeignIncident}
                       className="rounded border-[var(--color-border)]"
                     />
                     <span className="min-w-0 flex-1">
@@ -745,7 +800,7 @@ export function ReportEditorPanel({
                 </li>
               ))}
             </ul>
-            {canUpdate && (
+            {canUpdate && !isForeignIncident && (
               <Button
                 size="sm"
                 className="mt-3"
@@ -819,7 +874,7 @@ export function ReportEditorPanel({
                   : ""}
                 .
               </p>
-              {canReview && (
+              {canReview && !isForeignIncident && (
                 <Button
                   size="sm"
                   disabled={reviewSignMutation.isPending}
@@ -830,7 +885,7 @@ export function ReportEditorPanel({
                 </Button>
               )}
             </div>
-          ) : canReview ? (
+          ) : canReview && !isForeignIncident ? (
             <div className="flex flex-wrap items-end gap-3">
               <div className="w-64">
                 <Field id="rpt-reviewer" label="Reviewer">
@@ -886,7 +941,7 @@ export function ReportEditorPanel({
             </ul>
           )}
 
-          {canUpdate && (
+          {canUpdate && !isForeignIncident && (
             <div className="mt-3 space-y-2">
               <Textarea
                 value={addendumText}
@@ -908,8 +963,9 @@ export function ReportEditorPanel({
         </div>
       )}
 
-      {/* Action bar (draft only) */}
-      {!isSigned && (canUpdate || canSign) && (
+      {/* Action bar (draft only) — gone entirely when the report belongs to a
+          different incident than the chart's active one. */}
+      {!isSigned && !isForeignIncident && (canUpdate || canSign) && (
         <div className="sticky bottom-4 flex items-center justify-end gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-md">
           {canUpdate && (
             <Button variant="outline" onClick={onSave} disabled={isPending}>
