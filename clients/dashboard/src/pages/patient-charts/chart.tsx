@@ -37,7 +37,13 @@ import {
   type PatientIncidentListItemDto,
 } from "@/api/incidents";
 import { listReportTypes, useClinicTimeZones, useIncidentTypeOptions } from "@/api/administration";
-import { createReport, deleteReport, getReport, searchPatientReports } from "@/api/reports";
+import {
+  createReport,
+  deleteReport,
+  getReport,
+  searchPatientReports,
+  type PatientReportListItem,
+} from "@/api/reports";
 import { searchPatientProblems } from "@/api/problems";
 import { searchPatientNotes } from "@/api/patient-notes";
 import {
@@ -53,6 +59,7 @@ import {
 } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -227,6 +234,7 @@ export function PatientChartDetailPage() {
   const [editIncidentId, setEditIncidentId] = useState<string | null>(null);
   const [incidentsListOpen, setIncidentsListOpen] = useState(false);
   const [reportSearchOpen, setReportSearchOpen] = useState(false);
+  const [pendingReportDelete, setPendingReportDelete] = useState<PatientReportListItem | null>(null);
   // Report type chosen from "Add Report", pending appointment selection before creation.
   const [pendingReportType, setPendingReportType] = useState<{ id: number; name: string } | null>(null);
 
@@ -314,6 +322,7 @@ export function PatientChartDetailPage() {
     onSuccess: () => {
       toast.success("Report deleted.");
       void queryClient.invalidateQueries({ queryKey: ["reports", activeIncidentId] });
+      setPendingReportDelete(null);
     },
     onError: (err) => toast.error("Failed to delete report.", { description: describe(err) }),
   });
@@ -954,7 +963,7 @@ export function PatientChartDetailPage() {
                                 label="Delete report"
                                 tone="destructive"
                                 disabled={deleteReportMutation.isPending}
-                                onClick={() => deleteReportMutation.mutate(r.id)}
+                                onClick={() => setPendingReportDelete(r)}
                               >
                                 <Trash2 className="size-4" />
                               </IconShortcut>
@@ -1200,6 +1209,36 @@ export function PatientChartDetailPage() {
             onClose={() => setDocumentsOpen(false)}
           />
         )}
+
+        {/* Delete-report confirmation — a signed report is a legal record, so the
+            copy calls that out explicitly before the mutation fires. */}
+        <ConfirmDialog
+          open={pendingReportDelete !== null}
+          eyebrow="Delete report"
+          title="Delete this report?"
+          description={
+            <>
+              <span className="font-medium text-[var(--color-foreground)]">
+                {pendingReportDelete && reportTypeLabel(pendingReportDelete.reportTypeId)}
+              </span>{" "}
+              from{" "}
+              <span className="font-medium text-[var(--color-foreground)]">
+                {pendingReportDelete && formatDate(pendingReportDelete.reportDate)}
+              </span>{" "}
+              will be removed from this incident.
+              {pendingReportDelete?.isSigned
+                ? " This report is signed — deleting it removes a signed clinical record."
+                : ""}{" "}
+              This can&apos;t be undone.
+            </>
+          }
+          confirmLabel="Delete report"
+          pending={deleteReportMutation.isPending}
+          onCancel={() => setPendingReportDelete(null)}
+          onConfirm={() =>
+            pendingReportDelete && deleteReportMutation.mutate(pendingReportDelete.id)
+          }
+        />
 
         {/* Export Reports dialog (exports the active incident's reports as PDF) */}
         {activeIncidentId && (
