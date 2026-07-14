@@ -61,6 +61,36 @@ Administration schema), mirroring `PatientIncidentDiagnostic`; the editor resolv
 names via the admin list APIs. `AppointmentId` (optional) is likewise a **bare Guid**
 into the Scheduling schema — set from the Select Appointment dialog.
 
+## Exported PDF
+
+`POST /reports/export-pdf` (`ExportPatientReportsPdfQuery` → `PatientReportPdfRenderer`, QuestPDF)
+renders the selected reports as a single merged PDF, one report per page run, in the legacy
+BackChart layout:
+
+- **Page** — US Letter. **Orientation is a per-clinic setting** on Administration → Clinics
+  (`PrintOrientation`: Portrait or Landscape), defaulting to **Portrait**. It's resolved per
+  report from *that report's* clinic — a multi-report export can mix orientations page to page
+  if the reports belong to clinics with different settings. A report with no clinic falls back
+  to Portrait.
+- **Header** (repeats on every page) — clinic name and the report type as the title, then the
+  patient block: **Patient / DOB / Code** on one line, **DOIV / DOL** on the next, then **DX**
+  (the incident's associated diagnostic codes, comma-separated). No gender. The logo slot legacy
+  drew top-left is intentionally left empty — clinic-app has no logo storage yet.
+- **Body** — the report date (plus a "Modified" timestamp when applicable) and the
+  provider/department name, then a NO SHOW marker when applicable, then fields grouped
+  **category → field name → field text** in the template's display order. Vitals (height,
+  weight, BMI, BP, heart rate, temperature) print inline under a **Clinical Exam** heading
+  whenever the report type's template includes that category and any vital was recorded — even
+  if the category's own text field is blank. Addendums follow, each labelled with its author and
+  timestamp.
+- **Signature** — a signed report's signature image (when the provider had one saved) appears
+  above the line "*(This report was digitally signed by {name} on {date})*"; the same pattern
+  repeats for the peer-review signature when the report was review-signed. A missing image
+  degrades to the text line alone.
+- **Footer** — "`N of M`" page numbering.
+- **Watermark** — an unsigned report is stamped **DRAFT — UNSIGNED** diagonally across every
+  page, so a printout can't be mistaken for the finalized note after the draft changes.
+
 ## Import Dx Codes
 
 Fields named **Clinical Impression** or **Assessment** (legacy `ldfID` 15 / 22)
