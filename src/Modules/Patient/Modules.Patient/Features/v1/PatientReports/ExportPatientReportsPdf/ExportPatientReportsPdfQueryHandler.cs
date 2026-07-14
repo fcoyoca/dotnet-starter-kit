@@ -1,7 +1,12 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using FSH.Framework.Core.Exceptions;
+using FSH.Framework.Shared.Persistence;
 using FSH.Modules.Administration.Contracts.Dtos;
+using FSH.Modules.Administration.Contracts.v1.Clinics;
+using FSH.Modules.Administration.Contracts.v1.CustomDiagnostics;
+using FSH.Modules.Administration.Contracts.v1.Departments;
+using FSH.Modules.Administration.Contracts.v1.Providers;
 using FSH.Modules.Administration.Contracts.v1.ReportTemplates;
 using FSH.Modules.Auditing.Contracts;
 using FSH.Modules.Patient.Contracts.Dtos;
@@ -18,6 +23,7 @@ public sealed class ExportPatientReportsPdfQueryHandler(
     IMediator mediator,
     IPatientReportPdfRenderer renderer,
     IPdfPasswordProtector passwordProtector,
+    IPatientDocumentStorage storage,
     IAuditPublisher auditPublisher)
     : IQueryHandler<ExportPatientReportsPdfQuery, ExportedReportsPdfDto>
 {
@@ -67,15 +73,81 @@ public sealed class ExportPatientReportsPdfQueryHandler(
                 .ConfigureAwait(false);
         }
 
-        // Legacy grid ordered exports by report date ascending.
-        List<ReportPdfModel> models = reports
-            .OrderBy(r => r.ReportDate)
-            .ThenBy(r => r.CreatedAtUtc)
-            .Select(r => BuildModel(r, typeNames, fieldsByType))
-            .ToList();
+        // The legacy header is incident-scoped: DOIV, DOL and the DX list. All reports in an export
+        // belong to one patient; take the incident of the first report.
+        Domain.PatientIncident? incident = await dbContext.PatientIncidents
+            .Include(i => i.Diagnostics)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.Id == reports[0].IncidentId && !i.IsDeleted, cancellationToken)
+            .ConfigureAwait(false);
 
-        // DOIV/DOL/DX are populated by a follow-up change that loads the patient's incident and
-        // diagnoses; left blank here so the export still compiles against the extended record.
+        string? diagnosisCodes = null;
+        if (incident is not null && incident.Diagnostics.Count > 0)
+        {
+            // Incident diagnostics reference CustomDiagnostic rows (Guid keys) in Administration.
+            List<Guid> diagnosticIds = incident.Diagnostics.Select(d => d.DiagnosticId).ToList();
+            PagedResponse<CustomDiagnosticDto> dx = await mediator
+                .Send(new ListCustomDiagnosticsQuery(Ids: diagnosticIds, PageSize: 200), cancellationToken)
+                .ConfigureAwait(false);
+            diagnosisCodes = dx.Items.Count == 0
+                ? null
+                : string.Join(", ", dx.Items.Select(d => d.Code));
+        }
+
+        var clinicNames = new Dictionary<Guid, string>();
+        var orientations = new Dictionary<Guid, PrintOrientation>();
+        foreach (Guid clinicId in reports.Where(r => r.ClinicId is not null)
+                     .Select(r => r.ClinicId!.Value).Distinct())
+        {
+            ClinicDto clinic = await mediator
+                .Send(new GetClinicByIdQuery(clinicId), cancellationToken).ConfigureAwait(false);
+            clinicNames[clinicId] = clinic.Name;
+            orientations[clinicId] = clinic.PrintOrientation;
+        }
+
+        var providerNames = new Dictionary<Guid, string>();
+        foreach (Guid providerId in reports.Where(r => r.ProviderId is not null)
+                     .Select(r => r.ProviderId!.Value).Distinct())
+        {
+            ProviderDto provider = await mediator
+                .Send(new GetProviderByIdQuery(providerId), cancellationToken).ConfigureAwait(false);
+            providerNames[providerId] = string.Join(" ", new[] { provider.Prefix, provider.FirstName, provider.LastName }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+        }
+
+        string? departmentName = null;
+        if (incident?.DepartmentId is { } departmentId)
+        {
+            DepartmentDto department = await mediator
+                .Send(new GetDepartmentByIdQuery(departmentId), cancellationToken).ConfigureAwait(false);
+            departmentName = department.Name;
+        }
+
+        // Legacy grid ordered exports by report date ascending.
+        var models = new List<ReportPdfModel>();
+        foreach (Domain.PatientReport report in reports
+                     .OrderBy(r => r.ReportDate)
+                     .ThenBy(r => r.CreatedAtUtc))
+        {
+            byte[]? signature = await ReadSignature(report.SignatureImagePath, cancellationToken)
+                .ConfigureAwait(false);
+            byte[]? reviewSignature = await ReadSignature(report.ReviewSignatureImagePath, cancellationToken)
+                .ConfigureAwait(false);
+
+            models.Add(BuildModel(
+                report,
+                typeNames,
+                fieldsByType,
+                report.ClinicId is { } cid && clinicNames.TryGetValue(cid, out string? cname) ? cname : null,
+                report.ClinicId is { } oid && orientations.TryGetValue(oid, out PrintOrientation o)
+                    ? o
+                    : PrintOrientation.Portrait,
+                departmentName,
+                report.ProviderId is { } pid && providerNames.TryGetValue(pid, out string? pname) ? pname : null,
+                signature,
+                reviewSignature));
+        }
+
         var patientInfo = new ReportPdfPatientInfo(
             string.Join(" ", new[]
             {
@@ -86,9 +158,9 @@ public sealed class ExportPatientReportsPdfQueryHandler(
             patient.PatientCode,
             patient.Demographics.DateOfBirth,
             patient.Demographics.Gender,
-            DateOfInitialVisit: null,
-            DateOfLoss: null,
-            DiagnosisCodes: null);
+            incident?.DateOfInitialVisit,
+            incident?.DateOfLoss,
+            diagnosisCodes);
 
         byte[] content = renderer.Render(patientInfo, models);
 
@@ -142,10 +214,26 @@ public sealed class ExportPatientReportsPdfQueryHandler(
     /// vitals only when its field template includes this category.</summary>
     private const string VitalsCategory = "Clinical Exam";
 
+    private async Task<byte[]?> ReadSignature(string? storedPath, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(storedPath))
+        {
+            return null;
+        }
+
+        return await storage.ReadAsync(storedPath, cancellationToken).ConfigureAwait(false);
+    }
+
     private static ReportPdfModel BuildModel(
         Domain.PatientReport report,
         Dictionary<int, string> typeNames,
-        Dictionary<int, IReadOnlyList<ReportFieldDto>> fieldsByType)
+        Dictionary<int, IReadOnlyList<ReportFieldDto>> fieldsByType,
+        string? clinicName,
+        PrintOrientation orientation,
+        string? departmentName,
+        string? providerName,
+        byte[]? signatureImage,
+        byte[]? reviewSignatureImage)
     {
         IReadOnlyList<ReportFieldDto> fields = fieldsByType[report.ReportTypeId];
         Dictionary<int, ReportFieldDto> fieldById = fields.ToDictionary(f => f.Id);
@@ -184,14 +272,12 @@ public sealed class ExportPatientReportsPdfQueryHandler(
                 .OrderBy(a => a.CreatedAtUtc)
                 .Select(a => new ReportPdfAddendum(a.CreatedByName, a.CreatedAtUtc, a.Text))
                 .ToList(),
-            // Clinic, department, provider and signature-image loading arrive in a follow-up
-            // change. Blank here for now, just enough to compile against the extended record.
-            ClinicName: null,
-            Orientation: PrintOrientation.Portrait,
-            DepartmentName: null,
-            ProviderName: null,
-            ModifiedOnUtc: null,
-            SignatureImage: null,
-            ReviewSignatureImage: null);
+            clinicName,
+            orientation,
+            departmentName,
+            providerName,
+            report.UpdatedAtUtc,
+            signatureImage,
+            reviewSignatureImage);
     }
 }
