@@ -47,7 +47,7 @@ public sealed class ListClinicsQueryHandler(AdministrationDbContext dbContext)
             Items = items.Select(c => new ClinicDto(
                 c.Id, c.Code, c.Name, c.Address1, c.Address2,
                 c.City, c.State, c.Zip, c.Phone, c.TimeZoneId, c.IsActive,
-                c.CreatedAtUtc, c.UpdatedAtUtc)).ToList(),
+                c.CreatedAtUtc, c.UpdatedAtUtc, c.PrintOrientation)).ToList(),
             PageNumber = page,
             PageSize = size,
             TotalCount = total,

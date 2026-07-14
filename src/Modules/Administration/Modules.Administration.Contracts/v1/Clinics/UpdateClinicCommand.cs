@@ -1,3 +1,4 @@
+using FSH.Modules.Administration.Contracts.Dtos;
 using Mediator;
 
 namespace FSH.Modules.Administration.Contracts.v1.Clinics;
@@ -13,4 +14,5 @@ public sealed record UpdateClinicCommand(
     string Zip,
     string? Phone,
     bool IsActive,
-    string? TimeZoneId = null) : ICommand<Unit>;
+    string? TimeZoneId = null,
+    PrintOrientation PrintOrientation = PrintOrientation.Portrait) : ICommand<Unit>;

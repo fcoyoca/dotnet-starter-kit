@@ -20,7 +20,8 @@ public sealed class CreateClinicCommandHandler(AdministrationDbContext dbContext
             command.State,
             command.Zip,
             command.Phone,
-            timeZoneId: command.TimeZoneId);
+            timeZoneId: command.TimeZoneId,
+            printOrientation: command.PrintOrientation);
         dbContext.Clinics.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return entity.Id;

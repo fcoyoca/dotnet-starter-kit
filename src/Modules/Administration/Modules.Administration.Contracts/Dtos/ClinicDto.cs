@@ -13,4 +13,5 @@ public sealed record ClinicDto(
     string TimeZoneId,
     bool IsActive,
     DateTime CreatedAtUtc,
-    DateTime? UpdatedAtUtc);
+    DateTime? UpdatedAtUtc,
+    PrintOrientation PrintOrientation = PrintOrientation.Portrait);

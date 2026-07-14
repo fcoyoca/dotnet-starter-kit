@@ -1,3 +1,4 @@
+using FSH.Modules.Administration.Contracts.Dtos;
 using Mediator;
 
 namespace FSH.Modules.Administration.Contracts.v1.Clinics;
@@ -11,4 +12,5 @@ public sealed record CreateClinicCommand(
     string State,
     string Zip,
     string? Phone,
-    string? TimeZoneId = null) : ICommand<Guid>;
+    string? TimeZoneId = null,
+    PrintOrientation PrintOrientation = PrintOrientation.Portrait) : ICommand<Guid>;

@@ -31,6 +31,7 @@ public sealed class GetClinicByIdQueryHandler(AdministrationDbContext dbContext)
             entity.TimeZoneId,
             entity.IsActive,
             entity.CreatedAtUtc,
-            entity.UpdatedAtUtc);
+            entity.UpdatedAtUtc,
+            entity.PrintOrientation);
     }
 }

@@ -1,4 +1,5 @@
 using FSH.Framework.Core.Domain;
+using FSH.Modules.Administration.Contracts.Dtos;
 
 namespace FSH.Modules.Administration.Domain;
 
@@ -26,6 +27,12 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
     public string TimeZoneId { get; private set; } = "UTC";
 
     /// <summary>
+    /// Page orientation for this clinic's exported patient-report PDFs (legacy
+    /// <c>PRINT_ORIENTATION</c>). Defaults to <see cref="PrintOrientation.Portrait"/>.
+    /// </summary>
+    public PrintOrientation PrintOrientation { get; private set; } = PrintOrientation.Portrait;
+
+    /// <summary>
     /// Surrogate key (<c>cID</c>) of the source record in the legacy BackChart/Bronston database.
     /// Null for clinics created natively. Preserved so a later data-migration import can key
     /// related records back to the original clinic.
@@ -51,7 +58,8 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
         string zip,
         string? phone,
         int? legacyId = null,
-        string? timeZoneId = null)
+        string? timeZoneId = null,
+        PrintOrientation printOrientation = PrintOrientation.Portrait)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -74,6 +82,7 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
             IsActive = true,
             LegacyId = legacyId,
             TimeZoneId = string.IsNullOrWhiteSpace(timeZoneId) ? "UTC" : timeZoneId.Trim(),
+            PrintOrientation = printOrientation,
             CreatedAtUtc = DateTime.UtcNow
         };
     }
@@ -88,7 +97,8 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
         string zip,
         string? phone,
         bool isActive,
-        string? timeZoneId = null)
+        string? timeZoneId = null,
+        PrintOrientation printOrientation = PrintOrientation.Portrait)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -107,6 +117,7 @@ public sealed class Clinic : AggregateRoot<Guid>, ISoftDeletable
         Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
         IsActive = isActive;
         TimeZoneId = string.IsNullOrWhiteSpace(timeZoneId) ? "UTC" : timeZoneId.Trim();
+        PrintOrientation = printOrientation;
         UpdatedAtUtc = DateTime.UtcNow;
     }
 

@@ -1,3 +1,4 @@
+using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Administration.Domain;
 
 namespace Administration.Tests.Domain;
@@ -6,6 +7,10 @@ public sealed class ClinicTests
 {
     private static Clinic Valid() =>
         Clinic.Create("C-001", "Main Clinic", "123 Main St", null, "Springfield", "IL", "62704", "555-1000");
+
+    private static Clinic SomeClinic(PrintOrientation orientation = PrintOrientation.Portrait) =>
+        Clinic.Create("C1", "Main Street Clinic", "1 Main St", null, "Springfield", "IL", "62701",
+            phone: null, legacyId: null, timeZoneId: "America/Chicago", printOrientation: orientation);
 
     [Fact]
     public void Create_Should_SetAllRequiredFields_When_Valid()
@@ -111,5 +116,26 @@ public sealed class ClinicTests
 
         clinic.Update("C-1", "Main", "1 St", null, "City", "ST", "00000", null, isActive: true, timeZoneId: "America/New_York");
         clinic.TimeZoneId.ShouldBe("America/New_York");
+    }
+
+    [Fact]
+    public void Create_Should_Default_PrintOrientation_To_Portrait()
+    {
+        Clinic clinic = Clinic.Create("C1", "Main Street Clinic", "1 Main St", null, "Springfield",
+            "IL", "62701", phone: null);
+
+        clinic.PrintOrientation.ShouldBe(PrintOrientation.Portrait);
+    }
+
+    [Fact]
+    public void Update_Should_Change_PrintOrientation()
+    {
+        Clinic clinic = SomeClinic();
+
+        clinic.Update("C1", "Main Street Clinic", "1 Main St", null, "Springfield", "IL", "62701",
+            phone: null, isActive: true, timeZoneId: "America/Chicago",
+            printOrientation: PrintOrientation.Landscape);
+
+        clinic.PrintOrientation.ShouldBe(PrintOrientation.Landscape);
     }
 }

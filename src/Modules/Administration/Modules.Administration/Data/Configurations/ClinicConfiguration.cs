@@ -21,6 +21,10 @@ public sealed class ClinicConfiguration : IEntityTypeConfiguration<Clinic>
         builder.Property(x => x.Phone).HasMaxLength(20);
         builder.Property(x => x.IsActive).IsRequired();
         builder.Property(x => x.TimeZoneId).IsRequired().HasMaxLength(64);
+        builder.Property(x => x.PrintOrientation)
+            .IsRequired()
+            .HasMaxLength(20)
+            .HasConversion<string>();
         builder.Property(x => x.DeletedBy).HasMaxLength(64);
         // Legacy linkage to the source BackChart/Bronston cID (null for native records).
         builder.Property(x => x.LegacyId);
