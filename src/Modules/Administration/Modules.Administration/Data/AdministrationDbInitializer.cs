@@ -28,6 +28,7 @@ public sealed class AdministrationDbInitializer(
 
         if (await dbContext.ReportTypes.AnyAsync(cancellationToken).ConfigureAwait(false))
         {
+            await RealignLegacyFieldOrderAsync(cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -47,6 +48,63 @@ public sealed class AdministrationDbInitializer(
         }
 
         logger.LogInformation("[Administration] seeded report-template catalog");
+    }
+
+    /// <summary>
+    /// One-time fix-up for tenants seeded before <c>SeedField.Order</c> became a global per-type
+    /// sequence: the original seed carried the legacy within-category order, whose duplicate values
+    /// made section order fall back to the list query's alphabetical category sort instead of the
+    /// legacy clinical sequence (Chief Complaint → Present Problem → … → Work Status). Duplicate
+    /// DisplayOrders among a type's legacy-seeded fields are the fingerprint of that old numbering —
+    /// a catalog an admin has since renumbered has no duplicates and is left alone, as are
+    /// admin-created types and fields (no LegacyId).
+    /// </summary>
+    private async Task RealignLegacyFieldOrderAsync(CancellationToken cancellationToken)
+    {
+        foreach (ReportTemplateSeedData.SeedType seedType in ReportTemplateSeedData.Types)
+        {
+            ReportType? type = await dbContext.ReportTypes
+                .FirstOrDefaultAsync(t => t.LegacyId == seedType.LegacyId, cancellationToken)
+                .ConfigureAwait(false);
+            if (type is null)
+            {
+                continue;
+            }
+
+            List<ReportField> fields = await dbContext.ReportFields
+                .Where(f => f.ReportTypeId == type.Id && f.LegacyId != null)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!fields.GroupBy(f => f.DisplayOrder).Any(g => g.Count() > 1))
+            {
+                continue;
+            }
+
+            Dictionary<int, ReportTemplateSeedData.SeedField> seedByLegacyId =
+                seedType.Fields.ToDictionary(f => f.LegacyId);
+
+            bool changed = false;
+            foreach (ReportField field in fields)
+            {
+                if (seedByLegacyId.TryGetValue(field.LegacyId!.Value, out ReportTemplateSeedData.SeedField? seed)
+                    && field.DisplayOrder != seed.Order)
+                {
+                    field.Update(field.Name, field.Category, seed.Order, field.IsActive, field.DefaultText);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                if (logger.IsEnabled(LogLevel.Information))
+                {
+                    logger.LogInformation(
+                        "[Administration] realigned report-field display order for type '{Type}'", type.Name);
+                }
+            }
+        }
     }
 
     /// <summary>

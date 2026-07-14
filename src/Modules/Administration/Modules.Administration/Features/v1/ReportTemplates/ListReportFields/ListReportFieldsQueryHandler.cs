@@ -21,8 +21,10 @@ public sealed class ListReportFieldsQueryHandler(AdministrationDbContext dbConte
             q = q.Where(f => f.IsActive);
         }
 
+        // DisplayOrder is the type's global display sequence (legacy category order, then field
+        // order within it) — sorting by category first would rearrange sections alphabetically.
         return await q
-            .OrderBy(f => f.Category).ThenBy(f => f.DisplayOrder).ThenBy(f => f.Name)
+            .OrderBy(f => f.DisplayOrder).ThenBy(f => f.Category).ThenBy(f => f.Name)
             .Select(f => new ReportFieldDto(
                 f.Id, f.ReportTypeId, f.Name, f.Category, f.DisplayOrder, f.IsActive, f.DefaultText))
             .ToListAsync(cancellationToken)

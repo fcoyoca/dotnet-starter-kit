@@ -45,6 +45,34 @@ public sealed class ReportTemplatesEndpointTests
     }
 
     [Fact]
+    public async Task ListReportFields_Should_Follow_LegacyClinicalSequence()
+    {
+        using var client = await _auth.CreateRootAdminClientAsync();
+        var types = await ListTypesAsync(client);
+
+        // Legacy ReportTypes.xml orders categories clinically (rcOrder), not alphabetically —
+        // filtered to the seeded names so custom fields created by other tests don't interfere.
+        string[] evalSequence =
+        [
+            "Chief Complaint", "Present Problem", "Medical History", "Family History",
+            "Personal / Social History", "Allergies", "Medications", "Systems Review",
+            "Comments", "Diagnostic Imaging", "Clinical Impression",
+            "Short Term Goals", "Long Term Goals", "Plan", "Work Status or Restrictions",
+        ];
+        var eval = types.Single(t => t.Name == "Initial Evaluation");
+        var evalNames = (await ListFieldsAsync(client, eval.Id))
+            .Select(f => f.Name).Where(evalSequence.Contains).ToList();
+        evalNames.ShouldBe(evalSequence);
+
+        // Daily Visit follows SOAP order.
+        string[] soapSequence = ["Subjective", "Objective", "Assessment", "Plan"];
+        var daily = types.Single(t => t.Name == "Daily Visit");
+        var dailyNames = (await ListFieldsAsync(client, daily.Id))
+            .Select(f => f.Name).Where(soapSequence.Contains).ToList();
+        dailyNames.ShouldBe(soapSequence);
+    }
+
+    [Fact]
     public async Task ListMacros_Should_Project_ReportFieldName_And_FilterByField()
     {
         using var client = await _auth.CreateRootAdminClientAsync();
