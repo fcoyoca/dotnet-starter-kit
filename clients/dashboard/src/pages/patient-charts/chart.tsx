@@ -60,6 +60,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ScrollTabs } from "@/components/ui/scroll-tabs";
 import { EntityStatusBadge } from "@/components/list";
 import { describe, formatDate, formatDateTimeInTz } from "@/lib/list-helpers";
 import { cn } from "@/lib/cn";
@@ -997,58 +998,65 @@ export function PatientChartDetailPage() {
             )}
 
             {openReportIds.length > 0 && (
-              <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--color-border)] p-3">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted-foreground)]">
+              <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] p-3">
+                <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted-foreground)]">
                   Open reports
                 </span>
-                {openReportTabs.map(({ id, label, incident, isForeign }) => (
-                  <span
-                    key={id}
-                    data-testid="open-report-tab"
-                    className={cn(
-                      "flex items-center rounded-lg border text-[11.5px] font-medium",
-                      id === activeReportId
-                        ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
-                        : "border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)]",
-                    )}
-                  >
-                    {/* The whole pill selects the report — a button around just the
-                        label left the DOIV/DOL line and the pill's padding dead,
-                        which read as "this tab is disabled". The padding therefore
-                        lives on the button, not the pill. `aria-label` pins the
-                        accessible name to the type + date label alone, so the tab
-                        strip is addressed without the DOIV + DOL suffix. */}
-                    <button
-                      type="button"
-                      aria-label={label}
-                      onClick={() => patientId && setActiveReport(patientId, id)}
-                      className="flex min-w-0 cursor-pointer items-center gap-1.5 py-1 pl-2.5 pr-1.5 text-left"
-                    >
-                      {isForeign && (
-                        <AlertTriangle
-                          aria-label="Belongs to a different incident than the one selected"
-                          className="size-3.5 shrink-0 text-[var(--color-destructive)]"
-                        />
+                {/* One row, always: past ~10 reports the pills scroll horizontally
+                    behind the chevrons instead of wrapping and pushing the editor
+                    down the page. */}
+                <ScrollTabs ariaLabel="Open reports" className="flex-1">
+                  {openReportTabs.map(({ id, label, incident, isForeign }) => (
+                    <span
+                      key={id}
+                      data-testid="open-report-tab"
+                      role="tab"
+                      aria-selected={id === activeReportId}
+                      className={cn(
+                        "flex shrink-0 items-center rounded-lg border text-[11.5px] font-medium",
+                        id === activeReportId
+                          ? "border-[var(--color-primary)] bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                          : "border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)]",
                       )}
-                      <span className="flex flex-col items-start leading-tight">
-                        {label}
-                        <IncidentRef
-                          incident={incident}
-                          tone={isForeign ? "foreign" : "muted"}
-                          className="text-[10px] font-normal"
-                        />
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Close ${label} report tab`}
-                      onClick={() => patientId && closeReport(patientId, id)}
-                      className="grid shrink-0 place-items-center self-stretch rounded-r-lg pl-0.5 pr-2 opacity-70 hover:opacity-100"
                     >
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
+                      {/* The whole pill selects the report — a button around just the
+                          label left the DOIV/DOL line and the pill's padding dead,
+                          which read as "this tab is disabled". The padding therefore
+                          lives on the button, not the pill. `aria-label` pins the
+                          accessible name to the type + date label alone, so the tab
+                          strip is addressed without the DOIV + DOL suffix. */}
+                      <button
+                        type="button"
+                        aria-label={label}
+                        onClick={() => patientId && setActiveReport(patientId, id)}
+                        className="flex min-w-0 cursor-pointer items-center gap-1.5 py-1 pl-2.5 pr-1.5 text-left"
+                      >
+                        {isForeign && (
+                          <AlertTriangle
+                            aria-label="Belongs to a different incident than the one selected"
+                            className="size-3.5 shrink-0 text-[var(--color-destructive)]"
+                          />
+                        )}
+                        <span className="flex flex-col items-start whitespace-nowrap leading-tight">
+                          {label}
+                          <IncidentRef
+                            incident={incident}
+                            tone={isForeign ? "foreign" : "muted"}
+                            className="text-[10px] font-normal"
+                          />
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Close ${label} report tab`}
+                        onClick={() => patientId && closeReport(patientId, id)}
+                        className="grid shrink-0 place-items-center self-stretch rounded-r-lg pl-0.5 pr-2 opacity-70 hover:opacity-100"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+                </ScrollTabs>
               </div>
             )}
 
