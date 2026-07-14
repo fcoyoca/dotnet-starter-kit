@@ -1,4 +1,5 @@
 using System.Globalization;
+using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Patient.Contracts.Dtos;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -36,7 +37,10 @@ public sealed class PatientReportPdfRenderer : IPatientReportPdfRenderer
             {
                 container.Page(page =>
                 {
-                    page.Size(PageSizes.A4);
+                    // Legacy BCFileGeneration used Letter; orientation is the report's clinic setting.
+                    page.Size(report.Orientation == PrintOrientation.Landscape
+                        ? PageSizes.Letter.Landscape()
+                        : PageSizes.Letter.Portrait());
                     page.Margin(40);
                     page.DefaultTextStyle(t => t.FontSize(10).FontColor(Colors.Grey.Darken4));
 
@@ -54,149 +58,208 @@ public sealed class PatientReportPdfRenderer : IPatientReportPdfRenderer
                             .FontColor(Colors.Red.Lighten4);
                     }
 
-                    page.Header().Column(col =>
+                    page.Header().Element(c => ComposeHeader(c, patient, report));
+                    page.Content().PaddingVertical(12).Element(c => ComposeBody(c, report));
+                    page.Footer().AlignCenter().Text(t =>
                     {
-                        col.Item().Row(row =>
-                        {
-                            row.RelativeItem().Column(c =>
-                            {
-                                c.Item().Text(report.ReportTypeName).FontSize(18).Bold();
-                                c.Item().Text($"Report Date: {FormatDate(report.ReportDate)}")
-                                    .FontSize(11).FontColor(Colors.Grey.Darken1);
-                            });
-                            row.RelativeItem().AlignRight().Column(c =>
-                            {
-                                c.Item().Text(patient.FullName).FontSize(12).SemiBold();
-                                c.Item().Text($"Code: {patient.PatientCode}").FontColor(Colors.Grey.Darken1);
-                                if (patient.DateOfBirth is { } dob)
-                                {
-                                    c.Item().Text($"DOB: {FormatDate(dob)}").FontColor(Colors.Grey.Darken1);
-                                }
-
-                                if (!string.IsNullOrWhiteSpace(patient.Gender))
-                                {
-                                    c.Item().Text($"Gender: {patient.Gender}").FontColor(Colors.Grey.Darken1);
-                                }
-                            });
-                        });
-                        col.Item().PaddingTop(6).LineHorizontal(0.75f).LineColor(Colors.Grey.Lighten1);
-                    });
-
-                    page.Content().PaddingVertical(12).Column(col =>
-                    {
-                        col.Spacing(10);
-
-                        col.Item().Row(row =>
-                        {
-                            row.RelativeItem().Text($"Status: {report.WorkflowStatus}").SemiBold();
-                            row.RelativeItem().AlignCenter().Text($"Version: {report.Version}");
-                            row.RelativeItem().AlignRight()
-                                .Text(report.IsNoShow ? "NO SHOW" : string.Empty)
-                                .FontColor(Colors.Red.Darken2).SemiBold();
-                        });
-
-                        if (report.SupportsVitals && HasAnyVital(report.Vitals))
-                        {
-                            col.Item().Element(c => ComposeVitals(c, report.Vitals));
-                        }
-
-                        foreach (ReportPdfSection section in report.Sections)
-                        {
-                            col.Item().Column(c =>
-                            {
-                                string title = string.IsNullOrWhiteSpace(section.Category)
-                                    ? section.Name
-                                    : $"{section.Category} — {section.Name}";
-                                c.Item().Text(title).FontSize(11).SemiBold();
-                                c.Item().PaddingTop(2).Text(section.Text);
-                            });
-                        }
-
-                        if (report.SignedByName is not null || report.SignedOnUtc is not null
-                            || report.ReviewSignedByName is not null || report.ReviewSignedOnUtc is not null)
-                        {
-                            col.Item().PaddingTop(8).Column(c =>
-                            {
-                                c.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten1);
-                                if (report.SignedByName is not null || report.SignedOnUtc is not null)
-                                {
-                                    c.Item().PaddingTop(4)
-                                        .Text($"Electronically signed by {report.SignedByName ?? "—"} on {FormatDateTime(report.SignedOnUtc)}")
-                                        .Italic();
-                                }
-
-                                if (report.ReviewSignedByName is not null || report.ReviewSignedOnUtc is not null)
-                                {
-                                    c.Item().PaddingTop(2)
-                                        .Text($"Reviewed and signed by {report.ReviewSignedByName ?? "—"} on {FormatDateTime(report.ReviewSignedOnUtc)}")
-                                        .Italic();
-                                }
-                            });
-                        }
-
-                        if (report.Addendums.Count > 0)
-                        {
-                            col.Item().PaddingTop(8).Column(c =>
-                            {
-                                c.Item().Text("Addendums").FontSize(11).SemiBold();
-                                foreach (ReportPdfAddendum addendum in report.Addendums)
-                                {
-                                    c.Item().PaddingTop(4).Column(a =>
-                                    {
-                                        a.Item()
-                                            .Text($"{addendum.CreatedByName ?? "Unknown"} · {FormatDateTime(addendum.CreatedAtUtc)}")
-                                            .FontSize(9).FontColor(Colors.Grey.Darken1);
-                                        a.Item().Text(addendum.Text);
-                                    });
-                                }
-                            });
-                        }
-                    });
-
-                    page.Footer().Row(row =>
-                    {
-                        row.RelativeItem()
-                            .Text($"Generated {DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm 'UTC'", Culture)}")
-                            .FontSize(8).FontColor(Colors.Grey.Medium);
-                        row.RelativeItem().AlignRight().Text(t =>
-                        {
-                            t.DefaultTextStyle(s => s.FontSize(8).FontColor(Colors.Grey.Medium));
-                            t.CurrentPageNumber();
-                            t.Span(" / ");
-                            t.TotalPages();
-                        });
+                        t.DefaultTextStyle(s => s.FontSize(9).FontColor(Colors.Grey.Medium));
+                        t.CurrentPageNumber();
+                        t.Span(" of ");
+                        t.TotalPages();
                     });
                 });
             }
         }).GeneratePdf();
     }
 
-    private static void ComposeVitals(IContainer container, ReportVitalsDto vitals)
+    /// <summary>Repeats on every page of a report — the legacy PDF template: clinic identity, the
+    /// report title, and the patient block (Patient / DOB / DOIV / DOL / DX). The logo slot legacy
+    /// drew top-left is intentionally empty: clinic-app has no logo storage yet.</summary>
+    private static void ComposeHeader(IContainer container, ReportPdfPatientInfo patient, ReportPdfModel report)
     {
-        container.Border(0.5f).BorderColor(Colors.Grey.Lighten1).Padding(6).Row(row =>
+        container.Column(col =>
         {
-            AddVital(row, "Height (in)", vitals.HeightInches?.ToString("0.##", Culture));
-            AddVital(row, "Weight (lbs)", vitals.WeightLbs?.ToString("0.##", Culture));
-            AddVital(row, "BMI", vitals.Bmi?.ToString("0.##", Culture));
-            AddVital(row, "BP", vitals.Systolic is null && vitals.Diastolic is null
-                ? null
-                : $"{vitals.Systolic?.ToString(Culture) ?? "—"}/{vitals.Diastolic?.ToString(Culture) ?? "—"}");
-            AddVital(row, "Pulse", vitals.Pulse?.ToString(Culture));
-            AddVital(row, "Temp (°F)", vitals.TemperatureF?.ToString("0.#", Culture));
+            col.Item().AlignCenter().Text(report.ClinicName ?? string.Empty)
+                .FontSize(13).Bold();
+            col.Item().AlignCenter().Text(report.ReportTypeName).FontSize(12).Bold();
+
+            col.Item().PaddingTop(6).Row(row =>
+            {
+                row.RelativeItem().Text(t =>
+                {
+                    t.Span("Patient: ").SemiBold();
+                    t.Span(patient.FullName);
+                });
+                row.ConstantItem(150).Text(t =>
+                {
+                    t.Span("DOB: ").SemiBold();
+                    t.Span(patient.DateOfBirth is { } dob ? FormatDate(dob) : "—");
+                });
+                row.ConstantItem(120).Text(t =>
+                {
+                    t.Span("Code: ").SemiBold();
+                    t.Span(patient.PatientCode);
+                });
+            });
+
+            col.Item().Row(row =>
+            {
+                row.RelativeItem().Text(t =>
+                {
+                    t.Span("DOIV: ").SemiBold();
+                    t.Span(patient.DateOfInitialVisit is { } doiv ? FormatDate(doiv) : "—");
+                });
+                row.RelativeItem().Text(t =>
+                {
+                    t.Span("DOL: ").SemiBold();
+                    t.Span(patient.DateOfLoss is { } dol ? FormatDate(dol) : "—");
+                });
+            });
+
+            col.Item().Text(t =>
+            {
+                t.Span("DX: ").SemiBold();
+                t.Span(string.IsNullOrWhiteSpace(patient.DiagnosisCodes) ? "—" : patient.DiagnosisCodes);
+            });
+
+            col.Item().PaddingTop(6).LineHorizontal(0.75f).LineColor(Colors.Grey.Lighten1);
         });
     }
 
-    private static void AddVital(RowDescriptor row, string label, string? value)
+    /// <summary>The legacy report body: date line, then fields grouped category → field → text,
+    /// with vitals rendered inline under the Clinical Exam category, then addendums, then the
+    /// signature images and their "digitally signed by" lines.</summary>
+    private static void ComposeBody(IContainer container, ReportPdfModel report)
+    {
+        container.Column(col =>
+        {
+            col.Spacing(8);
+
+            col.Item().Text(t =>
+            {
+                t.Span(FormatDate(report.ReportDate)).SemiBold();
+                if (report.ModifiedOnUtc is { } modified)
+                {
+                    t.Span($"  (Modified: {FormatDate(modified)})").FontColor(Colors.Grey.Darken1);
+                }
+
+                string who = report.ProviderName ?? report.DepartmentName ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(who))
+                {
+                    t.Span($"        {who}:");
+                }
+            });
+
+            if (report.IsNoShow)
+            {
+                col.Item().Text("NO SHOW").FontColor(Colors.Red.Darken2).SemiBold();
+            }
+
+            string? lastCategory = null;
+            foreach (ReportPdfSection section in report.Sections)
+            {
+                string category = section.Category ?? string.Empty;
+                if (!string.Equals(category, lastCategory, StringComparison.Ordinal))
+                {
+                    col.Item().PaddingTop(4).Text(category).FontSize(12).Bold();
+                    lastCategory = category;
+
+                    // Legacy printed vitals at the head of the Clinical Exam category.
+                    if (report.SupportsVitals
+                        && string.Equals(category, VitalsCategory, StringComparison.OrdinalIgnoreCase)
+                        && HasAnyVital(report.Vitals))
+                    {
+                        col.Item().Element(c => ComposeVitals(c, report.Vitals));
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(section.Text))
+                {
+                    continue;
+                }
+
+                col.Item().Column(c =>
+                {
+                    c.Item().Text(section.Name).SemiBold();
+                    c.Item().Text(section.Text);
+                });
+            }
+
+            foreach (ReportPdfAddendum addendum in report.Addendums)
+            {
+                col.Item().PaddingTop(4).Column(c =>
+                {
+                    c.Item().Text(t =>
+                    {
+                        t.Span("Addendum ").Bold();
+                        t.Span($"({addendum.CreatedByName ?? "Unknown"} — {FormatDateTime(addendum.CreatedAtUtc)})")
+                            .FontSize(9).FontColor(Colors.Grey.Darken1);
+                    });
+                    c.Item().Text(addendum.Text);
+                });
+            }
+
+            if (report.SignedByName is not null || report.SignedOnUtc is not null)
+            {
+                col.Item().PaddingTop(10).Element(c => ComposeSignature(
+                    c, report.SignatureImage, report.SignedByName, report.SignedOnUtc));
+            }
+
+            if (report.ReviewSignedByName is not null || report.ReviewSignedOnUtc is not null)
+            {
+                col.Item().PaddingTop(6).Element(c => ComposeSignature(
+                    c, report.ReviewSignatureImage, report.ReviewSignedByName, report.ReviewSignedOnUtc));
+            }
+        });
+    }
+
+    /// <summary>Signature image (when the stored file was readable) above the legacy attestation
+    /// line. A missing image degrades to the line alone — the attestation is the record, the
+    /// picture is decoration.</summary>
+    private static void ComposeSignature(IContainer container, byte[]? image, string? name, DateTime? signedOn)
+    {
+        container.Column(col =>
+        {
+            if (image is { Length: > 0 })
+            {
+                col.Item().Height(40).Image(image).FitHeight();
+            }
+
+            col.Item().Text(
+                $"(This report was digitally signed by {name ?? "—"} on {FormatDateTime(signedOn)})")
+                .Italic();
+        });
+    }
+
+    /// <summary>Legacy report category that carries vitals (rcID 8).</summary>
+    private const string VitalsCategory = "Clinical Exam";
+
+    private static void ComposeVitals(IContainer container, ReportVitalsDto vitals)
+    {
+        container.PaddingBottom(4).Column(col =>
+        {
+            AddVital(col, "Height", vitals.HeightInches is { } h ? $"{h.ToString("0.##", Culture)} in." : null);
+            AddVital(col, "Weight", vitals.WeightLbs is { } w ? $"{w.ToString("0.##", Culture)} lbs." : null);
+            AddVital(col, "BMI", vitals.Bmi?.ToString("0.##", Culture));
+            AddVital(col, "BP", vitals.Systolic is null && vitals.Diastolic is null
+                ? null
+                : $"{vitals.Systolic?.ToString(Culture) ?? "—"}/{vitals.Diastolic?.ToString(Culture) ?? "—"}");
+            AddVital(col, "Heart Rate", vitals.Pulse?.ToString(Culture));
+            AddVital(col, "Temperature", vitals.TemperatureF is { } t ? $"{t.ToString("0.#", Culture)} °F" : null);
+        });
+    }
+
+    private static void AddVital(ColumnDescriptor col, string label, string? value)
     {
         if (value is null)
         {
             return;
         }
 
-        row.RelativeItem().Column(c =>
+        col.Item().Text(t =>
         {
-            c.Item().Text(label).FontSize(8).FontColor(Colors.Grey.Darken1);
-            c.Item().Text(value).SemiBold();
+            t.Span($"{label}: ").SemiBold();
+            t.Span(value);
         });
     }
 

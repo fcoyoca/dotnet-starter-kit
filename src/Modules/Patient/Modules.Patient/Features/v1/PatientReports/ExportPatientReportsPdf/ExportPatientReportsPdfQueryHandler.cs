@@ -74,6 +74,8 @@ public sealed class ExportPatientReportsPdfQueryHandler(
             .Select(r => BuildModel(r, typeNames, fieldsByType))
             .ToList();
 
+        // DOIV/DOL/DX are populated by a follow-up change that loads the patient's incident and
+        // diagnoses; left blank here so the export still compiles against the extended record.
         var patientInfo = new ReportPdfPatientInfo(
             string.Join(" ", new[]
             {
@@ -83,7 +85,10 @@ public sealed class ExportPatientReportsPdfQueryHandler(
             }.Where(s => !string.IsNullOrWhiteSpace(s))),
             patient.PatientCode,
             patient.Demographics.DateOfBirth,
-            patient.Demographics.Gender);
+            patient.Demographics.Gender,
+            DateOfInitialVisit: null,
+            DateOfLoss: null,
+            DiagnosisCodes: null);
 
         byte[] content = renderer.Render(patientInfo, models);
 
@@ -178,6 +183,15 @@ public sealed class ExportPatientReportsPdfQueryHandler(
             report.Addendums
                 .OrderBy(a => a.CreatedAtUtc)
                 .Select(a => new ReportPdfAddendum(a.CreatedByName, a.CreatedAtUtc, a.Text))
-                .ToList());
+                .ToList(),
+            // Clinic, department, provider and signature-image loading arrive in a follow-up
+            // change. Blank here for now, just enough to compile against the extended record.
+            ClinicName: null,
+            Orientation: PrintOrientation.Portrait,
+            DepartmentName: null,
+            ProviderName: null,
+            ModifiedOnUtc: null,
+            SignatureImage: null,
+            ReviewSignatureImage: null);
     }
 }

@@ -1,13 +1,18 @@
+using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Patient.Contracts.Dtos;
 
 namespace FSH.Modules.Patient.Services;
 
-/// <summary>Patient banner shown on every exported report page.</summary>
+/// <summary>Patient banner shown on every exported report page (legacy BackChart template:
+/// Patient / DOB / DOIV / DOL / DX).</summary>
 public sealed record ReportPdfPatientInfo(
     string FullName,
     string PatientCode,
     DateTime? DateOfBirth,
-    string? Gender);
+    string? Gender,
+    DateTime? DateOfInitialVisit,
+    DateTime? DateOfLoss,
+    string? DiagnosisCodes);
 
 /// <summary>One narrative section of a report: the field definition's name/category plus the
 /// captured text, already ordered for display.</summary>
@@ -36,7 +41,14 @@ public sealed record ReportPdfModel(
     DateTime? SignedOnUtc,
     string? ReviewSignedByName,
     DateTime? ReviewSignedOnUtc,
-    IReadOnlyList<ReportPdfAddendum> Addendums);
+    IReadOnlyList<ReportPdfAddendum> Addendums,
+    string? ClinicName,
+    PrintOrientation Orientation,
+    string? DepartmentName,
+    string? ProviderName,
+    DateTime? ModifiedOnUtc,
+    byte[]? SignatureImage,
+    byte[]? ReviewSignatureImage);
 
 public interface IPatientReportPdfRenderer
 {

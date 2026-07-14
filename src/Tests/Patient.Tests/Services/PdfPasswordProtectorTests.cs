@@ -1,3 +1,4 @@
+using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Patient.Contracts.Dtos;
 using FSH.Modules.Patient.Services;
 using PdfSharp.Pdf;
@@ -16,7 +17,11 @@ public sealed class PdfPasswordProtectorTests
     /// <summary>A real rendered report, not a hand-made PDF — the point of these tests is that the
     /// protector can round-trip what QuestPDF actually emits.</summary>
     private byte[] RenderedReport() => _renderer.Render(
-        new ReportPdfPatientInfo("Jane A Doe", "P-0001", new DateTime(1980, 4, 12, 0, 0, 0, DateTimeKind.Utc), "Female"),
+        new ReportPdfPatientInfo(
+            "Jane A Doe", "P-0001", new DateTime(1980, 4, 12, 0, 0, 0, DateTimeKind.Utc), "Female",
+            DateOfInitialVisit: null,
+            DateOfLoss: null,
+            DiagnosisCodes: null),
         [
             new ReportPdfModel(
                 ReportTypeName: "Initial Evaluation",
@@ -32,7 +37,14 @@ public sealed class PdfPasswordProtectorTests
                 SignedOnUtc: new DateTime(2026, 6, 1, 15, 30, 0, DateTimeKind.Utc),
                 ReviewSignedByName: null,
                 ReviewSignedOnUtc: null,
-                Addendums: []),
+                Addendums: [],
+                ClinicName: "Main Street Clinic",
+                Orientation: PrintOrientation.Portrait,
+                DepartmentName: null,
+                ProviderName: "Dr. Smith",
+                ModifiedOnUtc: null,
+                SignatureImage: null,
+                ReviewSignatureImage: null),
         ]);
 
     [Fact]
