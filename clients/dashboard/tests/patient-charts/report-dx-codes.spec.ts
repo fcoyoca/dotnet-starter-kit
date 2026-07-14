@@ -26,7 +26,7 @@ const REPORT_A = "00000000-0000-0000-0000-0000000d4444";
 const REPORT_B = "00000000-0000-0000-0000-0000000d5555";
 const REPORT_C = "00000000-0000-0000-0000-0000000d6666";
 
-const REPORT_B_TAB = "Jun 27, 2026";
+const REPORT_B_TAB = "Initial Evaluation · Jun 27, 2026";
 
 // The tenant's custom diagnostics, keyed by the ids an incident stores.
 const DX = {

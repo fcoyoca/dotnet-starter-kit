@@ -29,6 +29,17 @@ export const DEFAULT_PROFILE = {
  * these defaults (e.g. a chat spec can return real channels).
  */
 export async function installShellMocks(page: Page): Promise<void> {
+  // HERMETIC SEAL — registered FIRST so every later route (the defaults below
+  // and each spec's own mocks) wins over it. Any backend call nothing else
+  // mocked gets a clean 404 instead of escaping to the real API URL: an escaped
+  // call carries the fake test JWT, 401s, and the client's refresh-then-logout
+  // path bounces the whole spec to /login mid-test. Scoped to /api/v1/ (every
+  // backend route) — a bare "**/api/**" would also swallow Vite's module
+  // requests for the app's own src/api/*.ts files.
+  await page.route("**/api/v1/**", (r: Route) =>
+    r.fulfill({ status: 404, headers: { "Content-Type": "application/json" }, body: "{}" }),
+  );
+
   // Long-lived realtime transports — abort so they neither keep the network
   // busy nor spew reconnect noise. The shell simply shows an "offline" dot.
   await page.route("**/api/v1/sse/**", (r: Route) => r.abort());
@@ -93,6 +104,13 @@ export async function installShellMocks(page: Page): Promise<void> {
   // A patient's insurance policies are a child collection, so the chart sidebar and the patient-info
   // Insurance panel both fetch them on load — for every patient page, not just insurance specs.
   await mockJsonResponse(page, "**/api/v1/patient/insurance-policies**", paged([]));
+
+  // The chart's report list (scoped to the active incident) fires on every chart
+  // visit. Left unmocked it escapes to the real API URL carrying the fake test
+  // JWT, and the client's refresh-then-logout path bounces the spec to /login
+  // mid-test. Default to "no reports"; specs needing rows — or the by-id detail
+  // — re-mock AFTER this call, which wins (LIFO).
+  await mockJsonResponse(page, "**/api/v1/patient/reports**", paged([]));
 }
 
 /** Build a Playwright-shaped paged response body. */

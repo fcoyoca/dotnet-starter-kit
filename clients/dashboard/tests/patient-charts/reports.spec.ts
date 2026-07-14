@@ -190,6 +190,8 @@ test.describe("patient reports — editor", () => {
     await expect(
       page.getByTestId("report-editor-panel").getByText("Alice Q Vance", { exact: true }),
     ).toBeVisible();
+    // The header names the report's type, not the bare word "Report".
+    await expect(page.getByTestId("report-type-line")).toHaveText("Initial Evaluation · Jun 26, 2026");
     await expect(page.getByText("Vitals")).toBeVisible();
     // Field sections come from listReportFields, grouped by category.
     await expect(page.getByText("Subjective")).toBeVisible();

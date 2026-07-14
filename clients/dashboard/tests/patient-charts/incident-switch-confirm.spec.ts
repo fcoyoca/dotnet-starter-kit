@@ -26,7 +26,7 @@ const REPORT_B = "00000000-0000-0000-0000-0000000d5555";
 
 const A_REF = "DOIV May 01, 2026 · DOL Apr 10, 2026";
 const B_REF = "DOIV Jun 15, 2026 · DOL Jun 01, 2026";
-const REPORT_B_TAB = "Jun 27, 2026";
+const REPORT_B_TAB = "Progress Note · Jun 27, 2026";
 
 const PATIENT = {
   id: PATIENT_ID,
@@ -256,7 +256,7 @@ test.describe("incident switch confirmation", () => {
     // Only A's report (the one the chart left behind) is locked.
     const banner = page.getByTestId("foreign-reports-lock-banner");
     await expect(banner).toContainText("1 report belongs to another incident");
-    await page.getByRole("button", { name: "Jun 26, 2026", exact: true }).click();
+    await page.getByRole("button", { name: "Initial Evaluation · Jun 26, 2026", exact: true }).click();
     await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
     await expect(panel.locator("#f-11")).toBeDisabled();
   });

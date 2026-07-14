@@ -469,15 +469,17 @@ export function PatientChartDetailPage() {
     })),
   });
 
-  // Pill metadata per open report: its date, and the incident it belongs to.
-  // `isForeign` is the whole point — it flags a report from an incident other
-  // than the one the chart is currently working in.
+  // Pill metadata per open report: its type + date, and the incident it belongs
+  // to. `isForeign` is the whole point — it flags a report from an incident
+  // other than the one the chart is currently working in.
   const openReportTabs = openReportIds.map((id, i) => {
     const report = openReportQueries[i]?.data;
     const incident = report ? (incidentById.get(report.incidentId) ?? null) : null;
     return {
       id,
-      label: report ? formatDate(report.reportDate) : "Report",
+      label: report
+        ? `${reportTypeLabel(report.reportTypeId)} · ${formatDate(report.reportDate)}`
+        : "Report",
       incident,
       isForeign: report != null && report.incidentId !== activeIncidentId,
     };
@@ -1011,11 +1013,11 @@ export function PatientChartDetailPage() {
                     )}
                   >
                     {/* The whole pill selects the report — a button around just the
-                        date left the DOIV/DOL line and the pill's padding dead,
+                        label left the DOIV/DOL line and the pill's padding dead,
                         which read as "this tab is disabled". The padding therefore
                         lives on the button, not the pill. `aria-label` pins the
-                        accessible name to the date alone, so the tab strip is still
-                        addressed by date and not by date + DOIV + DOL. */}
+                        accessible name to the type + date label alone, so the tab
+                        strip is addressed without the DOIV + DOL suffix. */}
                     <button
                       type="button"
                       aria-label={label}

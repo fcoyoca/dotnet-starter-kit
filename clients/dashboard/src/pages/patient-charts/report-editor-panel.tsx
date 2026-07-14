@@ -19,6 +19,7 @@ import { getPatientById } from "@/api/patients";
 import {
   listCustomDiagnostics,
   listReportFields,
+  listReportTypes,
   useClinicOptions,
   useProviderOptions,
   type ReportFieldDto,
@@ -211,6 +212,15 @@ export function ReportEditorPanel({
     queryFn: () => listReportFields(report!.reportTypeId),
     enabled: report != null,
   });
+
+  // Same key/fn as the chart page's lookup, so this is normally a cache hit.
+  const reportTypesQuery = useQuery({
+    queryKey: ["report-types"],
+    queryFn: () => listReportTypes(true),
+    staleTime: 10 * 60 * 1000,
+  });
+  const reportTypeName =
+    reportTypesQuery.data?.find((t) => t.id === report?.reportTypeId)?.name ?? "Report";
 
   const providerOptions = useProviderOptions();
   const clinicOptions = useClinicOptions();
@@ -611,8 +621,8 @@ export function ReportEditorPanel({
                 ))
               )}
             </p>
-            <p className="text-[12px] text-[var(--color-muted-foreground)]">
-              Report · {formatDate(report.reportDate)}
+            <p data-testid="report-type-line" className="text-[12px] text-[var(--color-muted-foreground)]">
+              {reportTypeName} · {formatDate(report.reportDate)}
               {report.version > 1 ? ` · v${report.version}` : ""}
             </p>
           </div>

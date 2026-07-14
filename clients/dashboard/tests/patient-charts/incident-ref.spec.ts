@@ -28,8 +28,9 @@ const REPORT_B = "00000000-0000-0000-0000-0000000d5555";
 // bare "2026-05-01" would render as the previous day in a negative one.
 const A_REF = "DOIV May 01, 2026 · DOL Apr 10, 2026";
 const B_REF = "DOIV Jun 15, 2026 · DOL Jun 01, 2026";
-const REPORT_A_TAB = "Jun 26, 2026";
-const REPORT_B_TAB = "Jun 27, 2026";
+// Pills are labelled "<type name> · <date>" (legacy parity).
+const REPORT_A_TAB = "Initial Evaluation · Jun 26, 2026";
+const REPORT_B_TAB = "Progress Note · Jun 27, 2026";
 
 /** The marker on a tab whose report belongs to some OTHER incident. */
 const FOREIGN = "Belongs to a different incident than the one selected";

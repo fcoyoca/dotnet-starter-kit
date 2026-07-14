@@ -20,12 +20,12 @@ const INCIDENT_ID = "00000000-0000-0000-0000-0000000c3333";
 const REPORT_1 = "00000000-0000-0000-0000-0000000d4444"; // Initial Evaluation (type 1, field 11)
 const REPORT_2 = "00000000-0000-0000-0000-0000000d5555"; // Progress Note (type 2, field 21)
 
-// Open-report tabs are labelled by report date, so the two reports need
-// distinct dates to be individually addressable.
+// Open-report tabs are labelled "<type name> · <date>", so the two reports
+// need distinct dates to be individually addressable.
 const REPORT_1_DATE = "2026-06-26T00:00:00Z";
 const REPORT_2_DATE = "2026-06-27T00:00:00Z";
-const REPORT_1_TAB = "Jun 26, 2026";
-const REPORT_2_TAB = "Jun 27, 2026";
+const REPORT_1_TAB = "Initial Evaluation · Jun 26, 2026";
+const REPORT_2_TAB = "Progress Note · Jun 27, 2026";
 
 const DRAFTS_KEY = "fsh.dashboard.reportDrafts.v1";
 
