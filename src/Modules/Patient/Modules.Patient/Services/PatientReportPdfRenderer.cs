@@ -155,6 +155,24 @@ public sealed class PatientReportPdfRenderer : IPatientReportPdfRenderer
                 col.Item().Text("NO SHOW").FontColor(Colors.Red.Darken2).SemiBold();
             }
 
+            // Vitals are recorded via dedicated inputs, independent of the free-text Clinical Exam
+            // "Comments" field — PatientReport.SetFieldValues drops blank text, so a report can have
+            // vitals but no "Clinical Exam" section at all. Vitals must still print whenever the
+            // report type supports them and any were recorded, so a pending flag tracks whether
+            // they've been emitted yet: inline under the section's own heading when that section
+            // exists, or under a synthesized heading up front when it doesn't. Either way, exactly
+            // once.
+            bool vitalsPending = report.SupportsVitals && HasAnyVital(report.Vitals);
+            bool hasClinicalExamSection = report.Sections.Any(
+                s => string.Equals(s.Category, VitalsCategory, StringComparison.OrdinalIgnoreCase));
+
+            if (vitalsPending && !hasClinicalExamSection)
+            {
+                col.Item().PaddingTop(4).Text(VitalsCategory).FontSize(12).Bold();
+                col.Item().Element(c => ComposeVitals(c, report.Vitals));
+                vitalsPending = false;
+            }
+
             string? lastCategory = null;
             foreach (ReportPdfSection section in report.Sections)
             {
@@ -165,11 +183,10 @@ public sealed class PatientReportPdfRenderer : IPatientReportPdfRenderer
                     lastCategory = category;
 
                     // Legacy printed vitals at the head of the Clinical Exam category.
-                    if (report.SupportsVitals
-                        && string.Equals(category, VitalsCategory, StringComparison.OrdinalIgnoreCase)
-                        && HasAnyVital(report.Vitals))
+                    if (vitalsPending && string.Equals(category, VitalsCategory, StringComparison.OrdinalIgnoreCase))
                     {
                         col.Item().Element(c => ComposeVitals(c, report.Vitals));
+                        vitalsPending = false;
                     }
                 }
 

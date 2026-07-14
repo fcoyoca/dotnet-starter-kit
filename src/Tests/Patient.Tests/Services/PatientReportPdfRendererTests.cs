@@ -291,4 +291,63 @@ public sealed class PatientReportPdfRendererTests
 
         TextOf(doc.Pages[0]).ShouldContain("DRAFT");
     }
+
+    [Fact]
+    public void Render_Should_Print_Vitals_Even_When_No_Clinical_Exam_Section_Exists()
+    {
+        // Mirrors a real report: Height/Weight/BP were recorded via the dedicated vitals inputs,
+        // but the free-text "Comments" field under Clinical Exam was left blank, so
+        // PatientReport.SetFieldValues never created a section for that category.
+        ReportPdfModel report = SomeReport() with
+        {
+            Sections =
+            [
+                new ReportPdfSection("Subjective", "SOAP", "Patient reports lower back pain."),
+            ],
+        };
+
+        using PdfDocument doc = Open(_sut.Render(SomePatient(), [report]));
+
+        string text = TextOf(doc.Pages[0]);
+        text.ShouldContain("Clinical Exam");
+        text.ShouldContain("Height");
+        text.ShouldContain("66");
+        text.ShouldContain("BP");
+        text.ShouldContain("120/80");
+    }
+
+    [Fact]
+    public void Render_Should_Print_Vitals_Once_When_A_Clinical_Exam_Section_Has_Text()
+    {
+        ReportPdfModel report = SomeReport() with
+        {
+            Sections =
+            [
+                new ReportPdfSection("Comments", "Clinical Exam", "Patient tolerated exam well."),
+            ],
+        };
+
+        using PdfDocument doc = Open(_sut.Render(SomePatient(), [report]));
+
+        string text = TextOf(doc.Pages[0]);
+        text.ShouldContain("Height");
+        text.ShouldContain("66");
+        text.ShouldContain("BP");
+        text.ShouldContain("120/80");
+        text.ShouldContain("Patient tolerated exam well.");
+
+        int firstIndex = text.IndexOf("Clinical Exam", StringComparison.Ordinal);
+        firstIndex.ShouldBeGreaterThanOrEqualTo(0);
+        text.IndexOf("Clinical Exam", firstIndex + 1, StringComparison.Ordinal).ShouldBe(-1);
+    }
+
+    [Fact]
+    public void Render_Should_Not_Print_Vitals_When_The_Report_Type_Does_Not_Support_Them()
+    {
+        using PdfDocument doc = Open(_sut.Render(SomePatient(), [SomeReport(supportsVitals: false)]));
+
+        string text = TextOf(doc.Pages[0]);
+        text.ShouldNotContain("Height");
+        text.ShouldNotContain("BP");
+    }
 }
