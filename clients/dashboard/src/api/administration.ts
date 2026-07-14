@@ -111,6 +111,8 @@ export function useCodeSourceOptions(): ComboboxOption[] | undefined {
 
 // ─── Clinics (tenant-scoped CRUD) ──────────────────────────────────────
 
+export type PrintOrientation = "Portrait" | "Landscape";
+
 export type ClinicDto = {
   id: string;
   code: string;
@@ -122,6 +124,7 @@ export type ClinicDto = {
   zip: string;
   phone?: string | null;
   timeZoneId: string;
+  printOrientation: PrintOrientation;
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc?: string | null;
@@ -146,6 +149,7 @@ export type ClinicInput = {
   zip: string;
   phone?: string | null;
   timeZoneId?: string | null;
+  printOrientation?: PrintOrientation | null;
 };
 
 export type CreateClinicInput = ClinicInput;
@@ -180,6 +184,7 @@ export async function createClinic(input: CreateClinicInput): Promise<string> {
       zip: input.zip,
       phone: input.phone ?? null,
       timeZoneId: input.timeZoneId ?? null,
+      printOrientation: input.printOrientation ?? "Portrait",
     }),
   });
 }
@@ -198,6 +203,7 @@ export async function updateClinic(input: UpdateClinicInput): Promise<void> {
       zip: input.zip,
       phone: input.phone ?? null,
       timeZoneId: input.timeZoneId ?? null,
+      printOrientation: input.printOrientation ?? "Portrait",
       isActive: input.isActive,
     }),
   });

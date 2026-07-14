@@ -350,6 +350,7 @@ function ClinicEditorDialog({ state, onClose }: { state: EditorState; onClose: (
       zip: clinic?.zip ?? "",
       phone: clinic?.phone ?? "",
       timeZoneId: clinic?.timeZoneId ?? "UTC",
+      printOrientation: clinic?.printOrientation ?? "Portrait",
       isActive: clinic?.isActive ?? true,
     }),
     [clinic],
@@ -417,6 +418,7 @@ function ClinicEditorDialog({ state, onClose }: { state: EditorState; onClose: (
       zip: form.zip.trim(),
       phone: form.phone.trim() || null,
       timeZoneId: form.timeZoneId,
+      printOrientation: form.printOrientation,
     };
     if (state.mode === "edit" && clinic) {
       updateMutation.mutate({ clinicId: clinic.id, isActive: form.isActive, ...payload });
@@ -554,6 +556,24 @@ function ClinicEditorDialog({ state, onClose }: { state: EditorState; onClose: (
                     {tz}
                   </option>
                 ))}
+              </select>
+            </Field>
+
+            <Field
+              id="clinic-print-orientation"
+              label="Report print orientation"
+              hint="Page orientation used when this clinic's patient reports are exported to PDF."
+            >
+              <select
+                id="clinic-print-orientation"
+                value={form.printOrientation}
+                onChange={(e) =>
+                  set("printOrientation", e.target.value as "Portrait" | "Landscape")
+                }
+                className="h-9 w-full rounded-lg border border-[var(--color-input)] bg-transparent px-2 text-[13px] shadow-xs focus-visible:border-[var(--color-ring)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[oklch(from_var(--color-ring)_l_c_h_/_0.5)]"
+              >
+                <option value="Portrait">Portrait</option>
+                <option value="Landscape">Landscape</option>
               </select>
             </Field>
 
