@@ -19,13 +19,16 @@ public sealed record ReportPdfAddendum(string? CreatedByName, DateTime CreatedAt
 /// by the caller so the renderer stays a pure model → bytes function.
 /// <see cref="SupportsVitals"/> is whether the report type's template includes the Clinical Exam
 /// category (legacy rcID 8): only those types (Initial Evaluation / Progress / Discharge) print
-/// vitals — Daily Visit and No Show never do, even if values were captured.</summary>
+/// vitals — Daily Visit and No Show never do, even if values were captured.
+/// <see cref="IsSigned"/> drives the DRAFT watermark: an unsigned report can still be printed, but
+/// it must not be mistakable for a finalised clinical record.</summary>
 public sealed record ReportPdfModel(
     string ReportTypeName,
     DateTime ReportDate,
     int Version,
     bool IsNoShow,
     string WorkflowStatus,
+    bool IsSigned,
     ReportVitalsDto Vitals,
     bool SupportsVitals,
     IReadOnlyList<ReportPdfSection> Sections,

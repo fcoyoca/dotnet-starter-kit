@@ -40,6 +40,20 @@ public sealed class PatientReportPdfRenderer : IPatientReportPdfRenderer
                     page.Margin(40);
                     page.DefaultTextStyle(t => t.FontSize(10).FontColor(Colors.Grey.Darken4));
 
+                    // An unsigned report is not a finalised clinical record. It can still be
+                    // printed, but every page says so — a printout that outlives the draft must
+                    // not read as the signed note.
+                    if (!report.IsSigned)
+                    {
+                        page.Foreground()
+                            .AlignCenter()
+                            .AlignMiddle()
+                            .Rotate(-45)
+                            .Text("DRAFT — UNSIGNED")
+                            .FontSize(60).Bold()
+                            .FontColor(Colors.Red.Lighten4);
+                    }
+
                     page.Header().Column(col =>
                     {
                         col.Item().Row(row =>

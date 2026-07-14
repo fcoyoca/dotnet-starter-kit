@@ -17,6 +17,7 @@ public sealed class ExportPatientReportsPdfQueryHandler(
     PatientDbContext dbContext,
     IMediator mediator,
     IPatientReportPdfRenderer renderer,
+    IPdfPasswordProtector passwordProtector,
     IAuditPublisher auditPublisher)
     : IQueryHandler<ExportPatientReportsPdfQuery, ExportedReportsPdfDto>
 {
@@ -85,6 +86,15 @@ public sealed class ExportPatientReportsPdfQueryHandler(
             patient.Demographics.Gender);
 
         byte[] content = renderer.Render(patientInfo, models);
+
+        bool isProtected = !string.IsNullOrWhiteSpace(query.Password);
+        if (isProtected)
+        {
+            content = passwordProtector.Protect(content, query.Password!);
+        }
+
+        // Hash the bytes the client actually receives, so the checksum it displays matches the
+        // file on disk — for a protected export that means hashing *after* encryption.
         string sha256 = Convert.ToHexStringLower(SHA256.HashData(content));
         string fileName = reports.Count == 1
             ? $"report_{reports[0].Id:N}.pdf"
@@ -109,7 +119,7 @@ public sealed class ExportPatientReportsPdfQueryHandler(
             tags: AuditTag.PiiMasked,
             payload: new ActivityEventPayload(
                 Kind: ActivityKind.Query,
-                Name: $"PHI_EXPORT:PatientReports:{string.Join(",", ids)}",
+                Name: $"PHI_EXPORT:PatientReports{(isProtected ? ":Protected" : string.Empty)}:{string.Join(",", ids)}",
                 StatusCode: 200,
                 DurationMs: 0,
                 Captured: BodyCapture.None,
@@ -154,6 +164,7 @@ public sealed class ExportPatientReportsPdfQueryHandler(
             report.Version,
             report.IsNoShow,
             report.WorkflowStatus.ToString(),
+            report.IsSigned,
             new ReportVitalsDto(
                 report.Vitals.HeightInches, report.Vitals.WeightLbs, report.Vitals.Bmi,
                 report.Vitals.Systolic, report.Vitals.Diastolic, report.Vitals.Pulse,

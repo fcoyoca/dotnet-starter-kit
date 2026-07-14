@@ -239,8 +239,15 @@ async function sha256Hex(blob: Blob): Promise<string> {
  * download. apiFetch only returns parsed JSON, so we fetch the blob directly
  * here while replicating the same auth + tenant headers apiFetch sets
  * (mirrors `downloadInvoicePdf` in billing.ts).
+ *
+ * `password`, when given, is BackChart's padlock export: the server returns an
+ * AES-256 encrypted PDF that opens only with that password. It is sent for this
+ * one request and never stored — delivering it to the recipient is on the user.
  */
-export async function exportReportsPdf(reportIds: string[]): Promise<ExportedReportPdf> {
+export async function exportReportsPdf(
+  reportIds: string[],
+  password?: string,
+): Promise<ExportedReportPdf> {
   const accessToken = tokenStore.getAccessToken();
   if (!accessToken) {
     throw new ApiRequestError(401, "Not signed in");
@@ -256,7 +263,7 @@ export async function exportReportsPdf(reportIds: string[]): Promise<ExportedRep
   const response = await fetch(`${env.apiBase}/api/v1/patient/reports/export-pdf`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ reportIds }),
+    body: JSON.stringify({ reportIds, password: password ?? null }),
   });
 
   if (!response.ok) {

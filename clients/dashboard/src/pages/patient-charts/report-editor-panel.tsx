@@ -6,7 +6,9 @@ import {
   ClipboardList,
   FileDown,
   FileText,
+  Lock,
   PenLine,
+  Printer,
   Pill,
   Plus,
   Save,
@@ -26,6 +28,7 @@ import {
 } from "@/api/administration";
 import {
   addAddendum,
+  exportReportsPdf,
   getReport,
   requestReview,
   reviewSign,
@@ -56,6 +59,7 @@ import { IncidentRef } from "@/pages/patient-charts/incident-ref";
 import { ImportAllergiesDialog } from "@/pages/patient-charts/import-allergies-dialog";
 import { ImportMedicationsDialog } from "@/pages/patient-charts/import-medications-dialog";
 import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
+import { ProtectedPrintDialog } from "@/pages/patient-charts/protected-print-dialog";
 
 /** lbs + inches → BMI (rounded to 1 decimal); null when either is missing/0. */
 function computeBmi(heightInches: number | null, weightLbs: number | null): number | null {
@@ -142,6 +146,7 @@ export function ReportEditorPanel({
   const canUpdate = user?.permissions?.includes(REPORT_PERMISSIONS.update) ?? false;
   const canSign = user?.permissions?.includes(REPORT_PERMISSIONS.sign) ?? false;
   const canReview = user?.permissions?.includes(REPORT_PERMISSIONS.review) ?? false;
+  const canExport = user?.permissions?.includes(REPORT_PERMISSIONS.export) ?? false;
   const canViewSuperBills = user?.permissions?.includes(SUPERBILL_PERMISSIONS.view) ?? false;
 
   const patientQuery = useQuery({
@@ -241,6 +246,7 @@ export function ReportEditorPanel({
   const [reviewerProviderId, setReviewerProviderId] = useState<string | null>(null);
   const [associatedProblemIds, setAssociatedProblemIds] = useState<string[]>([]);
   const [proceduresOpen, setProceduresOpen] = useState(false);
+  const [protectedPrintOpen, setProtectedPrintOpen] = useState(false);
   // The Plan field the open Procedures Performed dialog was launched from; its macro
   // text inserts there rather than into a globally-resolved Plan field.
   const [proceduresFieldId, setProceduresFieldId] = useState<number | null>(null);
@@ -480,6 +486,15 @@ export function ReportEditorPanel({
     onError: (err) => toast.error("Failed to review-sign report.", { description: describe(err) }),
   });
 
+  // Plain print. An unsigned report still prints, but the server watermarks it DRAFT — the
+  // signed/unsigned distinction is carried by the document itself, not by hiding the button.
+  const printMutation = useMutation({
+    mutationFn: () => exportReportsPdf([reportId]),
+    onSuccess: (file) =>
+      toast.success("Report exported.", { description: `SHA256 ${file.sha256}` }),
+    onError: (err) => toast.error("Failed to export report.", { description: describe(err) }),
+  });
+
   const onSave = () => {
     if (!reportId || !reportDate) return;
     // Belt-and-braces: the buttons are already gone when the report isn't on the
@@ -627,15 +642,41 @@ export function ReportEditorPanel({
             </p>
           </div>
         </div>
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${
-            isSigned
-              ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
-              : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]"
-          }`}
-        >
-          {report.workflowStatus}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Print is available on drafts too (the PDF carries a DRAFT watermark) and on reports
+              belonging to another incident — reading a record is never the thing we gate. */}
+          {canExport && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={printMutation.isPending}
+                onClick={() => printMutation.mutate()}
+              >
+                <Printer className="size-4" />
+                {printMutation.isPending ? "Preparing…" : "Print as PDF"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                title="Print as a password-protected PDF"
+                aria-label="Print as a password-protected PDF"
+                onClick={() => setProtectedPrintOpen(true)}
+              >
+                <Lock className="size-4" />
+              </Button>
+            </>
+          )}
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+              isSigned
+                ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]"
+            }`}
+          >
+            {report.workflowStatus}
+          </span>
+        </div>
       </div>
 
       {/* Locked out: this report is filed under an incident the chart isn't
@@ -1087,6 +1128,14 @@ export function ReportEditorPanel({
           // permission) — inserted text would render into a disabled textarea and silently
           // evaporate on reload since Save is unreachable.
           onMacroText={readOnly ? undefined : onProcedureMacroText}
+        />
+      )}
+
+      {canExport && (
+        <ProtectedPrintDialog
+          reportId={reportId}
+          open={protectedPrintOpen}
+          onClose={() => setProtectedPrintOpen(false)}
         />
       )}
 

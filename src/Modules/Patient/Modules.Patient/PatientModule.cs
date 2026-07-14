@@ -95,6 +95,7 @@ public sealed class PatientModule : IModule
         builder.Services.AddScoped<IPhiEncryptor, PhiEncryptor>();
         builder.Services.AddScoped<IPatientCodeGenerator, SequentialPatientCodeGenerator>();
         builder.Services.AddSingleton<IPatientReportPdfRenderer, PatientReportPdfRenderer>();
+        builder.Services.AddSingleton<IPdfPasswordProtector, PdfPasswordProtector>();
         builder.Services.AddScoped<IPatientDocumentStorage, PatientDocumentStorage>();
 
         builder.Services.AddHealthChecks()
