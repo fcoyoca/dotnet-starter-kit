@@ -123,6 +123,10 @@ public sealed class ExportPatientReportsPdfQueryHandler(
         return new ExportedReportsPdfDto(content, fileName, sha256);
     }
 
+    /// <summary>Legacy report category that carries vitals (rcID 8) — a report type prints
+    /// vitals only when its field template includes this category.</summary>
+    private const string VitalsCategory = "Clinical Exam";
+
     private static ReportPdfModel BuildModel(
         Domain.PatientReport report,
         Dictionary<int, string> typeNames,
@@ -130,6 +134,9 @@ public sealed class ExportPatientReportsPdfQueryHandler(
     {
         IReadOnlyList<ReportFieldDto> fields = fieldsByType[report.ReportTypeId];
         Dictionary<int, ReportFieldDto> fieldById = fields.ToDictionary(f => f.Id);
+
+        bool supportsVitals = fields.Any(f =>
+            string.Equals(f.Category?.Trim(), VitalsCategory, StringComparison.OrdinalIgnoreCase));
 
         // Sections follow the template's display order; values whose field definition no longer
         // exists still render (at the end) so no captured text is silently dropped.
@@ -151,6 +158,7 @@ public sealed class ExportPatientReportsPdfQueryHandler(
                 report.Vitals.HeightInches, report.Vitals.WeightLbs, report.Vitals.Bmi,
                 report.Vitals.Systolic, report.Vitals.Diastolic, report.Vitals.Pulse,
                 report.Vitals.TemperatureF),
+            supportsVitals,
             sections,
             report.SignedByName,
             report.SignedOnUtc,

@@ -74,6 +74,9 @@ const REPORT_TYPES = [
 const REPORT_FIELDS = [
   { id: 11, reportTypeId: 1, name: "Chief Complaint", category: "Subjective", displayOrder: 0, isActive: true },
   { id: 12, reportTypeId: 1, name: "Exam Findings", category: "Objective", displayOrder: 1, isActive: true },
+  // Vitals only render for templates that include the Clinical Exam category (legacy
+  // rcID 8) — present here so the vitals tests exercise a vitals-capable type.
+  { id: 13, reportTypeId: 1, name: "Comments", category: "Clinical Exam", displayOrder: 2, isActive: true },
 ];
 
 const PROVIDERS = paged([
@@ -218,6 +221,40 @@ test.describe("patient reports — editor", () => {
     expect(body.vitals.weightLbs).toBe(180);
     // BMI auto-computed from height+weight: 180/(70^2)*703 ≈ 25.8
     expect(body.vitals.bmi).toBeCloseTo(25.8, 1);
+  });
+
+  test("vitals section is hidden when the report type has no Clinical Exam category", async ({ page }) => {
+    // SOAP-only template (like Daily Visit) — no Clinical Exam category, so no vitals.
+    await mockJsonResponse(page, "**/api/v1/administration/report-fields**", [
+      { id: 11, reportTypeId: 1, name: "Chief Complaint", category: "Subjective", displayOrder: 0, isActive: true },
+      { id: 12, reportTypeId: 1, name: "Exam Findings", category: "Objective", displayOrder: 1, isActive: true },
+    ]);
+    await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, draftReport());
+
+    await gotoReportPanel(page);
+    await expect(page.getByText("Chief Complaint")).toBeVisible();
+
+    await expect(page.getByText("Vitals")).toHaveCount(0);
+    await expect(page.locator("#v-height")).toHaveCount(0);
+
+    // Saving a vitals-less type always PUTs null vitals.
+    await page.locator("#f-11").fill("Routine visit");
+    await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, '""', { method: "PUT" });
+    const putRequest = page.waitForRequest(
+      (req) => req.url().includes(`/api/v1/patient/reports/${REPORT_ID}`) && req.method() === "PUT",
+    );
+    await page.getByRole("button", { name: /save draft/i }).click();
+
+    const body = (await putRequest).postDataJSON();
+    expect(body.vitals).toEqual({
+      heightInches: null,
+      weightLbs: null,
+      bmi: null,
+      systolic: null,
+      diastolic: null,
+      pulse: null,
+      temperatureF: null,
+    });
   });
 
   test("signed report renders read-only with signature + addendum composer", async ({ page }) => {

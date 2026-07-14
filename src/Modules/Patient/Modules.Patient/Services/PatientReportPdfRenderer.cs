@@ -81,7 +81,7 @@ public sealed class PatientReportPdfRenderer : IPatientReportPdfRenderer
                                 .FontColor(Colors.Red.Darken2).SemiBold();
                         });
 
-                        if (HasAnyVital(report.Vitals))
+                        if (report.SupportsVitals && HasAnyVital(report.Vitals))
                         {
                             col.Item().Element(c => ComposeVitals(c, report.Vitals));
                         }

@@ -28,6 +28,10 @@ to **all report types**. Cancelling the dialog creates nothing.
   sections grouped by `ReportField.category`. Per-field **macro insert** splices
   template text at the caret. Save Draft is an upsert; field values are stored
   sparsely (only filled fields).
+  - Vitals only appear (editor and PDF) when the report type's field template
+    includes a **Clinical Exam** category — legacy rcID 8, carried by Initial
+    Evaluation / Progress / Discharge but never Daily Visit or No Show. Saving
+    a type without that category always persists null vitals.
 - **Signed** — the report locks (edits rejected server-side; addendums are the
   post-sign channel). The signer is taken from the current user; the signature
   image is snapshotted from the report's provider (optional — null when the

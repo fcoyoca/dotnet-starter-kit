@@ -89,6 +89,15 @@ function fieldImportsMedications(name: string): boolean {
   return MEDICATION_IMPORT_FIELDS.has(name.trim().toLowerCase());
 }
 
+// Vitals belong to the legacy "Clinical Exam" report category (rcID 8), which only the
+// Initial Evaluation / Progress / Discharge templates carry — Daily Visit and No Show
+// reports never capture vitals. Matched by category name (like the field affordances
+// above) so tenant-customized templates keep the behavior.
+const VITALS_CATEGORY = "clinical exam";
+function typeSupportsVitals(fields: ReportFieldDto[]): boolean {
+  return fields.some((f) => (f.category ?? "").trim().toLowerCase() === VITALS_CATEGORY);
+}
+
 function resolveProviderLabel(
   id: string | null | undefined,
   options: { value: string; label: string }[] | undefined,
@@ -361,6 +370,11 @@ export function ReportEditorPanel({
 
   const groups = useMemo(() => groupByCategory(fieldsQuery.data ?? []), [fieldsQuery.data]);
 
+  const supportsVitals = useMemo(
+    () => typeSupportsVitals(fieldsQuery.data ?? []),
+    [fieldsQuery.data],
+  );
+
   // Procedures Performed macro text lands in the Plan field the dialog was opened from
   // (legacy behavior).
   const onProcedureMacroText = (text: string) => {
@@ -467,15 +481,28 @@ export function ReportEditorPanel({
       providerId,
       clinicId,
       isNoShow,
-      vitals: {
-        heightInches: toNum(height),
-        weightLbs: toNum(weight),
-        bmi,
-        systolic: toNum(systolic),
-        diastolic: toNum(diastolic),
-        pulse: toNum(pulse),
-        temperatureF: toNum(temperature),
-      },
+      // A report type without a Clinical Exam category never records vitals, so
+      // anything lingering in form state (e.g. an old draft) saves as null rather
+      // than attaching vitals to a Daily Visit / No Show report.
+      vitals: supportsVitals
+        ? {
+            heightInches: toNum(height),
+            weightLbs: toNum(weight),
+            bmi,
+            systolic: toNum(systolic),
+            diastolic: toNum(diastolic),
+            pulse: toNum(pulse),
+            temperatureF: toNum(temperature),
+          }
+        : {
+            heightInches: null,
+            weightLbs: null,
+            bmi: null,
+            systolic: null,
+            diastolic: null,
+            pulse: null,
+            temperatureF: null,
+          },
       fieldValues: buildFieldValues(),
     });
   };
@@ -684,7 +711,10 @@ export function ReportEditorPanel({
         </label>
       </div>
 
-      {/* Vitals */}
+      {/* Vitals — only for report types whose template includes the Clinical Exam
+          category (legacy: Initial Evaluation / Progress / Discharge; never Daily
+          Visit or No Show). */}
+      {supportsVitals && (
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
         <h3 className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
           Vitals
@@ -713,6 +743,7 @@ export function ReportEditorPanel({
           </Field>
         </div>
       </div>
+      )}
 
       {/* Field sections grouped by category */}
       {fieldsQuery.isLoading ? (
