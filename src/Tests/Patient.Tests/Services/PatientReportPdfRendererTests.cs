@@ -14,7 +14,7 @@ public sealed class PatientReportPdfRendererTests
     private readonly PatientReportPdfRenderer _sut = new();
 
     private static ReportPdfPatientInfo SomePatient() =>
-        new("Jane A Doe", "P-0001", new DateTime(1980, 4, 12, 0, 0, 0, DateTimeKind.Utc), "Female",
+        new("Jane A Doe", "P-0001", new DateTime(1980, 4, 12, 0, 0, 0, DateTimeKind.Utc),
             DateOfInitialVisit: new DateTime(2026, 5, 4, 0, 0, 0, DateTimeKind.Utc),
             DateOfLoss: new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc),
             DiagnosisCodes: "M54.5, M99.01");

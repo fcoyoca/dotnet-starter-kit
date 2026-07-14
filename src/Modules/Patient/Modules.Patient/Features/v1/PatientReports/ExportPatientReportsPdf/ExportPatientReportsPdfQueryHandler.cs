@@ -53,6 +53,11 @@ public sealed class ExportPatientReportsPdfQueryHandler(
             throw new CustomException("All reports in one export must belong to the same patient.");
         }
 
+        if (reports.Select(r => r.IncidentId).Distinct().Count() > 1)
+        {
+            throw new CustomException("All reports in one export must belong to the same incident.");
+        }
+
         Guid patientId = reports[0].PatientId;
         Domain.Patient patient = await dbContext.Patients
             .AsNoTracking()
@@ -184,7 +189,6 @@ public sealed class ExportPatientReportsPdfQueryHandler(
             }.Where(s => !string.IsNullOrWhiteSpace(s))),
             patient.PatientCode,
             patient.Demographics.DateOfBirth,
-            patient.Demographics.Gender,
             incident?.DateOfInitialVisit,
             incident?.DateOfLoss,
             diagnosisCodes);

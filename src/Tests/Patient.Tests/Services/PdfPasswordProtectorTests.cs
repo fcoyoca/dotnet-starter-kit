@@ -18,7 +18,7 @@ public sealed class PdfPasswordProtectorTests
     /// protector can round-trip what QuestPDF actually emits.</summary>
     private byte[] RenderedReport() => _renderer.Render(
         new ReportPdfPatientInfo(
-            "Jane A Doe", "P-0001", new DateTime(1980, 4, 12, 0, 0, 0, DateTimeKind.Utc), "Female",
+            "Jane A Doe", "P-0001", new DateTime(1980, 4, 12, 0, 0, 0, DateTimeKind.Utc),
             DateOfInitialVisit: null,
             DateOfLoss: null,
             DiagnosisCodes: null),

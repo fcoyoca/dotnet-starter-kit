@@ -9,7 +9,6 @@ public sealed record ReportPdfPatientInfo(
     string FullName,
     string PatientCode,
     DateTime? DateOfBirth,
-    string? Gender,
     DateTime? DateOfInitialVisit,
     DateTime? DateOfLoss,
     string? DiagnosisCodes);

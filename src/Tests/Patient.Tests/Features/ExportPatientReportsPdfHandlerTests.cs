@@ -241,4 +241,103 @@ public sealed class ExportPatientReportsPdfHandlerTests
         (FSH.Modules.Patient.Domain.Patient patient, PatientIncident incident) = await SeedPatientAndIncident(db);
         return await SeedReport(db, patient.Id, incident.Id, ClinicId, DateTime.UtcNow.Date, providerId);
     }
+
+    [Fact]
+    public async Task Export_Should_Not_Fail_When_The_Incidents_Department_No_Longer_Resolves()
+    {
+        using PatientDbContext db = SuperBillHandlerTests.CreateContext(Guid.NewGuid().ToString());
+
+        Guid deletedDepartmentId = Guid.NewGuid();
+        PatientReport report = await SeedReportForDeletedDepartment(db, deletedDepartmentId);
+
+        IMediator mediator = Mediator(PrintOrientation.Portrait);
+#pragma warning disable CA2012
+        // The incident's department has since been retired — its lookup throws, just as
+        // Administration.GetDepartmentByIdQueryHandler does for a soft-deleted row.
+        mediator.Send(Arg.Is<GetDepartmentByIdQuery>(q => q.Id == deletedDepartmentId), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<DepartmentDto>(
+                Task.FromException<DepartmentDto>(new NotFoundException($"Department {deletedDepartmentId} not found."))));
+#pragma warning restore CA2012
+
+        ExportPatientReportsPdfQueryHandler sut = Sut(db, mediator);
+
+        ExportedReportsPdfDto result = await sut.Handle(
+            new ExportPatientReportsPdfQuery([report.Id], null), CancellationToken.None);
+
+        result.Content.Length.ShouldBeGreaterThan(0);
+        System.Text.Encoding.ASCII.GetString(result.Content, 0, 5).ShouldBe("%PDF-");
+    }
+
+    private static async Task<PatientReport> SeedReportForDeletedDepartment(PatientDbContext db, Guid departmentId)
+    {
+        FSH.Modules.Patient.Domain.Patient patient = FSH.Modules.Patient.Domain.Patient.Create(
+            "P-0001", true,
+            PatientDemographics.Create(
+                "Jane", "Doe", "A",
+                new DateTime(1980, 4, 12, 0, 0, 0, DateTimeKind.Utc),
+                "F", null, isMinor: false,
+                null, null, null, null, null, null, null),
+            PatientContact.Create(null, null, null, null, null, null, null, null, null, null),
+            PatientPhi.Create(null, null, null),
+            null, null, null, null,
+            hasNoKnownProblems: false,
+            hasNoKnownMedications: false,
+            hasNoKnownAllergies: false,
+            receivesEmailReminders: false,
+            lastVisitDate: null, nextVisitDate: null);
+        db.Patients.Add(patient);
+
+        PatientIncident incident = PatientIncident.Create(
+            patient.Id,
+            Guid.NewGuid(),
+            departmentId,
+            new DateTime(2026, 5, 4, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc),
+            isTransfer: false,
+            isAccident: false,
+            accidentType: null,
+            accidentState: null,
+            comments: null);
+        incident.SetDiagnostics([DiagnosticId]);
+        db.PatientIncidents.Add(incident);
+
+        await db.SaveChangesAsync();
+        return await SeedReport(db, patient.Id, incident.Id, ClinicId, DateTime.UtcNow.Date, Guid.NewGuid());
+    }
+
+    [Fact]
+    public async Task Export_Should_Reject_Reports_That_Span_Two_Incidents()
+    {
+        using PatientDbContext db = SuperBillHandlerTests.CreateContext(Guid.NewGuid().ToString());
+
+        (FSH.Modules.Patient.Domain.Patient patient, PatientIncident firstIncident) = await SeedPatientAndIncident(db);
+        PatientReport firstReport = await SeedReport(
+            db, patient.Id, firstIncident.Id, ClinicId,
+            new DateTime(2024, 1, 5, 0, 0, 0, DateTimeKind.Utc), Guid.NewGuid());
+
+        PatientIncident secondIncident = PatientIncident.Create(
+            patient.Id,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new DateTime(2025, 6, 20, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 6, 20, 0, 0, 0, DateTimeKind.Utc),
+            isTransfer: false,
+            isAccident: false,
+            accidentType: null,
+            accidentState: null,
+            comments: null);
+        db.PatientIncidents.Add(secondIncident);
+        await db.SaveChangesAsync();
+
+        PatientReport secondReport = await SeedReport(
+            db, patient.Id, secondIncident.Id, ClinicId,
+            new DateTime(2025, 6, 20, 0, 0, 0, DateTimeKind.Utc), Guid.NewGuid());
+
+        ExportPatientReportsPdfQueryHandler sut = Sut(db, Mediator(PrintOrientation.Portrait));
+
+        CustomException ex = await Should.ThrowAsync<CustomException>(() => sut.Handle(
+            new ExportPatientReportsPdfQuery([firstReport.Id, secondReport.Id], null), CancellationToken.None).AsTask());
+
+        ex.Message.ShouldContain("incident");
+    }
 }
