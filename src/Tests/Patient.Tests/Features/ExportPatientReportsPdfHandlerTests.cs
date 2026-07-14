@@ -1,3 +1,4 @@
+using FSH.Framework.Core.Exceptions;
 using FSH.Framework.Shared.Persistence;
 using FSH.Modules.Administration.Contracts.Dtos;
 using FSH.Modules.Administration.Contracts.v1.Clinics;
@@ -78,7 +79,8 @@ public sealed class ExportPatientReportsPdfHandlerTests
         return mediator;
     }
 
-    private static async Task<PatientReport> Seed(PatientDbContext db, Guid? clinicId)
+    private static async Task<(FSH.Modules.Patient.Domain.Patient Patient, PatientIncident Incident)> SeedPatientAndIncident(
+        PatientDbContext db)
     {
         // Same minimal patient the other handler suites seed (see PatientAllergyHandlerTests).
         FSH.Modules.Patient.Domain.Patient patient = FSH.Modules.Patient.Domain.Patient.Create(
@@ -112,13 +114,26 @@ public sealed class ExportPatientReportsPdfHandlerTests
         incident.SetDiagnostics([DiagnosticId]);
         db.PatientIncidents.Add(incident);
 
+        await db.SaveChangesAsync();
+        return (patient, incident);
+    }
+
+    private static async Task<PatientReport> SeedReport(
+        PatientDbContext db, Guid patientId, Guid incidentId, Guid? clinicId, DateTime reportDate, Guid? providerId)
+    {
         PatientReport report = PatientReport.Create(
-            incident.Id, patient.Id, ReportTypeId, DateTime.UtcNow.Date, providerId: Guid.NewGuid(),
+            incidentId, patientId, ReportTypeId, reportDate, providerId: providerId,
             clinicId: clinicId, appointmentId: null, isNoShow: false);
         db.PatientReports.Add(report);
 
         await db.SaveChangesAsync();
         return report;
+    }
+
+    private static async Task<PatientReport> Seed(PatientDbContext db, Guid? clinicId)
+    {
+        (FSH.Modules.Patient.Domain.Patient patient, PatientIncident incident) = await SeedPatientAndIncident(db);
+        return await SeedReport(db, patient.Id, incident.Id, clinicId, DateTime.UtcNow.Date, Guid.NewGuid());
     }
 
     private static ExportPatientReportsPdfQueryHandler Sut(PatientDbContext db, IMediator mediator) =>
@@ -153,5 +168,77 @@ public sealed class ExportPatientReportsPdfHandlerTests
         using var stream = new MemoryStream(result.Content);
         using PdfDocument doc = PdfReader.Open(stream, PdfDocumentOpenMode.Import);
         doc.Pages[0].Width.Point.ShouldBe(612, tolerance: 1);
+    }
+
+    [Fact]
+    public async Task Export_Should_Not_Fail_The_Batch_When_One_Reports_Clinic_No_Longer_Resolves()
+    {
+        using PatientDbContext db = SuperBillHandlerTests.CreateContext(Guid.NewGuid().ToString());
+
+        Guid deletedClinicId = Guid.NewGuid();
+        Guid landscapeClinicId = Guid.NewGuid();
+
+        (FSH.Modules.Patient.Domain.Patient patient, PatientIncident incident) = await SeedPatientAndIncident(db);
+        PatientReport firstReport = await SeedReport(
+            db, patient.Id, incident.Id, deletedClinicId,
+            new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), Guid.NewGuid());
+        PatientReport secondReport = await SeedReport(
+            db, patient.Id, incident.Id, landscapeClinicId,
+            new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc), Guid.NewGuid());
+
+        IMediator mediator = Mediator(PrintOrientation.Portrait);
+#pragma warning disable CA2012
+        // The first report's clinic has since been soft-deleted (closed) — its lookup throws,
+        // just as Administration.GetClinicByIdQueryHandler does for a soft-deleted row.
+        mediator.Send(Arg.Is<GetClinicByIdQuery>(q => q.Id == deletedClinicId), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<ClinicDto>(
+                Task.FromException<ClinicDto>(new NotFoundException($"Clinic {deletedClinicId} not found."))));
+        mediator.Send(Arg.Is<GetClinicByIdQuery>(q => q.Id == landscapeClinicId), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<ClinicDto>(new ClinicDto(
+                landscapeClinicId, "C2", "Second Clinic", "2 Main St", null, "Springfield", "IL",
+                "62701", null, "UTC", true, DateTime.UtcNow, null, PrintOrientation.Landscape)));
+#pragma warning restore CA2012
+
+        ExportPatientReportsPdfQueryHandler sut = Sut(db, mediator);
+
+        ExportedReportsPdfDto result = await sut.Handle(
+            new ExportPatientReportsPdfQuery([firstReport.Id, secondReport.Id], null), CancellationToken.None);
+
+        using var stream = new MemoryStream(result.Content);
+        using PdfDocument doc = PdfReader.Open(stream, PdfDocumentOpenMode.Import);
+        doc.Pages[0].Width.Point.ShouldBe(612, tolerance: 1);
+        doc.Pages[doc.PageCount - 1].Width.Point.ShouldBe(792, tolerance: 1);
+    }
+
+    [Fact]
+    public async Task Export_Should_Not_Fail_When_A_Reports_Provider_No_Longer_Resolves()
+    {
+        using PatientDbContext db = SuperBillHandlerTests.CreateContext(Guid.NewGuid().ToString());
+
+        Guid deletedProviderId = Guid.NewGuid();
+        PatientReport report = await SeedReportForDeletedProvider(db, deletedProviderId);
+
+        IMediator mediator = Mediator(PrintOrientation.Portrait);
+#pragma warning disable CA2012
+        // The report's provider has since been offboarded — its lookup throws, just as
+        // Administration.GetProviderByIdQueryHandler does for a soft-deleted row.
+        mediator.Send(Arg.Is<GetProviderByIdQuery>(q => q.Id == deletedProviderId), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<ProviderDto>(
+                Task.FromException<ProviderDto>(new NotFoundException($"Provider {deletedProviderId} not found."))));
+#pragma warning restore CA2012
+
+        ExportPatientReportsPdfQueryHandler sut = Sut(db, mediator);
+
+        ExportedReportsPdfDto result = await sut.Handle(
+            new ExportPatientReportsPdfQuery([report.Id], null), CancellationToken.None);
+
+        result.Content.Length.ShouldBeGreaterThan(0);
+        System.Text.Encoding.ASCII.GetString(result.Content, 0, 5).ShouldBe("%PDF-");
+    }
+
+    private static async Task<PatientReport> SeedReportForDeletedProvider(PatientDbContext db, Guid providerId)
+    {
+        (FSH.Modules.Patient.Domain.Patient patient, PatientIncident incident) = await SeedPatientAndIncident(db);
+        return await SeedReport(db, patient.Id, incident.Id, ClinicId, DateTime.UtcNow.Date, providerId);
     }
 }

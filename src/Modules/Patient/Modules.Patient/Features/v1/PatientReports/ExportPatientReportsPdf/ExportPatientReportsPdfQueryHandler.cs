@@ -94,33 +94,60 @@ public sealed class ExportPatientReportsPdfQueryHandler(
                 : string.Join(", ", dx.Items.Select(d => d.Code));
         }
 
+        // A clinic/provider/department id on an old report can point at a row that's since been
+        // soft-deleted (closed clinic, offboarded provider, retired department) — a routine
+        // lifecycle event, not a data-integrity error. Mirror the signature-read policy: a
+        // reference that no longer resolves degrades to a missing name rather than failing the
+        // whole export.
         var clinicNames = new Dictionary<Guid, string>();
         var orientations = new Dictionary<Guid, PrintOrientation>();
         foreach (Guid clinicId in reports.Where(r => r.ClinicId is not null)
                      .Select(r => r.ClinicId!.Value).Distinct())
         {
-            ClinicDto clinic = await mediator
-                .Send(new GetClinicByIdQuery(clinicId), cancellationToken).ConfigureAwait(false);
-            clinicNames[clinicId] = clinic.Name;
-            orientations[clinicId] = clinic.PrintOrientation;
+            try
+            {
+                ClinicDto clinic = await mediator
+                    .Send(new GetClinicByIdQuery(clinicId), cancellationToken).ConfigureAwait(false);
+                clinicNames[clinicId] = clinic.Name;
+                orientations[clinicId] = clinic.PrintOrientation;
+            }
+            catch (NotFoundException)
+            {
+                // Clinic no longer exists — the affected report(s) fall back to no clinic name
+                // and portrait orientation, same as a report with no ClinicId at all.
+            }
         }
 
         var providerNames = new Dictionary<Guid, string>();
         foreach (Guid providerId in reports.Where(r => r.ProviderId is not null)
                      .Select(r => r.ProviderId!.Value).Distinct())
         {
-            ProviderDto provider = await mediator
-                .Send(new GetProviderByIdQuery(providerId), cancellationToken).ConfigureAwait(false);
-            providerNames[providerId] = string.Join(" ", new[] { provider.Prefix, provider.FirstName, provider.LastName }
-                .Where(s => !string.IsNullOrWhiteSpace(s)));
+            try
+            {
+                ProviderDto provider = await mediator
+                    .Send(new GetProviderByIdQuery(providerId), cancellationToken).ConfigureAwait(false);
+                providerNames[providerId] = string.Join(" ", new[] { provider.Prefix, provider.FirstName, provider.LastName }
+                    .Where(s => !string.IsNullOrWhiteSpace(s)));
+            }
+            catch (NotFoundException)
+            {
+                // Provider no longer exists — the affected report(s) render without a provider name.
+            }
         }
 
         string? departmentName = null;
         if (incident?.DepartmentId is { } departmentId)
         {
-            DepartmentDto department = await mediator
-                .Send(new GetDepartmentByIdQuery(departmentId), cancellationToken).ConfigureAwait(false);
-            departmentName = department.Name;
+            try
+            {
+                DepartmentDto department = await mediator
+                    .Send(new GetDepartmentByIdQuery(departmentId), cancellationToken).ConfigureAwait(false);
+                departmentName = department.Name;
+            }
+            catch (NotFoundException)
+            {
+                // Department no longer exists — the header renders without a department name.
+            }
         }
 
         // Legacy grid ordered exports by report date ascending.
