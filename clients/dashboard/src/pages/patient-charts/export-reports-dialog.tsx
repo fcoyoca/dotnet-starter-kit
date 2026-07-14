@@ -29,12 +29,12 @@ type Props = {
 
 /**
  * Export Reports dialog (BackChart `ExportReport.razor` + `SecureFileDownloadDialog` parity):
- * pick reports of the active incident, optionally merge them into one PDF, download, and
- * show each file's SHA-256 so the download can be integrity-checked.
+ * pick reports of the active incident, export them as one merged PDF (a page per report,
+ * report-date ascending), download, and show the file's SHA-256 so the download can be
+ * integrity-checked.
  */
 export function ExportReportsDialog({ incidentId, open, onClose }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [mergePdf, setMergePdf] = useState(false);
   const [exportedFiles, setExportedFiles] = useState<ExportedReportPdf[]>([]);
 
   // Same keys as the chart page so the cached lists are shared.
@@ -75,20 +75,13 @@ export function ExportReportsDialog({ incidentId, open, onClose }: Props) {
     );
 
   const exportMutation = useMutation({
-    mutationFn: async ({ ids, merge }: { ids: string[]; merge: boolean }) => {
-      if (merge) {
-        return [await exportReportsPdf(ids)];
-      }
-      // Separate files: one call per report, sequential so downloads fire reliably.
-      const files: ExportedReportPdf[] = [];
-      for (const id of ids) {
-        files.push(await exportReportsPdf([id]));
-      }
-      return files;
-    },
-    onSuccess: (files) => {
+    // One call, one file: the server renders every selected report into a single PDF.
+    mutationFn: async (ids: string[]) => [await exportReportsPdf(ids)],
+    onSuccess: (files, ids) => {
       setExportedFiles(files);
-      toast.success(files.length === 1 ? "Report exported." : `${files.length} reports exported.`);
+      toast.success(
+        ids.length === 1 ? "Report exported." : `${ids.length} reports exported to one PDF.`,
+      );
     },
     onError: (err) => toast.error("Failed to export reports.", { description: describe(err) }),
   });
@@ -104,7 +97,6 @@ export function ExportReportsDialog({ incidentId, open, onClose }: Props) {
 
   const reset = () => {
     setSelectedIds([]);
-    setMergePdf(false);
     setExportedFiles([]);
   };
 
@@ -125,8 +117,9 @@ export function ExportReportsDialog({ incidentId, open, onClose }: Props) {
 
         <DialogBody className="space-y-4">
           <p className="rounded-lg border border-[var(--color-border)] bg-[var(--color-accent)] px-3 py-2 text-[12px] text-[var(--color-muted-foreground)]">
-            Select the reports you would like to export, then click Export PDF. Each file's
-            SHA-256 checksum is shown after the download so you can verify its integrity.
+            Select the reports you would like to export, then click Export PDF. They download as
+            a single PDF, one report per page. The file's SHA-256 checksum is shown after the
+            download so you can verify its integrity.
           </p>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -140,28 +133,17 @@ export function ExportReportsDialog({ incidentId, open, onClose }: Props) {
               />
               <span>Select all</span>
             </label>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={mergePdf}
-                  onChange={(e) => setMergePdf(e.target.checked)}
-                  className="rounded border-[var(--color-border)]"
-                />
-                <span>Merge into one PDF</span>
-              </label>
-              <Button
-                size="sm"
-                className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
-                disabled={selectedIds.length === 0 || exportMutation.isPending}
-                onClick={() => exportMutation.mutate({ ids: selectedIds, merge: mergePdf })}
-              >
-                <FileDown className="size-4" />
-                {exportMutation.isPending
-                  ? "Exporting…"
-                  : `Export PDF${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 rounded-lg px-3 text-[13px] font-semibold"
+              disabled={selectedIds.length === 0 || exportMutation.isPending}
+              onClick={() => exportMutation.mutate(selectedIds)}
+            >
+              <FileDown className="size-4" />
+              {exportMutation.isPending
+                ? "Exporting…"
+                : `Export PDF${selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}`}
+            </Button>
           </div>
 
           {reportsQuery.isLoading ? (
