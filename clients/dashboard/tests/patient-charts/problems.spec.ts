@@ -168,6 +168,48 @@ test.describe("patient problem list", () => {
     expect(body.status).toBe("Active");
   });
 
+  test("deleting a problem is gated behind a confirmation dialog", async ({ page }) => {
+    await mockJsonResponse(page, "**/api/v1/patient/problems**", paged([PROBLEM_ALERT]));
+
+    // Records every DELETE the app fires, so we can assert the un-confirmed
+    // click sends nothing at all — not merely that the row survives.
+    const deletes: string[] = [];
+    page.on("request", (req) => {
+      if (req.method() === "DELETE") deletes.push(req.url());
+    });
+
+    await page.goto(`/patient-charts/${PATIENT_ID}`);
+    await page.getByRole("button", { name: "Problem List" }).click();
+
+    const listDialog = page.getByRole("dialog").filter({ hasText: "Show resolved" });
+    await listDialog.getByRole("button", { name: "Delete problem" }).click();
+
+    // The click opens the confirmation and fires no request.
+    const confirmDialog = page.getByRole("dialog").filter({ hasText: "Delete this problem?" });
+    await expect(confirmDialog).toBeVisible();
+    await expect(confirmDialog.getByText("M99.01")).toBeVisible();
+    expect(deletes).toHaveLength(0);
+
+    // Cancelling backs out, still without deleting anything.
+    await confirmDialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(confirmDialog).toBeHidden();
+    expect(deletes).toHaveLength(0);
+    await expect(listDialog.getByText("M99.01")).toBeVisible();
+
+    // Confirming is what actually issues the DELETE.
+    await mockJsonResponse(page, `**/api/v1/patient/problems/${PROBLEM_ALERT.id}`, '""', {
+      method: "DELETE",
+    });
+    await listDialog.getByRole("button", { name: "Delete problem" }).click();
+    const deleteRequest = page.waitForRequest(
+      (req) => req.url().includes(`/problems/${PROBLEM_ALERT.id}`) && req.method() === "DELETE",
+    );
+    await confirmDialog.getByRole("button", { name: "Delete problem" }).click();
+    await deleteRequest;
+
+    expect(deletes).toHaveLength(1);
+  });
+
   test("editing demographics in the info dialog updates the chart card", async ({ page }) => {
     await mockJsonResponse(page, "**/api/v1/patient/problems**", paged([]));
     await page.goto(`/patient-charts/${PATIENT_ID}`);

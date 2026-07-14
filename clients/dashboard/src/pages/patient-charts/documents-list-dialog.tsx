@@ -12,6 +12,7 @@ import {
 import { DOCUMENT_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -47,6 +48,7 @@ export function DocumentsListDialog({ patientId, open, onClose }: Props) {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editDocument, setEditDocument] = useState<PatientDocument | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PatientDocument | null>(null);
 
   const documentsQuery = useQuery({
     queryKey: ["patient-documents", patientId, typeFilter],
@@ -78,6 +80,7 @@ export function DocumentsListDialog({ patientId, open, onClose }: Props) {
     onSuccess: () => {
       toast.success("Patient document deleted.");
       void queryClient.invalidateQueries({ queryKey: ["patient-documents", patientId] });
+      setPendingDelete(null);
     },
     onError: (err) => toast.error("Failed to delete document.", { description: describe(err) }),
   });
@@ -180,7 +183,7 @@ export function DocumentsListDialog({ patientId, open, onClose }: Props) {
                           title="Delete document"
                           aria-label="Delete document"
                           disabled={deleteMutation.isPending}
-                          onClick={() => deleteMutation.mutate(d.id)}
+                          onClick={() => setPendingDelete(d)}
                           className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-destructive)] transition-colors hover:bg-[var(--color-accent)] disabled:pointer-events-none disabled:opacity-40"
                         >
                           <Trash2 className="size-4" />
@@ -212,6 +215,25 @@ export function DocumentsListDialog({ patientId, open, onClose }: Props) {
         }}
         document={editDocument}
         documentTypeOptions={typeOptions}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        eyebrow="Delete document"
+        title="Delete this document?"
+        description={
+          <>
+            <span className="font-medium text-[var(--color-foreground)]">
+              {pendingDelete?.fileName}
+            </span>{" "}
+            and its stored file will be permanently removed from this patient&apos;s chart. This
+            can&apos;t be undone.
+          </>
+        }
+        confirmLabel="Delete document"
+        pending={deleteMutation.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.id)}
       />
     </>
   );

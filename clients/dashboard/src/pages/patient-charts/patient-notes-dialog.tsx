@@ -6,6 +6,7 @@ import { deleteNote, searchPatientNotes, type PatientNote } from "@/api/patient-
 import { NOTE_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -34,6 +35,7 @@ export function PatientNotesDialog({ patientId, open, onClose }: Props) {
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [editNote, setEditNote] = useState<PatientNote | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PatientNote | null>(null);
 
   const notesQuery = useQuery({
     queryKey: ["patient-notes", patientId],
@@ -49,6 +51,7 @@ export function PatientNotesDialog({ patientId, open, onClose }: Props) {
     onSuccess: () => {
       toast.success("Note deleted.");
       void queryClient.invalidateQueries({ queryKey: ["patient-notes", patientId] });
+      setPendingDelete(null);
     },
     onError: (err) => toast.error("Failed to delete note.", { description: describe(err) }),
   });
@@ -126,7 +129,7 @@ export function PatientNotesDialog({ patientId, open, onClose }: Props) {
                             title="Delete note"
                             aria-label="Delete note"
                             disabled={deleteMutation.isPending}
-                            onClick={() => deleteMutation.mutate(n.id)}
+                            onClick={() => setPendingDelete(n)}
                             className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-destructive)] transition-colors hover:bg-[var(--color-accent)] disabled:pointer-events-none disabled:opacity-40"
                           >
                             <Trash2 className="size-4" />
@@ -158,6 +161,22 @@ export function PatientNotesDialog({ patientId, open, onClose }: Props) {
           setEditNote(null);
         }}
         note={editNote}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        eyebrow="Delete note"
+        title="Delete this note?"
+        description={
+          <>
+            <span className="font-medium text-[var(--color-foreground)]">{pendingDelete?.name}</span>{" "}
+            will be removed from this patient&apos;s chart. This can&apos;t be undone.
+          </>
+        }
+        confirmLabel="Delete note"
+        pending={deleteMutation.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.id)}
       />
     </>
   );

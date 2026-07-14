@@ -51,6 +51,7 @@ import {
   providerName as rosterName,
 } from "@/components/scheduling/provider-picker";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -723,8 +724,13 @@ function AppointmentDialog({
   const [rescheduling, setRescheduling] = useState(false);
   const [rescheduleYmd, setRescheduleYmd] = useState(ymd);
 
+  // Which destructive action is awaiting confirmation: this single appointment /
+  // occurrence, or the whole reservation series.
+  const [confirmDelete, setConfirmDelete] = useState<"single" | "series" | null>(null);
+
   const afterSuccess = (msg: string) => {
     toast.success(msg);
+    setConfirmDelete(null);
     onChanged();
     onClose();
   };
@@ -1114,7 +1120,7 @@ function AppointmentDialog({
                     variant="destructive"
                     size="sm"
                     disabled={isPending}
-                    onClick={() => deleteMutation.mutate(editing.id)}
+                    onClick={() => setConfirmDelete("single")}
                   >
                     Delete occurrence
                   </Button>
@@ -1123,7 +1129,7 @@ function AppointmentDialog({
                     variant="destructive"
                     size="sm"
                     disabled={isPending}
-                    onClick={() => deleteSeriesMutation.mutate(editing.reservationSeriesId!)}
+                    onClick={() => setConfirmDelete("series")}
                   >
                     Delete series
                   </Button>
@@ -1134,7 +1140,7 @@ function AppointmentDialog({
                   variant="destructive"
                   size="sm"
                   disabled={isPending}
-                  onClick={() => deleteMutation.mutate(editing.id)}
+                  onClick={() => setConfirmDelete("single")}
                 >
                   Delete
                 </Button>
@@ -1163,6 +1169,47 @@ function AppointmentDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Confirmation for the destructive footer actions. Deleting a series wipes
+          every remaining occurrence, so it gets its own copy. */}
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        eyebrow={confirmDelete === "series" ? "Delete series" : "Delete appointment"}
+        title={
+          confirmDelete === "series"
+            ? "Delete the whole reservation series?"
+            : editing?.isReservation
+              ? "Delete this reservation?"
+              : "Delete this appointment?"
+        }
+        description={
+          confirmDelete === "series" ? (
+            <>
+              Every remaining occurrence in this series will be deleted, not just the one on{" "}
+              <span className="font-medium text-[var(--color-foreground)]">
+                {editing && clinicDateLabel(editing.startUtc, timeZone)}
+              </span>
+              . This can&apos;t be undone.
+            </>
+          ) : (
+            <>
+              The slot on{" "}
+              <span className="font-medium text-[var(--color-foreground)]">
+                {editing && clinicDateLabel(editing.startUtc, timeZone)}
+              </span>{" "}
+              will be removed from the schedule. This can&apos;t be undone.
+            </>
+          )
+        }
+        confirmLabel={confirmDelete === "series" ? "Delete series" : "Delete"}
+        pending={isPending}
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          if (!editing) return;
+          if (confirmDelete === "series") deleteSeriesMutation.mutate(editing.reservationSeriesId!);
+          else deleteMutation.mutate(editing.id);
+        }}
+      />
     </Dialog>
   );
 }

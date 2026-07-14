@@ -11,6 +11,7 @@ import type { PatientDetailDto } from "@/api/patients";
 import { INSURANCE_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -60,6 +61,7 @@ export function InsurancePolicyListDialog({ patient, open, onClose }: Props) {
   const [showInactive, setShowInactive] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editPolicy, setEditPolicy] = useState<PatientInsurancePolicy | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PatientInsurancePolicy | null>(null);
 
   const policiesQuery = useQuery({
     queryKey: ["patient-insurance-policies", patient.id, showInactive],
@@ -82,6 +84,7 @@ export function InsurancePolicyListDialog({ patient, open, onClose }: Props) {
       void queryClient.invalidateQueries({
         queryKey: ["patient-insurance-policies", patient.id],
       });
+      setPendingDelete(null);
     },
     onError: (err) =>
       toast.error("Failed to remove insurance policy.", { description: describe(err) }),
@@ -177,7 +180,7 @@ export function InsurancePolicyListDialog({ patient, open, onClose }: Props) {
                           title="Remove insurance policy"
                           aria-label="Remove insurance policy"
                           disabled={deleteMutation.isPending}
-                          onClick={() => deleteMutation.mutate(p.id)}
+                          onClick={() => setPendingDelete(p)}
                           className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] transition-colors hover:bg-[var(--color-accent)]"
                         >
                           <Trash2 className="size-4" />
@@ -209,6 +212,30 @@ export function InsurancePolicyListDialog({ patient, open, onClose }: Props) {
         }}
         policy={editPolicy}
         canToggleActive={canDelete}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        eyebrow="Remove policy"
+        title="Remove this insurance policy?"
+        description={
+          <>
+            The{" "}
+            <span className="font-medium text-[var(--color-foreground)]">
+              {pendingDelete?.priority}
+            </span>{" "}
+            policy with{" "}
+            <span className="font-medium text-[var(--color-foreground)]">
+              {pendingDelete?.insuranceCompanyName ?? "Unknown insurer"}
+            </span>{" "}
+            will be removed from this patient. Billing that references it may need to be reassigned.
+          </>
+        }
+        confirmLabel="Remove policy"
+        pendingLabel="Removing…"
+        pending={deleteMutation.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.id)}
       />
     </>
   );

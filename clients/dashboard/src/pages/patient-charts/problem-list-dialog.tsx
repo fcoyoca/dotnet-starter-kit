@@ -6,6 +6,7 @@ import { deleteProblem, searchPatientProblems, type PatientProblem } from "@/api
 import { PROBLEM_PERMISSIONS } from "@/lib/patient-permissions";
 import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogBody,
@@ -45,6 +46,7 @@ export function ProblemListDialog({ patientId, open, onClose, incidentId }: Prop
   const [showInactive, setShowInactive] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editProblem, setEditProblem] = useState<PatientProblem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PatientProblem | null>(null);
 
   const problemsQuery = useQuery({
     queryKey: ["problems", patientId, showResolved, showInactive],
@@ -66,6 +68,7 @@ export function ProblemListDialog({ patientId, open, onClose, incidentId }: Prop
     onSuccess: () => {
       toast.success("Problem deleted.");
       void queryClient.invalidateQueries({ queryKey: ["problems", patientId] });
+      setPendingDelete(null);
     },
     onError: (err) => toast.error("Failed to delete problem.", { description: describe(err) }),
   });
@@ -166,7 +169,7 @@ export function ProblemListDialog({ patientId, open, onClose, incidentId }: Prop
                             title="Delete problem"
                             aria-label="Delete problem"
                             disabled={deleteMutation.isPending}
-                            onClick={() => deleteMutation.mutate(p.id)}
+                            onClick={() => setPendingDelete(p)}
                             className="inline-flex size-7 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-destructive)] transition-colors hover:bg-[var(--color-accent)] disabled:pointer-events-none disabled:opacity-40"
                           >
                             <Trash2 className="size-4" />
@@ -200,6 +203,25 @@ export function ProblemListDialog({ patientId, open, onClose, incidentId }: Prop
         }}
         problem={editProblem}
         incidentId={incidentId}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        eyebrow="Delete problem"
+        title="Delete this problem?"
+        description={
+          <>
+            <span className="font-medium text-[var(--color-foreground)]">
+              {pendingDelete?.diagnosticCode}
+              {pendingDelete?.diagnosticDescription ? ` — ${pendingDelete.diagnosticDescription}` : ""}
+            </span>{" "}
+            will be removed from this patient&apos;s problem list. This can&apos;t be undone.
+          </>
+        }
+        confirmLabel="Delete problem"
+        pending={deleteMutation.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete.id)}
       />
     </>
   );
