@@ -157,16 +157,18 @@ export function ProceduresPerformedDialog({
     enabled: open,
   });
 
-  // Default the insurance type to the patient's primary active policy's type when it resolves
-  // to a known (active) option; otherwise the first active admin insurance type. Waits for the
-  // policies query so the patient's primary wins over the fallback. User can still override.
+  // Default the insurance type to the patient's primary active policy's type — but only when it
+  // maps to a known (active) admin option. When the patient has no insurance on file (or its
+  // type is inactive/unknown) we leave the picker unset so the user consciously chooses one,
+  // rather than silently pricing under an arbitrary payer. Waits for the policies query so the
+  // patient's primary wins over list order. User can still override.
   useEffect(() => {
     if (!open || insuranceTypeId !== null) return;
-    if (!insuranceOptions || insuranceOptions.length === 0) return;
     if (policiesQuery.isPending) return;
     const primary = pickPrimaryInsuranceType(policiesQuery.data?.items ?? []);
-    const primaryIsKnown = !!primary && insuranceOptions.some((o) => o.value === primary.id);
-    setInsuranceTypeId(primaryIsKnown ? primary!.id : insuranceOptions[0].value);
+    if (primary && insuranceOptions?.some((o) => o.value === primary.id)) {
+      setInsuranceTypeId(primary.id);
+    }
   }, [open, insuranceOptions, insuranceTypeId, policiesQuery.isPending, policiesQuery.data]);
 
   const codesQuery = useQuery({

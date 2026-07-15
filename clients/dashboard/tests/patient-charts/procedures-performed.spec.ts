@@ -140,6 +140,28 @@ async function mockChartLookups(page: Page, opts?: { dxIds?: string[] }) {
     billedDateUtc: null,
     procedures: [],
   });
+
+  // A primary policy naming the Medicare insurance type, so the picker defaults to it and
+  // prices load deterministically from the patient (the dialog no longer falls back to a
+  // list-order default). Non-overlapping glob — order among these mocks doesn't matter.
+  await mockJsonResponse(page, "**/api/v1/patient/insurance-policies**", paged([primaryPolicy(IT_ID)]));
+}
+
+/** A minimal active Primary policy naming the given insurance type. */
+function primaryPolicy(insuranceTypeId: string) {
+  return {
+    id: "00000000-0000-0000-0000-000000101010",
+    patientId: PATIENT_ID,
+    insuranceCompanyId: "00000000-0000-0000-0000-000000102020",
+    insuranceCompanyName: "Medicare Nationwide",
+    insuranceTypeId,
+    insuranceTypeName: "Medicare",
+    priority: "Primary",
+    subscriberRelationship: "Self",
+    isActive: true,
+    createdAtUtc: "2026-01-01T00:00:00Z",
+    updatedAtUtc: null,
+  };
 }
 
 test.describe("procedures performed", () => {
@@ -216,9 +238,9 @@ test.describe("procedures performed", () => {
   test("defaults the insurance picker to the patient's primary policy type", async ({ page }) => {
     await mockChartLookups(page);
 
-    // Two admin insurance types, "Aetna PPO" sorting before "Medicare". The picker's
-    // fallback would pick the alphabetical-first ("Aetna PPO"); the patient's primary
-    // policy names "Medicare", so the patient's type must win. Re-register the price
+    // Two admin insurance types, "Aetna PPO" sorting before "Medicare". Selection must be
+    // patient-driven, not list-order-driven: the patient's primary policy names "Medicare",
+    // so the picker must land on it despite "Aetna PPO" sorting first. Re-register the price
     // sub-route after the broad list glob so LIFO doesn't let the list shadow it.
     await mockJsonResponse(page, "**/api/v1/administration/insurance-types**", paged([
       { id: IT_ID_2, name: "Aetna PPO", isActive: true, procedureCategoryId: null },
@@ -235,19 +257,7 @@ test.describe("procedures performed", () => {
       createdAtUtc: "2026-01-01T00:00:00Z",
       updatedAtUtc: null,
     }]);
-    await mockJsonResponse(page, "**/api/v1/patient/insurance-policies**", paged([{
-      id: "00000000-0000-0000-0000-00000010aaaa",
-      patientId: PATIENT_ID,
-      insuranceCompanyId: "00000000-0000-0000-0000-00000010bbbb",
-      insuranceCompanyName: "Medicare Nationwide",
-      insuranceTypeId: IT_ID,
-      insuranceTypeName: "Medicare",
-      priority: "Primary",
-      subscriberRelationship: "Self",
-      isActive: true,
-      createdAtUtc: "2026-01-01T00:00:00Z",
-      updatedAtUtc: null,
-    }]));
+    await mockJsonResponse(page, "**/api/v1/patient/insurance-policies**", paged([primaryPolicy(IT_ID)]));
 
     await page.goto(`/patient-charts/${PATIENT_ID}`);
 
@@ -258,7 +268,21 @@ test.describe("procedures performed", () => {
     const dialog = page.getByRole("dialog").filter({ hasText: "Procedures Performed" });
     await dialog.getByRole("button", { name: /Draft/ }).click();
 
-    // The Insurance combobox defaults to the patient's primary type, not the fallback.
+    // The Insurance combobox defaults to the patient's primary type, not list order.
     await expect(dialog.getByRole("button", { name: "Insurance" })).toContainText("Medicare");
+  });
+
+  test("leaves the insurance picker unset when the patient has no insurance on file", async ({ page }) => {
+    await mockChartLookups(page);
+    // No active policies — the picker must NOT silently fall back to a list-order default.
+    await mockJsonResponse(page, "**/api/v1/patient/insurance-policies**", paged([]));
+
+    await page.goto(`/patient-charts/${PATIENT_ID}`);
+    await page.getByRole("button", { name: "Procedures", exact: true }).click();
+    const dialog = page.getByRole("dialog").filter({ hasText: "Procedures Performed" });
+    await dialog.getByRole("button", { name: /Draft/ }).click();
+
+    // Picker shows its placeholder, not an arbitrary insurance type, so the user must choose.
+    await expect(dialog.getByRole("button", { name: "Insurance" })).toContainText("Select insurance");
   });
 });
