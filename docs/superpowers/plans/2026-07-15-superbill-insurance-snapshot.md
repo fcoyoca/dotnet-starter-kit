@@ -1,5 +1,7 @@
 # SuperBill Insurance-Type Snapshot Implementation Plan
 
+> **Status: IMPLEMENTED 2026-07-15** — Tasks 1–8 and 10 done (backend `ef589337`, frontend `a0f021dd`); backend + Playwright tests green. Task 9 (freeze-on-signed) intentionally deferred until a billing-provider module lands.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Persist the insurance type a super bill was priced/billed under, captured at save time, so a report's Procedures Performed history stays correct after the patient's insurance changes. Today insurance type is derived live from the patient's *current* primary policy — so changing that policy retroactively alters what every past report's picker defaults to and what the incident-info sidebar displays. After this change: a new super bill still defaults from the patient's current primary (unchanged UX), but on save it stores the selected `InsuranceTypeId` on the `SuperBill`; reopening an existing super bill shows the *stored* type, not the patient's current one. This mirrors the existing charge-snapshot pattern (each `SuperBillProcedure` already snapshots `Code`/`Description`/`Charge`).
