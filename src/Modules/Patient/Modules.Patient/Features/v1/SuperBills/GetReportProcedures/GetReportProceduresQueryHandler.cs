@@ -46,6 +46,7 @@ public sealed class GetReportProceduresQueryHandler(PatientDbContext dbContext)
                 p.DisplayOrder,
                 [.. p.Diagnostics.Select(d => d.DiagnosticId)]))];
 
-        return new SuperBillDto(bill.Id, bill.ReportId, bill.IsBilled, bill.BilledDateUtc, procedures);
+        return new SuperBillDto(
+            bill.Id, bill.ReportId, bill.IsBilled, bill.BilledDateUtc, procedures, bill.InsuranceTypeId);
     }
 }

@@ -19,5 +19,6 @@ public sealed record SuperBillSavedIntegrationEvent(
     Guid ReportId,
     Guid PatientId,
     bool IsBilled,
-    IReadOnlyList<ReportProcedureItem> Procedures)
+    IReadOnlyList<ReportProcedureItem> Procedures,
+    Guid? InsuranceTypeId = null)
     : IIntegrationEvent;

@@ -14,6 +14,14 @@ public sealed class SuperBill : AggregateRoot<Guid>
 {
     public Guid ReportId { get; private set; }
     public Guid PatientId { get; private set; }
+
+    /// <summary>
+    /// The insurance type this bill was priced/billed under, snapshotted at save (not an FK —
+    /// insurance types live in the Administration module). Captured so the report's Procedures
+    /// Performed stays correct after the patient's insurance changes, matching the Code/Charge
+    /// snapshots on <see cref="SuperBillProcedure"/>. Null for legacy rows and self-pay saves.
+    /// </summary>
+    public Guid? InsuranceTypeId { get; private set; }
     public bool IsBilled { get; private set; }
 #pragma warning disable S1144 // Will be set by future billing module subscribing to SuperBillSavedIntegrationEvent
     public DateTime? BilledDateUtc { get; private set; }
@@ -26,7 +34,7 @@ public sealed class SuperBill : AggregateRoot<Guid>
 
     private SuperBill() { }
 
-    public static SuperBill Create(Guid reportId, Guid patientId)
+    public static SuperBill Create(Guid reportId, Guid patientId, Guid? insuranceTypeId = null)
     {
         if (reportId == Guid.Empty)
         {
@@ -43,9 +51,21 @@ public sealed class SuperBill : AggregateRoot<Guid>
             Id = Guid.CreateVersion7(),
             ReportId = reportId,
             PatientId = patientId,
+            InsuranceTypeId = insuranceTypeId,
             IsBilled = false,
             CreatedAtUtc = DateTime.UtcNow,
         };
+    }
+
+    /// <summary>
+    /// Sets the insurance type this bill was priced under (from the picker selection at save).
+    /// Reflects the most recent save; freezing on signed/billed is deferred until a billing-provider
+    /// module lands — see docs/superpowers/plans/2026-07-15-superbill-insurance-snapshot.md (Task 9).
+    /// </summary>
+    public void SetInsuranceType(Guid? insuranceTypeId)
+    {
+        InsuranceTypeId = insuranceTypeId;
+        UpdatedAtUtc = DateTime.UtcNow;
     }
 
     /// <summary>Replaces the whole procedure set (legacy <c>SuperBillProcedures_Set_Multi</c> semantics).</summary>

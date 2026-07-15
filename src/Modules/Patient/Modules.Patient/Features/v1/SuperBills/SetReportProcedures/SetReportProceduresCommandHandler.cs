@@ -36,8 +36,12 @@ public sealed class SetReportProceduresCommandHandler(
 
         if (bill is null)
         {
-            bill = SuperBill.Create(command.ReportId, report.PatientId);
+            bill = SuperBill.Create(command.ReportId, report.PatientId, command.InsuranceTypeId);
             dbContext.SuperBills.Add(bill);
+        }
+        else
+        {
+            bill.SetInsuranceType(command.InsuranceTypeId);
         }
 
         bill.ReplaceProcedures(command.Procedures ?? []);
@@ -55,7 +59,8 @@ public sealed class SetReportProceduresCommandHandler(
                 ReportId: bill.ReportId,
                 PatientId: bill.PatientId,
                 IsBilled: bill.IsBilled,
-                Procedures: command.Procedures ?? []), cancellationToken)
+                Procedures: command.Procedures ?? [],
+                InsuranceTypeId: bill.InsuranceTypeId), cancellationToken)
             .ConfigureAwait(false);
 
         return Unit.Value;

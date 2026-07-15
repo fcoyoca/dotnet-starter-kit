@@ -53,4 +53,19 @@ public sealed class SetReportProceduresCommandValidatorTests
         var item = new ReportProcedureItem(Guid.NewGuid(), "98940", null, 20m, [Guid.Empty]);
         _sut.Validate(new SetReportProceduresCommand(Guid.NewGuid(), [item])).IsValid.ShouldBeFalse();
     }
+
+    [Fact]
+    public void Null_InsuranceTypeId_Should_Pass() =>
+        _sut.Validate(new SetReportProceduresCommand(Guid.NewGuid(), [Item()], InsuranceTypeId: null))
+            .IsValid.ShouldBeTrue();
+
+    [Fact]
+    public void Provided_InsuranceTypeId_Should_Pass() =>
+        _sut.Validate(new SetReportProceduresCommand(Guid.NewGuid(), [Item()], InsuranceTypeId: Guid.NewGuid()))
+            .IsValid.ShouldBeTrue();
+
+    [Fact]
+    public void Empty_InsuranceTypeId_Should_Fail() =>
+        _sut.Validate(new SetReportProceduresCommand(Guid.NewGuid(), [Item()], InsuranceTypeId: Guid.Empty))
+            .IsValid.ShouldBeFalse();
 }

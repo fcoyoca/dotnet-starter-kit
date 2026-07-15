@@ -7,4 +7,5 @@ namespace FSH.Modules.Patient.Contracts.v1.SuperBills;
 /// An empty list is valid and clears the set.</summary>
 public sealed record SetReportProceduresCommand(
     Guid ReportId,
-    IReadOnlyList<ReportProcedureItem> Procedures) : ICommand<Unit>;
+    IReadOnlyList<ReportProcedureItem> Procedures,
+    Guid? InsuranceTypeId = null) : ICommand<Unit>;

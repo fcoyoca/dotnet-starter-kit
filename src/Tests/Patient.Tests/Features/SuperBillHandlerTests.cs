@@ -189,4 +189,66 @@ public sealed class SuperBillHandlerTests
         await Should.ThrowAsync<NotFoundException>(
             () => sut.Handle(new SetReportProceduresCommand(Guid.NewGuid(), []), CancellationToken.None).AsTask());
     }
+
+    [Fact]
+    public async Task Set_Should_Snapshot_InsuranceType_And_RoundTrip_Through_Get_And_Event()
+    {
+        using var db = CreateContext(Guid.NewGuid().ToString());
+        PatientReport report = await SeedReport(db);
+        IEventBus bus = Substitute.For<IEventBus>();
+        Guid dx = Guid.NewGuid();
+        Guid insuranceType = Guid.NewGuid();
+        var setSut = CreateSetHandler(db, bus);
+
+        await setSut.Handle(new SetReportProceduresCommand(report.Id,
+            [new ReportProcedureItem(Guid.NewGuid(), "98940", null, 20m, [dx])],
+            InsuranceTypeId: insuranceType), CancellationToken.None);
+
+        SuperBill saved = await db.SuperBills.SingleAsync(x => x.ReportId == report.Id);
+        saved.InsuranceTypeId.ShouldBe(insuranceType);
+
+        SuperBillDto dto = await new GetReportProceduresQueryHandler(db)
+            .Handle(new GetReportProceduresQuery(report.Id), CancellationToken.None);
+        dto.InsuranceTypeId.ShouldBe(insuranceType);
+
+        await bus.Received(1).PublishAsync(
+            Arg.Is<SuperBillSavedIntegrationEvent>(e => e.InsuranceTypeId == insuranceType),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Set_Should_Update_InsuranceType_On_Resave()
+    {
+        using var db = CreateContext(Guid.NewGuid().ToString());
+        PatientReport report = await SeedReport(db);
+        Guid dx = Guid.NewGuid();
+        Guid firstType = Guid.NewGuid();
+        Guid secondType = Guid.NewGuid();
+        var sut = CreateSetHandler(db);
+
+        await sut.Handle(new SetReportProceduresCommand(report.Id,
+            [new ReportProcedureItem(Guid.NewGuid(), "98940", null, 20m, [dx])],
+            InsuranceTypeId: firstType), CancellationToken.None);
+        await sut.Handle(new SetReportProceduresCommand(report.Id,
+            [new ReportProcedureItem(Guid.NewGuid(), "98940", null, 20m, [dx])],
+            InsuranceTypeId: secondType), CancellationToken.None);
+
+        SuperBill saved = await db.SuperBills.SingleAsync(x => x.ReportId == report.Id);
+        saved.InsuranceTypeId.ShouldBe(secondType);
+    }
+
+    [Fact]
+    public async Task Set_Should_Leave_InsuranceType_Null_When_Not_Provided()
+    {
+        using var db = CreateContext(Guid.NewGuid().ToString());
+        PatientReport report = await SeedReport(db);
+        Guid dx = Guid.NewGuid();
+        var sut = CreateSetHandler(db);
+
+        await sut.Handle(new SetReportProceduresCommand(report.Id,
+            [new ReportProcedureItem(Guid.NewGuid(), "98940", null, 20m, [dx])]), CancellationToken.None);
+
+        SuperBill saved = await db.SuperBills.SingleAsync(x => x.ReportId == report.Id);
+        saved.InsuranceTypeId.ShouldBeNull();
+    }
 }

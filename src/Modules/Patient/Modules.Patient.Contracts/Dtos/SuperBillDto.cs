@@ -17,4 +17,5 @@ public sealed record SuperBillDto(
     Guid ReportId,
     bool IsBilled,
     DateTime? BilledDateUtc,
-    IReadOnlyList<SuperBillProcedureDto> Procedures);
+    IReadOnlyList<SuperBillProcedureDto> Procedures,
+    Guid? InsuranceTypeId = null);

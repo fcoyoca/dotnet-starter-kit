@@ -14,6 +14,8 @@ public sealed class SuperBillConfiguration : IEntityTypeConfiguration<SuperBill>
 
         builder.Property(x => x.ReportId).IsRequired();
         builder.Property(x => x.PatientId).IsRequired();
+        // Snapshot of the insurance type billed under — nullable, no FK to Administration's InsuranceType.
+        builder.Property(x => x.InsuranceTypeId);
         builder.Property(x => x.IsBilled).IsRequired();
 
         // One super bill per report (legacy sbReportID uniqueness).

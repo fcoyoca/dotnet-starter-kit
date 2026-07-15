@@ -9,6 +9,8 @@ public sealed class SetReportProceduresCommandValidator : AbstractValidator<SetR
     {
         RuleFor(x => x.ReportId).NotEmpty();
         RuleFor(x => x.Procedures).NotNull();
+        // Optional (self-pay saves null); a snapshot id with no cross-module existence check.
+        RuleFor(x => x.InsuranceTypeId).NotEqual(Guid.Empty).When(x => x.InsuranceTypeId.HasValue);
         RuleForEach(x => x.Procedures).ChildRules(procedure =>
         {
             procedure.RuleFor(p => p.ProcedureCodeId).NotEmpty();
