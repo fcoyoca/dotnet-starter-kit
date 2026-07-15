@@ -13,6 +13,14 @@ namespace FSH.Modules.Claims.Features.v1.Claims.SuperBillSaved;
 /// still Draft → refresh the snapshot. Existing &amp; past Draft → skip (freeze so a biller's work
 /// isn't clobbered by a late chart edit). Idempotent on redelivery.
 /// </summary>
+/// <remarks>
+/// Tenant context is NOT set here: the event pipeline installs it centrally. <c>InMemoryEventBus</c>
+/// opens <c>IEventTenantScope.Begin(@event.TenantId)</c> (Finbuckle-backed) BEFORE it constructs this
+/// handler and its <see cref="ClaimsDbContext"/>, and <c>MultiTenantDbContext</c> captures its
+/// <c>TenantInfo</c> at construction — so the DbContext is already tenant-scoped by the time this runs
+/// (mirrors Billing's <c>TenantSubscribedIntegrationEventHandler</c>). A null TenantId means no scope
+/// was installed, so we fail fast rather than write under an ambiguous tenant.
+/// </remarks>
 public sealed class SuperBillSavedIntegrationEventHandler(
     ClaimsDbContext db,
     ILogger<SuperBillSavedIntegrationEventHandler> logger)
@@ -21,6 +29,11 @@ public sealed class SuperBillSavedIntegrationEventHandler(
     public async Task HandleAsync(SuperBillSavedIntegrationEvent @event, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(@event);
+
+        if (@event.TenantId is null)
+        {
+            throw new InvalidOperationException("SuperBillSavedIntegrationEvent is missing TenantId.");
+        }
 
         var existing = await db.Claims
             .Include(c => c.Lines)

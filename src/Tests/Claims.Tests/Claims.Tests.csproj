@@ -5,7 +5,7 @@
 		<AssemblyName>Claims.Tests</AssemblyName>
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
-		<NoWarn>$(NoWarn);CA1515;CA1861;CA1707</NoWarn>
+		<NoWarn>$(NoWarn);CA1515;CA1861;CA1707;S2376</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
