@@ -44,6 +44,8 @@
     <ProjectReference Include="..\..\Modules\Files\Modules.Files.Contracts\Modules.Files.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Chat\Modules.Chat\Modules.Chat.csproj" />
     <ProjectReference Include="..\..\Modules\Chat\Modules.Chat.Contracts\Modules.Chat.Contracts.csproj" />
+    <ProjectReference Include="..\..\Modules\Claims\Modules.Claims\Modules.Claims.csproj" />
+    <ProjectReference Include="..\..\Modules\Claims\Modules.Claims.Contracts\Modules.Claims.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -70,6 +70,11 @@ builder.Services.AddMediator(o =>
         typeof(FSH.Modules.Chat.ChatModule),
         typeof(FSH.Modules.Notifications.Contracts.v1.Commands.MarkNotificationReadCommand),
         typeof(FSH.Modules.Notifications.NotificationsModule)];
+    // Claims (Modules.Claims / .Contracts) is intentionally NOT added here yet: the Mediator
+    // source generator (MSG0007) refuses to scan an assembly with no AssemblyRef to
+    // Mediator.Abstractions, and neither Claims assembly has a real command/query/notification
+    // type yet (Tasks 1-2 only added a marker + permissions + enum). Add the Contracts marker
+    // + ClaimsModule pair here once the first real Mediator message lands in Modules.Claims(.Contracts).
 });
 
 var moduleAssemblies = new Assembly[]
@@ -87,6 +92,7 @@ var moduleAssemblies = new Assembly[]
     typeof(TicketsModule).Assembly,
     typeof(FSH.Modules.Chat.ChatModule).Assembly,
     typeof(FSH.Modules.Notifications.NotificationsModule).Assembly,
+    typeof(FSH.Modules.Claims.ClaimsModule).Assembly,
 };
 
 builder.AddHeroPlatform(o =>

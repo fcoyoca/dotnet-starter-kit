@@ -23,6 +23,7 @@
 	  <ProjectReference Include="..\..\Modules\Patient\Modules.Patient\Modules.Patient.csproj" />
 	  <ProjectReference Include="..\..\Modules\Administration\Modules.Administration\Modules.Administration.csproj" />
 	  <ProjectReference Include="..\..\Modules\Scheduling\Modules.Scheduling\Modules.Scheduling.csproj" />
+	  <ProjectReference Include="..\..\Modules\Claims\Modules.Claims\Modules.Claims.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -37,6 +38,7 @@
 	  <Folder Include="Patient\" />
 	  <Folder Include="Administration\" />
 	  <Folder Include="Scheduling\" />
+	  <Folder Include="Claims\" />
 	</ItemGroup>
 
 </Project>
