@@ -17,6 +17,8 @@ export type SuperBillDto = {
   isBilled: boolean;
   billedDateUtc?: string | null;
   procedures: SuperBillProcedureDto[];
+  /** The insurance type this bill was priced under, snapshotted at save. Null for legacy/self-pay. */
+  insuranceTypeId?: string | null;
 };
 
 export type ReportProcedureInput = {
@@ -30,6 +32,8 @@ export type ReportProcedureInput = {
 export type SetReportProceduresInput = {
   reportId: string;
   procedures: ReportProcedureInput[];
+  /** The insurance type the bill was priced under; snapshotted server-side. */
+  insuranceTypeId?: string | null;
 };
 
 export function getReportProcedures(reportId: string): Promise<SuperBillDto> {
@@ -43,7 +47,11 @@ export async function setReportProcedures(input: SetReportProceduresInput): Prom
     `/api/v1/patient/reports/${encodeURIComponent(input.reportId)}/procedures`,
     {
       method: "PUT",
-      body: JSON.stringify({ reportId: input.reportId, procedures: input.procedures }),
+      body: JSON.stringify({
+        reportId: input.reportId,
+        procedures: input.procedures,
+        insuranceTypeId: input.insuranceTypeId ?? null,
+      }),
     },
   );
 }

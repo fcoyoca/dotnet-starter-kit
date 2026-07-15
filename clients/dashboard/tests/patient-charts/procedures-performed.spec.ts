@@ -20,6 +20,7 @@ const DX_ID = "00000000-0000-0000-0000-0000000d4444";
 const PC_ID = "00000000-0000-0000-0000-0000000e5555";
 const IT_ID = "00000000-0000-0000-0000-0000000f6666";
 const IT_ID_2 = "00000000-0000-0000-0000-0000000f7777";
+const SB_ID = "00000000-0000-0000-0000-0000000f8888";
 
 const PATIENT = {
   id: PATIENT_ID,
@@ -284,5 +285,62 @@ test.describe("procedures performed", () => {
 
     // Picker shows its placeholder, not an arbitrary insurance type, so the user must choose.
     await expect(dialog.getByRole("button", { name: "Insurance" })).toContainText("Select insurance");
+  });
+
+  test("existing bill's stored insurance type wins over the patient's primary and rides the save", async ({ page }) => {
+    await mockChartLookups(page); // patient primary = Medicare (IT_ID)
+
+    // Two admin types so the stored one ("Aetna PPO") is a resolvable, displayable option. Re-register
+    // BOTH price sub-routes after the broad list glob so LIFO doesn't let the list shadow them — the
+    // picker transiently defaults to the patient's Medicare (IT_ID) before the stored bill hydrates.
+    await mockJsonResponse(page, "**/api/v1/administration/insurance-types**", paged([
+      { id: IT_ID_2, name: "Aetna PPO", isActive: true, procedureCategoryId: null },
+      { id: IT_ID, name: "Medicare", isActive: true, procedureCategoryId: null },
+    ]));
+    await mockJsonResponse(page, `**/api/v1/administration/insurance-types/${IT_ID}/procedures`, []);
+    await mockJsonResponse(page, `**/api/v1/administration/insurance-types/${IT_ID_2}/procedures`, []);
+
+    // The report already has a bill priced under Aetna (IT_ID_2), not the patient's Medicare primary.
+    let putBody: unknown = null;
+    await page.route(`**/api/v1/patient/reports/${REPORT_ID}/procedures`, async (route) => {
+      if (route.request().method() === "PUT") {
+        putBody = route.request().postDataJSON();
+        await route.fulfill({ status: 204, body: "" });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: SB_ID,
+          reportId: REPORT_ID,
+          isBilled: false,
+          billedDateUtc: null,
+          insuranceTypeId: IT_ID_2,
+          procedures: [{
+            id: "00000000-0000-0000-0000-00000010cccc",
+            procedureCodeId: PC_ID,
+            code: "98940",
+            description: "One to two spinal regions",
+            charge: 20,
+            displayOrder: 0,
+            diagnosticIds: [DX_ID],
+          }],
+        }),
+      });
+    });
+
+    await page.goto(`/patient-charts/${PATIENT_ID}`);
+    await page.getByRole("button", { name: "Procedures", exact: true }).click();
+    const dialog = page.getByRole("dialog").filter({ hasText: "Procedures Performed" });
+    await dialog.getByRole("button", { name: /Draft/ }).click();
+
+    // Stored type (Aetna PPO) is shown, not the patient's current primary (Medicare).
+    await expect(dialog.getByRole("button", { name: "Insurance" })).toContainText("Aetna PPO");
+
+    // Saving carries the insurance type through to the server.
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect.poll(() => putBody).not.toBeNull();
+    expect((putBody as { insuranceTypeId: string }).insuranceTypeId).toBe(IT_ID_2);
   });
 });

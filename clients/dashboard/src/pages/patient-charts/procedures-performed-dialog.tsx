@@ -141,6 +141,12 @@ export function ProceduresPerformedDialog({
         dxIds: p.diagnosticIds,
       })),
     );
+    // An existing bill's stored insurance type wins over the patient-primary default below —
+    // it's what the report was actually priced under. Absent (legacy/new bill), leave it null
+    // so the patient-primary effect fills it in.
+    if (proceduresQuery.data.insuranceTypeId) {
+      setInsuranceTypeId(proceduresQuery.data.insuranceTypeId);
+    }
     setHydratedFor(activeReportId);
   }, [open, activeReportId, proceduresQuery.data, hydratedFor]);
 
@@ -269,7 +275,7 @@ export function ProceduresPerformedDialog({
       charge: Number(r.charge) >= 0 && Number.isFinite(Number(r.charge)) ? Number(r.charge) : 0,
       diagnosticIds: r.dxIds,
     }));
-    saveMutation.mutate({ reportId: activeReportId, procedures });
+    saveMutation.mutate({ reportId: activeReportId, procedures, insuranceTypeId });
   };
 
   const showPicker = reportId === null && pickedReportId === null;
