@@ -15,4 +15,5 @@ public sealed record PatientReportListItemDto(
     string? SignedByName,
     DateTime? SignedOnUtc,
     DateTime CreatedAtUtc,
-    DateTime? UpdatedAtUtc);
+    DateTime? UpdatedAtUtc,
+    bool IsDeleted = false);

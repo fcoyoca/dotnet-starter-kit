@@ -20,20 +20,22 @@ public static class PatientPermissions
         public const string View   = $"Permissions.{Resource}.View";
         public const string Create = $"Permissions.{Resource}.Create";
         public const string Update = $"Permissions.{Resource}.Update";
-        public const string Close  = $"Permissions.{Resource}.Close";
-        public const string Delete = $"Permissions.{Resource}.Delete";
+        public const string Close   = $"Permissions.{Resource}.Close";
+        public const string Delete  = $"Permissions.{Resource}.Delete";
+        public const string Restore = $"Permissions.{Resource}.Restore";
     }
 
     public static class Reports
     {
         public const string Resource = "Patient.Reports";
-        public const string View   = $"Permissions.{Resource}.View";
-        public const string Create = $"Permissions.{Resource}.Create";
-        public const string Update = $"Permissions.{Resource}.Update";
-        public const string Sign   = $"Permissions.{Resource}.Sign";
-        public const string Review = $"Permissions.{Resource}.Review";
-        public const string Export = $"Permissions.{Resource}.Export";
-        public const string Delete = $"Permissions.{Resource}.Delete";
+        public const string View    = $"Permissions.{Resource}.View";
+        public const string Create  = $"Permissions.{Resource}.Create";
+        public const string Update  = $"Permissions.{Resource}.Update";
+        public const string Sign    = $"Permissions.{Resource}.Sign";
+        public const string Review  = $"Permissions.{Resource}.Review";
+        public const string Export  = $"Permissions.{Resource}.Export";
+        public const string Delete  = $"Permissions.{Resource}.Delete";
+        public const string Restore = $"Permissions.{Resource}.Restore";
     }
 
     public static class Problems
@@ -108,15 +110,17 @@ public static class PatientPermissions
         new("View Incidents",   ActionConstants.View,   Incidents.Resource, IsBasic: true),
         new("Create Incidents", ActionConstants.Create, Incidents.Resource),
         new("Update Incidents", ActionConstants.Update, Incidents.Resource),
-        new("Close Incidents",  "Close",                Incidents.Resource),
-        new("Delete Incidents", ActionConstants.Delete, Incidents.Resource),
-        new("View Reports",   ActionConstants.View,   Reports.Resource, IsBasic: true),
-        new("Create Reports", ActionConstants.Create, Reports.Resource),
-        new("Update Reports", ActionConstants.Update, Reports.Resource),
-        new("Sign Reports",   "Sign",                 Reports.Resource),
-        new("Review Reports", "Review",               Reports.Resource),
-        new("Export Reports", "Export",               Reports.Resource),
-        new("Delete Reports", ActionConstants.Delete, Reports.Resource),
+        new("Close Incidents",   "Close",                Incidents.Resource),
+        new("Delete Incidents",  ActionConstants.Delete, Incidents.Resource),
+        new("Restore Incidents", "Restore",              Incidents.Resource),
+        new("View Reports",    ActionConstants.View,   Reports.Resource, IsBasic: true),
+        new("Create Reports",  ActionConstants.Create, Reports.Resource),
+        new("Update Reports",  ActionConstants.Update, Reports.Resource),
+        new("Sign Reports",    "Sign",                 Reports.Resource),
+        new("Review Reports",  "Review",               Reports.Resource),
+        new("Export Reports",  "Export",               Reports.Resource),
+        new("Delete Reports",  ActionConstants.Delete, Reports.Resource),
+        new("Restore Reports", "Restore",              Reports.Resource),
         new("View Problems",   ActionConstants.View,   Problems.Resource, IsBasic: true),
         new("Create Problems", ActionConstants.Create, Problems.Resource),
         new("Update Problems", ActionConstants.Update, Problems.Resource),

@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  ArchiveRestore,
   ArrowLeft,
   CalendarDays,
   CalendarPlus,
@@ -84,6 +85,7 @@ import {
   useIncidentSwitchGuard,
 } from "@/pages/patient-charts/incident-switch-guard";
 import { IncidentsListDialog } from "@/pages/patient-charts/incidents-list-dialog";
+import { DeletedItemsDialog } from "@/pages/patient-charts/deleted-items-dialog";
 import { MedicationListDialog } from "@/pages/patient-charts/medication-list-dialog";
 import { PatientNotesDialog } from "@/pages/patient-charts/patient-notes-dialog";
 import { PatientSearchDialog } from "@/pages/patient-charts/patient-search-dialog";
@@ -233,6 +235,7 @@ export function PatientChartDetailPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editIncidentId, setEditIncidentId] = useState<string | null>(null);
   const [incidentsListOpen, setIncidentsListOpen] = useState(false);
+  const [deletedItemsOpen, setDeletedItemsOpen] = useState(false);
   const [reportSearchOpen, setReportSearchOpen] = useState(false);
   const [pendingReportDelete, setPendingReportDelete] = useState<PatientReportListItem | null>(null);
   // Report type chosen from "Add Report", pending appointment selection before creation.
@@ -240,6 +243,7 @@ export function PatientChartDetailPage() {
 
   const canCreate = user?.permissions?.includes(INCIDENT_PERMISSIONS.create) ?? false;
   const canUpdate = user?.permissions?.includes(INCIDENT_PERMISSIONS.update) ?? false;
+  const canRestoreIncidents = user?.permissions?.includes(INCIDENT_PERMISSIONS.restore) ?? false;
 
   const canViewPatients = user?.permissions?.includes(PATIENT_PERMISSIONS.view) ?? false;
   const canCreatePatients = user?.permissions?.includes(PATIENT_PERMISSIONS.create) ?? false;
@@ -248,6 +252,7 @@ export function PatientChartDetailPage() {
   const canCreateReports = user?.permissions?.includes(REPORT_PERMISSIONS.create) ?? false;
   const canUpdateReports = user?.permissions?.includes(REPORT_PERMISSIONS.update) ?? false;
   const canDeleteReports = user?.permissions?.includes(REPORT_PERMISSIONS.delete) ?? false;
+  const canRestoreReports = user?.permissions?.includes(REPORT_PERMISSIONS.restore) ?? false;
   const canExportReports = user?.permissions?.includes(REPORT_PERMISSIONS.export) ?? false;
   const canViewSuperBills = user?.permissions?.includes(SUPERBILL_PERMISSIONS.view) ?? false;
 
@@ -319,8 +324,12 @@ export function PatientChartDetailPage() {
 
   const deleteReportMutation = useMutation({
     mutationFn: (id: string) => deleteReport(id),
-    onSuccess: () => {
+    // Close the deleted report's pill: a soft-deleted report is excluded from
+    // GetPatientReportById, so leaving it open makes the persistent panel refetch
+    // a now-404 report. `variables` is the id the mutation was called with.
+    onSuccess: (_data, id) => {
       toast.success("Report deleted.");
+      if (patientId) closeReport(patientId, id);
       void queryClient.invalidateQueries({ queryKey: ["reports", activeIncidentId] });
       setPendingReportDelete(null);
     },
@@ -823,6 +832,14 @@ export function PatientChartDetailPage() {
                   >
                     <FileSearch className="size-4" />
                   </IconShortcut>
+                  {(canRestoreIncidents || canRestoreReports) && (
+                    <IconShortcut
+                      label="Restore deleted items"
+                      onClick={() => setDeletedItemsOpen(true)}
+                    >
+                      <ArchiveRestore className="size-4" />
+                    </IconShortcut>
+                  )}
                 </div>
               </div>
 
@@ -1161,6 +1178,15 @@ export function PatientChartDetailPage() {
                 onProceed: () => openReport(patientId, reportId),
               });
             }}
+          />
+        )}
+
+        {/* Admin restore surface for soft-deleted incidents / reports. */}
+        {patientId && (canRestoreIncidents || canRestoreReports) && (
+          <DeletedItemsDialog
+            open={deletedItemsOpen}
+            onClose={() => setDeletedItemsOpen(false)}
+            patientId={patientId}
           />
         )}
 

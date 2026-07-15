@@ -171,6 +171,15 @@ public sealed class PatientReport : AggregateRoot<Guid>, ISoftDeletable
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
+    public void Restore()
+    {
+        if (!IsDeleted) return;
+        IsDeleted = false;
+        DeletedOnUtc = null;
+        DeletedBy = null;
+        UpdatedAtUtc = DateTime.UtcNow;
+    }
+
     private void EnsureNotSigned()
     {
         if (IsSigned)

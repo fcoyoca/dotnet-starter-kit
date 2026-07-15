@@ -19,23 +19,25 @@ export type PatientPermissionKey = keyof typeof PATIENT_PERMISSIONS;
 export const ALL_PATIENT_PERMISSIONS: readonly string[] = Object.values(PATIENT_PERMISSIONS);
 
 export const INCIDENT_PERMISSIONS = {
-  view:   "Permissions.Patient.Incidents.View",
-  create: "Permissions.Patient.Incidents.Create",
-  update: "Permissions.Patient.Incidents.Update",
-  close:  "Permissions.Patient.Incidents.Close",
-  delete: "Permissions.Patient.Incidents.Delete",
+  view:    "Permissions.Patient.Incidents.View",
+  create:  "Permissions.Patient.Incidents.Create",
+  update:  "Permissions.Patient.Incidents.Update",
+  close:   "Permissions.Patient.Incidents.Close",
+  delete:  "Permissions.Patient.Incidents.Delete",
+  restore: "Permissions.Patient.Incidents.Restore",
 } as const;
 
 export type IncidentPermissionKey = keyof typeof INCIDENT_PERMISSIONS;
 
 export const REPORT_PERMISSIONS = {
-  view:   "Permissions.Patient.Reports.View",
-  create: "Permissions.Patient.Reports.Create",
-  update: "Permissions.Patient.Reports.Update",
-  sign:   "Permissions.Patient.Reports.Sign",
-  review: "Permissions.Patient.Reports.Review",
-  export: "Permissions.Patient.Reports.Export",
-  delete: "Permissions.Patient.Reports.Delete",
+  view:    "Permissions.Patient.Reports.View",
+  create:  "Permissions.Patient.Reports.Create",
+  update:  "Permissions.Patient.Reports.Update",
+  sign:    "Permissions.Patient.Reports.Sign",
+  review:  "Permissions.Patient.Reports.Review",
+  export:  "Permissions.Patient.Reports.Export",
+  delete:  "Permissions.Patient.Reports.Delete",
+  restore: "Permissions.Patient.Reports.Restore",
 } as const;
 
 export type ReportPermissionKey = keyof typeof REPORT_PERMISSIONS;

@@ -20,6 +20,7 @@ export type PatientIncidentListItemDto = {
   diagnosticIds: string[];
   createdAtUtc: string;
   updatedAtUtc?: string | null;
+  isDeleted: boolean;
 };
 
 export type PatientIncidentDetailDto = PatientIncidentListItemDto & {
@@ -118,5 +119,11 @@ export async function closeIncident(id: string): Promise<void> {
 export async function deleteIncident(id: string): Promise<void> {
   await apiFetch<void>(`/api/v1/patient/incidents/${encodeURIComponent(id)}`, {
     method: "DELETE",
+  });
+}
+
+export async function restoreIncident(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/patient/incidents/${encodeURIComponent(id)}/restore`, {
+    method: "PUT",
   });
 }

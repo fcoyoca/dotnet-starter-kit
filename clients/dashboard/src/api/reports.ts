@@ -41,6 +41,7 @@ export type PatientReportListItem = {
   signedOnUtc?: string | null;
   createdAtUtc: string;
   updatedAtUtc?: string | null;
+  isDeleted: boolean;
 };
 
 export type PatientReportDetail = {
@@ -210,6 +211,12 @@ export async function reviewSign(id: string): Promise<void> {
 export async function deleteReport(id: string): Promise<void> {
   await apiFetch<void>(`/api/v1/patient/reports/${encodeURIComponent(id)}`, {
     method: "DELETE",
+  });
+}
+
+export async function restoreReport(id: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/patient/reports/${encodeURIComponent(id)}/restore`, {
+    method: "PUT",
   });
 }
 

@@ -1,3 +1,4 @@
+using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Persistence;
 using FSH.Modules.Patient.Contracts.Dtos;
 using FSH.Modules.Patient.Contracts.v1.PatientReports;
@@ -30,9 +31,11 @@ public sealed class SearchPatientReportsQueryHandler(PatientDbContext dbContext)
             q = q.Where(x => x.PatientId == query.PatientId.Value);
         }
 
-        if (!query.IncludeDeleted)
+        // PatientReport is ISoftDeletable, so a global query filter hides deleted rows.
+        // Bypass only that named filter to surface them; tenant scoping stays in force.
+        if (query.IncludeDeleted)
         {
-            q = q.Where(x => !x.IsDeleted);
+            q = q.IgnoreQueryFilters([QueryFilters.SoftDelete]);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Search))
@@ -53,7 +56,7 @@ public sealed class SearchPatientReportsQueryHandler(PatientDbContext dbContext)
             .Select(x => new PatientReportListItemDto(
                 x.Id, x.IncidentId, x.PatientId, x.ReportTypeId, x.ReportDate, x.Version,
                 x.ProviderId, x.ClinicId, x.IsNoShow, x.WorkflowStatus, x.IsSigned,
-                x.SignedByName, x.SignedOnUtc, x.CreatedAtUtc, x.UpdatedAtUtc))
+                x.SignedByName, x.SignedOnUtc, x.CreatedAtUtc, x.UpdatedAtUtc, x.IsDeleted))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

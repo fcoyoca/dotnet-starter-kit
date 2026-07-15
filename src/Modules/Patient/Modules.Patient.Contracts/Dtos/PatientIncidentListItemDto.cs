@@ -15,4 +15,5 @@ public sealed record PatientIncidentListItemDto(
     IncidentPatientStatus PatientStatus,
     IReadOnlyList<Guid> DiagnosticIds,
     DateTime CreatedAtUtc,
-    DateTime? UpdatedAtUtc);
+    DateTime? UpdatedAtUtc,
+    bool IsDeleted = false);

@@ -32,6 +32,7 @@ using FSH.Modules.Patient.Features.v1.PatientIncidents.ClosePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.CreatePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.DeletePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.GetPatientIncidentById;
+using FSH.Modules.Patient.Features.v1.PatientIncidents.RestorePatientIncident;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.SearchPatientIncidents;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.SetIncidentDiagnostics;
 using FSH.Modules.Patient.Features.v1.PatientIncidents.UpdatePatientIncident;
@@ -41,6 +42,7 @@ using FSH.Modules.Patient.Features.v1.PatientReports.DeletePatientReport;
 using FSH.Modules.Patient.Features.v1.PatientReports.ExportPatientReportsPdf;
 using FSH.Modules.Patient.Features.v1.PatientReports.GetPatientReportById;
 using FSH.Modules.Patient.Features.v1.PatientReports.RequestReportReview;
+using FSH.Modules.Patient.Features.v1.PatientReports.RestorePatientReport;
 using FSH.Modules.Patient.Features.v1.PatientReports.ReviewSignReport;
 using FSH.Modules.Patient.Features.v1.PatientReports.SearchPatientReports;
 using FSH.Modules.Patient.Features.v1.PatientReports.SetReportProblems;
@@ -132,8 +134,9 @@ public sealed class PatientModule : IModule
         group.MapSearchPatientsEndpoint();
         group.MapGetNextPatientCodePreviewEndpoint();
 
-        // Incident endpoints — /incidents/{id:guid}/close, /diagnostics before /{id:guid} so the literals win
+        // Incident endpoints — /incidents/{id:guid}/close, /restore, /diagnostics before /{id:guid} so the literals win
         group.MapClosePatientIncidentEndpoint();
+        group.MapRestorePatientIncidentEndpoint();
         group.MapSetIncidentDiagnosticsEndpoint();
         group.MapSearchPatientIncidentsEndpoint();
         group.MapGetPatientIncidentByIdEndpoint();
@@ -141,9 +144,10 @@ public sealed class PatientModule : IModule
         group.MapUpdatePatientIncidentEndpoint();
         group.MapDeletePatientIncidentEndpoint();
 
-        // Report endpoints — literal sub-routes (/reports/{id}/sign, /addendums, /request-review,
+        // Report endpoints — literal sub-routes (/reports/{id}/sign, /restore, /addendums, /request-review,
         // /review-sign, /export-pdf) registered before the generic /reports/{id:guid} so the literal segments win
         group.MapExportPatientReportsPdfEndpoint();
+        group.MapRestorePatientReportEndpoint();
         group.MapSignPatientReportEndpoint();
         group.MapAddPatientReportAddendumEndpoint();
         group.MapRequestReportReviewEndpoint();

@@ -1,3 +1,4 @@
+using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Persistence;
 using FSH.Modules.Patient.Contracts.Dtos;
 using FSH.Modules.Patient.Contracts.v1.PatientIncidents;
@@ -23,8 +24,10 @@ public sealed class SearchPatientIncidentsQueryHandler(PatientDbContext dbContex
             .AsNoTracking()
             .Where(x => x.PatientId == query.PatientId);
 
-        if (!query.IncludeDeleted)
-            q = q.Where(x => !x.IsDeleted);
+        // PatientIncident is ISoftDeletable, so a global query filter hides deleted rows.
+        // Bypass only that named filter to surface them; tenant scoping stays in force.
+        if (query.IncludeDeleted)
+            q = q.IgnoreQueryFilters([QueryFilters.SoftDelete]);
 
         if (query.IsClosed.HasValue)
             q = q.Where(x => x.IsClosed == query.IsClosed.Value);
@@ -48,7 +51,7 @@ public sealed class SearchPatientIncidentsQueryHandler(PatientDbContext dbContex
                 x.AccidentType, x.AccidentState,
                 x.PatientStatus,
                 x.Diagnostics.Select(d => d.DiagnosticId).ToList(),
-                x.CreatedAtUtc, x.UpdatedAtUtc)).ToList(),
+                x.CreatedAtUtc, x.UpdatedAtUtc, x.IsDeleted)).ToList(),
             PageNumber = page,
             PageSize = size,
             TotalCount = total,
