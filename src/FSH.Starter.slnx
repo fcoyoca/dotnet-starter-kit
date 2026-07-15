@@ -31,6 +31,7 @@
   </Folder>
   <Folder Name="/Modules/Claims/">
     <Project Path="Modules/Claims/Modules.Claims.Contracts/Modules.Claims.Contracts.csproj" />
+    <Project Path="Modules/Claims/Modules.Claims/Modules.Claims.csproj" />
   </Folder>
   <Folder Name="/Modules/Files/">
     <Project Path="Modules/Files/Modules.Files.Contracts/Modules.Files.Contracts.csproj" />
@@ -90,6 +91,7 @@
     <Project Path="Tests/Chat.Tests/Chat.Tests.csproj" />
     <Project Path="Tests/Scheduling.Tests/Scheduling.Tests.csproj" />
     <Project Path="Tests/Webhooks.Tests/Webhooks.Tests.csproj" />
+    <Project Path="Tests/Claims.Tests/Claims.Tests.csproj" />
     <Project Path="Tests/Files.Tests/Files.Tests.csproj" />
     <Project Path="Tests/Framework.Tests/Framework.Tests.csproj" />
     <Project Path="Tests/Caching.Tests/Caching.Tests.csproj" />

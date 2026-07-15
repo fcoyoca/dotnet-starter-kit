@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>FSH.Modules.Claims</RootNamespace>
+		<AssemblyName>FSH.Modules.Claims</AssemblyName>
+		<NoWarn>$(NoWarn);CA1031;CA1711;CA1812;CA1859;S3267</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\BuildingBlocks\Eventing\Eventing.csproj" />
+	  <ProjectReference Include="..\..\..\BuildingBlocks\Jobs\Jobs.csproj" />
+	  <ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Persistence.csproj" />
+	  <ProjectReference Include="..\..\..\BuildingBlocks\Quota\Quota.csproj" />
+	  <ProjectReference Include="..\..\..\BuildingBlocks\Web\Web.csproj" />
+	  <ProjectReference Include="..\Modules.Claims.Contracts\Modules.Claims.Contracts.csproj" />
+	  <ProjectReference Include="..\..\Patient\Modules.Patient.Contracts\Modules.Patient.Contracts.csproj" />
+	</ItemGroup>
+
+</Project>

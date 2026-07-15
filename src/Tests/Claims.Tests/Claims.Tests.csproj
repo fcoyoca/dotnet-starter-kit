@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>Claims.Tests</RootNamespace>
+		<AssemblyName>Claims.Tests</AssemblyName>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+		<NoWarn>$(NoWarn);CA1515;CA1861;CA1707</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="AutoFixture" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" />
+		<PackageReference Include="NSubstitute" />
+		<PackageReference Include="Shouldly" />
+		<PackageReference Include="xunit" />
+		<PackageReference Include="xunit.runner.visualstudio" />
+		<PackageReference Include="coverlet.collector" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Modules\Claims\Modules.Claims\Modules.Claims.csproj" />
+		<ProjectReference Include="..\..\Modules\Claims\Modules.Claims.Contracts\Modules.Claims.Contracts.csproj" />
+		<ProjectReference Include="..\..\Modules\Patient\Modules.Patient.Contracts\Modules.Patient.Contracts.csproj" />
+	</ItemGroup>
+
+</Project>
