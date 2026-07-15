@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   createIncident,
   updateIncident,
+  deleteIncident,
   getPatientIncident,
   type AccidentType,
   type IncidentPatientStatus,
@@ -14,6 +15,8 @@ import {
   useDepartmentOptions,
   useIncidentTypeOptions,
 } from "@/api/administration";
+import { INCIDENT_PERMISSIONS } from "@/lib/patient-permissions";
+import { useAuth } from "@/auth/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,7 +61,9 @@ type Props = {
 
 export function IncidentDialog({ patientId, open, onClose, incidentId }: Props) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const isEdit = !!incidentId;
+  const canDelete = user?.permissions?.includes(INCIDENT_PERMISSIONS.delete) ?? false;
 
   // Form state
   const [dateOfLoss, setDateOfLoss] = useState("");
@@ -74,6 +79,7 @@ export function IncidentDialog({ patientId, open, onClose, incidentId }: Props) 
   const [adherenceToPlan, setAdherenceToPlan] = useState<string | null>(null);
   const [patientStatus, setPatientStatus] = useState<IncidentPatientStatus>("Active");
   const [isClosed, setIsClosed] = useState(false);
+  const [markDeleted, setMarkDeleted] = useState(false);
   const [selectedDxIds, setSelectedDxIds] = useState<string[]>([]);
   const [dxSearch, setDxSearch] = useState("");
 
@@ -118,6 +124,7 @@ export function IncidentDialog({ patientId, open, onClose, incidentId }: Props) 
       setAdherenceToPlan(null);
       setPatientStatus("Active");
       setIsClosed(false);
+      setMarkDeleted(false);
       setSelectedDxIds([]);
       setDxSearch("");
     }
@@ -163,11 +170,29 @@ export function IncidentDialog({ patientId, open, onClose, incidentId }: Props) 
     onError: (err) => toast.error("Failed to update incident.", { description: describe(err) }),
   });
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteIncident(id),
+    onSuccess: () => {
+      toast.success("Incident deleted.");
+      void queryClient.invalidateQueries({ queryKey: ["incidents", patientId] });
+      void queryClient.invalidateQueries({ queryKey: ["incident", incidentId] });
+      onClose();
+    },
+    onError: (err) => toast.error("Failed to delete incident.", { description: describe(err) }),
+  });
+
+  const isPending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!dateOfLoss) return;
+
+    // The "Deleted" checkbox is a soft delete: checking it and saving supersedes
+    // any other edits and removes the incident (restore it from Deleted Items).
+    if (isEdit && incidentId && markDeleted) {
+      deleteMutation.mutate(incidentId);
+      return;
+    }
 
     if (isEdit && incidentId) {
       updateMutation.mutate({
@@ -349,8 +374,9 @@ export function IncidentDialog({ patientId, open, onClose, incidentId }: Props) 
 
             {/* DX Codes */}
             <div className="space-y-2">
-              <label className="text-[13px] font-medium">DX Codes</label>
+              <label htmlFor="inc-dx" className="text-[13px] font-medium">DX Codes</label>
               <Input
+                id="inc-dx"
                 type="text"
                 value={dxSearch}
                 onChange={(e) => setDxSearch(e.target.value)}
@@ -431,15 +457,33 @@ export function IncidentDialog({ patientId, open, onClose, incidentId }: Props) 
                   </Field>
                 </div>
 
-                <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isClosed}
-                    onChange={(e) => setIsClosed(e.target.checked)}
-                    className="rounded border-[var(--color-border)]"
-                  />
-                  <span>Mark as Closed</span>
-                </label>
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isClosed}
+                      onChange={(e) => setIsClosed(e.target.checked)}
+                      className="rounded border-[var(--color-border)]"
+                    />
+                    <span>Mark as Closed</span>
+                  </label>
+                  {canDelete && (
+                    <label className="flex items-center gap-2 text-[13px] cursor-pointer text-[var(--color-destructive)]">
+                      <input
+                        type="checkbox"
+                        checked={markDeleted}
+                        onChange={(e) => setMarkDeleted(e.target.checked)}
+                        className="rounded border-[var(--color-border)]"
+                      />
+                      <span>Deleted</span>
+                    </label>
+                  )}
+                </div>
+                {markDeleted && (
+                  <p className="text-[12px] text-[var(--color-destructive)]">
+                    Saving will delete this incident. It can be restored from Deleted Items.
+                  </p>
+                )}
               </>
             )}
           </DialogBody>
@@ -450,8 +494,18 @@ export function IncidentDialog({ patientId, open, onClose, incidentId }: Props) 
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Incident"}
+            <Button
+              type="submit"
+              variant={markDeleted ? "destructive" : "default"}
+              disabled={isPending}
+            >
+              {isPending
+                ? "Saving…"
+                : markDeleted
+                  ? "Delete Incident"
+                  : isEdit
+                    ? "Save Changes"
+                    : "Create Incident"}
             </Button>
           </DialogFooter>
         </form>
