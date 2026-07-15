@@ -28,7 +28,7 @@ public sealed class ClaimsModule : IModule
 
         // Consume SuperBillSavedIntegrationEvent (Patient.Contracts) + register the stub submitter.
         builder.Services.AddIntegrationEventHandlers(typeof(ClaimsModule).Assembly);
-        // Submission.IClaimSubmitter registration is added in Task 6.
+        builder.Services.AddScoped<Submission.IClaimSubmitter, Submission.StubClaimSubmitter>();
 
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<ClaimsDbContext>(name: "db:claims", failureStatus: HealthStatus.Unhealthy);
