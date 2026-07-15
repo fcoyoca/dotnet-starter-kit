@@ -523,3 +523,6 @@ clients/**/.env.local
 
 # MSSQL migration error reports — runtime artifacts from DbMigrator migrate-*-from-mssql verbs.
 *migration-errors-*.json
+
+# Superpowers visual-brainstorm scratch
+.superpowers/
