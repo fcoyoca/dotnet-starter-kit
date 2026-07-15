@@ -281,6 +281,7 @@ public class EndpointConventionTests
                                name.StartsWith("Find", StringComparison.Ordinal) ||
                                name.StartsWith("Edit", StringComparison.Ordinal) ||
                                name.StartsWith("Send", StringComparison.Ordinal) ||
+                               name.StartsWith("Submit", StringComparison.Ordinal) ||
                                name.StartsWith("Discover", StringComparison.Ordinal) ||
                                name.StartsWith("Pin", StringComparison.Ordinal) ||
                                name.StartsWith("Unpin", StringComparison.Ordinal) ||

@@ -3,6 +3,11 @@ using FSH.Framework.Eventing;
 using FSH.Framework.Persistence;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Claims.Data;
+using FSH.Modules.Claims.Features.v1.Claims.MarkDenied;
+using FSH.Modules.Claims.Features.v1.Claims.MarkPaid;
+using FSH.Modules.Claims.Features.v1.Claims.MarkReady;
+using FSH.Modules.Claims.Features.v1.Claims.Submit;
+using FSH.Modules.Claims.Features.v1.Claims.Void;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -51,8 +56,12 @@ public sealed class ClaimsModule : IModule
             .WithApiVersionSet(versionSet)
             .RequireAuthorization();
 
-        // Endpoint mappings land on this group in Tasks 7-8: list claims, get claim by id,
-        // mark ready, submit, mark paid, mark denied, and void.
-        _ = group;
+        group.MapMarkClaimReadyEndpoint();
+        group.MapSubmitClaimEndpoint();
+        group.MapMarkClaimPaidEndpoint();
+        group.MapMarkClaimDeniedEndpoint();
+        group.MapVoidClaimEndpoint();
+
+        // List claims + get claim by id land on this group in Task 8.
     }
 }
