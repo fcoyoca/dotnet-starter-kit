@@ -29,6 +29,9 @@
     <Project Path="Modules/Chat/Modules.Chat.Contracts/Modules.Chat.Contracts.csproj" />
     <Project Path="Modules/Chat/Modules.Chat/Modules.Chat.csproj" />
   </Folder>
+  <Folder Name="/Modules/Claims/">
+    <Project Path="Modules/Claims/Modules.Claims.Contracts/Modules.Claims.Contracts.csproj" />
+  </Folder>
   <Folder Name="/Modules/Files/">
     <Project Path="Modules/Files/Modules.Files.Contracts/Modules.Files.Contracts.csproj" />
     <Project Path="Modules/Files/Modules.Files/Modules.Files.csproj" />
