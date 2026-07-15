@@ -13,6 +13,7 @@ import { mockJsonResponse } from "../helpers/api-mocks";
 import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
 import { installShellMocks, paged } from "../helpers/shell-mocks";
 import { seedPatientWorkspace } from "../helpers/workspace-seed";
+import { enterReportEdit } from "../helpers/report-editor";
 
 const PERMS = [
   "Permissions.Patient.Reports.View",
@@ -147,6 +148,8 @@ async function openChart(page: Page) {
   ]);
   await page.goto(`/patient-charts/${PATIENT_ID}`);
   await expect(page.getByTestId("report-editor-panel")).toBeVisible();
+  // Macros act on the editable field, so unlock the note into the editor first.
+  await enterReportEdit(page);
 }
 
 /** The live report field the macro eventually lands in. */

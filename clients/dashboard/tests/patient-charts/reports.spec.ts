@@ -13,6 +13,7 @@ import { mockJsonResponse } from "../helpers/api-mocks";
 import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
 import { installShellMocks, paged } from "../helpers/shell-mocks";
 import { seedPatientWorkspace } from "../helpers/workspace-seed";
+import { enterReportEdit } from "../helpers/report-editor";
 
 const REPORT_PERMS = {
   view: "Permissions.Patient.Reports.View",
@@ -192,6 +193,10 @@ test.describe("patient reports — editor", () => {
     ).toBeVisible();
     // The header names the report's type, not the bare word "Report".
     await expect(page.getByTestId("report-type-line")).toHaveText("Initial Evaluation · Jun 26, 2026");
+
+    // The report opens as a read-only note; unlock the editor for the form.
+    await enterReportEdit(page);
+
     await expect(page.getByText("Vitals")).toBeVisible();
     // Field sections come from listReportFields, grouped by category.
     await expect(page.getByText("Subjective")).toBeVisible();
@@ -205,6 +210,7 @@ test.describe("patient reports — editor", () => {
     await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, draftReport());
 
     await gotoReportPanel(page);
+    await enterReportEdit(page);
     await expect(page.getByText("Chief Complaint")).toBeVisible();
 
     await page.locator("#f-11").fill("Lower back pain for 3 weeks");
@@ -234,6 +240,7 @@ test.describe("patient reports — editor", () => {
     await mockJsonResponse(page, "**/api/v1/patient/reports/" + REPORT_ID, draftReport());
 
     await gotoReportPanel(page);
+    await enterReportEdit(page);
     await expect(page.getByText("Chief Complaint")).toBeVisible();
 
     await expect(page.getByText("Vitals")).toHaveCount(0);
@@ -268,8 +275,12 @@ test.describe("patient reports — editor", () => {
     await expect(page.getByRole("img", { name: /^signature$/i })).toBeVisible();
     // Draft action bar is gone once signed.
     await expect(page.getByRole("button", { name: /save draft/i })).toHaveCount(0);
-    // Field values render read-only.
-    await expect(page.locator("#f-11")).toBeDisabled();
+    // A signed report is never editable — it renders as a read-only note with
+    // no Edit affordance, and its field values show as prose.
+    await expect(page.getByTestId("report-edit-button")).toHaveCount(0);
+    await expect(
+      page.getByTestId("report-editor-panel").getByText("Lower back pain"),
+    ).toBeVisible();
 
     // Addendum composer posts to /addendums.
     await mockJsonResponse(
@@ -296,6 +307,7 @@ test.describe("patient reports — editor", () => {
     await mockJsonResponse(page, "**/api/v1/identity/users/search**", paged([]));
 
     await gotoReportPanel(page);
+    await enterReportEdit(page);
     await expect(page.getByText("Chief Complaint")).toBeVisible();
 
     // Open the first field's Macros dialog, then swap it to the create form.
@@ -358,6 +370,7 @@ test.describe("patient reports — editor", () => {
     );
 
     await gotoReportPanel(page);
+    await enterReportEdit(page);
     await expect(page.getByText("Clinical Impression").first()).toBeVisible();
 
     await page.getByRole("button", { name: /import dx codes/i }).click();

@@ -11,6 +11,7 @@ import { mockJsonResponse } from "../helpers/api-mocks";
 import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
 import { installShellMocks, paged } from "../helpers/shell-mocks";
 import { seedPatientWorkspace } from "../helpers/workspace-seed";
+import { enterReportEdit } from "../helpers/report-editor";
 
 const PERMS = [
   "Permissions.Patient.Reports.View",
@@ -199,7 +200,7 @@ test.describe("incident switch confirmation", () => {
     await expect(page.getByTestId("chart-incident-ref")).toHaveText(A_REF);
     const panel = page.getByTestId("report-editor-panel");
     await expect(panel.getByTestId("foreign-incident-notice")).toBeHidden();
-    await expect(panel.locator("#f-11")).toBeEnabled();
+    await expect(panel.getByTestId("report-edit-button")).toBeVisible();
     await expect(page.getByTestId("foreign-reports-lock-banner")).toBeHidden();
   });
 
@@ -220,7 +221,8 @@ test.describe("incident switch confirmation", () => {
 
     const panel = page.getByTestId("report-editor-panel");
     await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
-    await expect(panel.locator("#f-11")).toBeDisabled();
+    // Read-only now: no Edit affordance and no Save.
+    await expect(panel.getByTestId("report-edit-button")).toHaveCount(0);
     await expect(panel.getByRole("button", { name: "Save Draft" })).toHaveCount(0);
   });
 
@@ -246,9 +248,10 @@ test.describe("incident switch confirmation", () => {
     await confirmDialog(page).getByRole("button", { name: "Switch incident" }).click();
     await expect(page.getByTestId("chart-incident-ref")).toHaveText(B_REF);
 
-    // B's report — on the now-active incident — is editable: no notice, live
-    // fields, Save/Sign back.
+    // B's report — on the now-active incident — is editable again: no notice, an
+    // Edit affordance, and once unlocked a live form with Save.
     await expect(panel.getByTestId("foreign-incident-notice")).toBeHidden();
+    await enterReportEdit(page);
     await expect(panel.locator("#f-21")).toBeEnabled();
     await expect(panel.locator("#rpt-date")).toBeEnabled();
     await expect(panel.getByRole("button", { name: "Save Draft" })).toBeVisible();
@@ -258,7 +261,7 @@ test.describe("incident switch confirmation", () => {
     await expect(banner).toContainText("1 report belongs to another incident");
     await page.getByRole("button", { name: "Initial Evaluation · Jun 26, 2026", exact: true }).click();
     await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
-    await expect(panel.locator("#f-11")).toBeDisabled();
+    await expect(panel.getByTestId("report-edit-button")).toHaveCount(0);
   });
 
   test("cancelling a switch from the read-only report's own banner leaves it locked", async ({ page }) => {
@@ -284,7 +287,7 @@ test.describe("incident switch confirmation", () => {
     // Still on A: B's report stays read-only rather than silently locking A's.
     await expect(page.getByTestId("chart-incident-ref")).toHaveText(A_REF);
     await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
-    await expect(panel.locator("#f-21")).toBeDisabled();
+    await expect(panel.getByTestId("report-edit-button")).toHaveCount(0);
   });
 
   test("cancelling a switch requested by opening another incident's report leaves the report unopened", async ({ page }) => {

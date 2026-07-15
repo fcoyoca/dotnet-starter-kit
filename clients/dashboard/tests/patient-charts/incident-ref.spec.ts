@@ -11,6 +11,7 @@ import { mockJsonResponse } from "../helpers/api-mocks";
 import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
 import { installShellMocks, paged } from "../helpers/shell-mocks";
 import { seedPatientWorkspace } from "../helpers/workspace-seed";
+import { enterReportEdit } from "../helpers/report-editor";
 
 const PERMS = [
   "Permissions.Patient.Reports.View",
@@ -230,8 +231,11 @@ test.describe("incident DOIV/DOL labels", () => {
     await openChart(page);
     const panel = page.getByTestId("report-editor-panel");
 
-    // The active report (A) is on the active incident: fully editable.
+    // The active report (A) is on the active incident: editable, so it offers an
+    // Edit affordance and — once unlocked — a live form with Save.
     await expect(panel.getByTestId("foreign-incident-notice")).toBeHidden();
+    await expect(panel.getByTestId("report-edit-button")).toBeVisible();
+    await enterReportEdit(page);
     await expect(panel.getByRole("button", { name: "Save Draft" })).toBeVisible();
     await expect(panel.locator("#f-11")).toBeEnabled();
 
@@ -239,11 +243,10 @@ test.describe("incident DOIV/DOL labels", () => {
     await page.getByRole("button", { name: REPORT_B_TAB, exact: true }).click();
     await expect(panel.getByTestId("foreign-incident-notice")).toBeVisible();
 
-    // Saving/signing is gone, and the form itself is locked.
+    // It's read-only: no Edit affordance, and no saving or signing.
+    await expect(panel.getByTestId("report-edit-button")).toHaveCount(0);
     await expect(panel.getByRole("button", { name: "Save Draft" })).toHaveCount(0);
     await expect(panel.getByRole("button", { name: "Sign Report" })).toHaveCount(0);
-    await expect(panel.locator("#f-21")).toBeDisabled();
-    await expect(panel.locator("#rpt-date")).toBeDisabled();
   });
 
   test("switching to the report's own incident unlocks it", async ({ page }) => {
@@ -261,9 +264,10 @@ test.describe("incident DOIV/DOL labels", () => {
       .getByRole("button", { name: "Switch incident" })
       .click();
 
-    // B is now the chart's active incident: the report is editable, the notice
-    // is gone, and the chart's identity line has followed.
+    // B is now the chart's active incident: the report is editable again, the
+    // notice is gone, and the chart's identity line has followed.
     await expect(panel.getByTestId("foreign-incident-notice")).toBeHidden();
+    await enterReportEdit(page);
     await expect(panel.locator("#f-21")).toBeEnabled();
     await expect(panel.getByRole("button", { name: "Save Draft" })).toBeVisible();
     await expect(page.getByTestId("chart-incident-ref")).toHaveText(B_REF);

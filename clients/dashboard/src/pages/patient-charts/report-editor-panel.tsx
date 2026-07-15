@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Activity,
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
@@ -8,6 +9,7 @@ import {
   FileText,
   Lock,
   PenLine,
+  Pencil,
   Printer,
   Pill,
   Plus,
@@ -15,6 +17,7 @@ import {
   Stethoscope,
   Tablets,
   UserCheck,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getPatientById } from "@/api/patients";
@@ -131,6 +134,50 @@ function groupByCategory(fields: ReportFieldDto[]): { category: string; fields: 
     group.fields.push(f);
   }
   return groups;
+}
+
+// ─── Read-view (note document) presentational helpers ───
+
+/** A labeled datum in the note's meta / stat rows (label above value). */
+function NoteMeta({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+        {label}
+      </dt>
+      <dd className="mt-0.5 truncate text-[13.5px] font-medium text-[var(--color-foreground)]">{value}</dd>
+    </div>
+  );
+}
+
+/** Compact vitals stat — tabular figures, so a row of them lines up. */
+function NoteStat({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+        {label}
+      </dt>
+      <dd className="mt-0.5 truncate text-[13.5px] font-semibold tabular-nums text-[var(--color-foreground)]">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+/** A note section's heading — the category rule that splits the document. */
+function NoteSectionHeading({
+  icon: Icon,
+  children,
+}: {
+  icon?: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <h3 className="mb-3 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+      {Icon && <Icon className="size-3.5" />}
+      {children}
+    </h3>
+  );
 }
 
 export function ReportEditorPanel({
@@ -254,6 +301,15 @@ export function ReportEditorPanel({
   const [allergiesFieldId, setAllergiesFieldId] = useState<number | null>(null);
   const [medicationsFieldId, setMedicationsFieldId] = useState<number | null>(null);
 
+  // Read-only-first: an editable report opens as a formatted clinical note
+  // (a read view) and only turns into a form when the clinician clicks Edit —
+  // mirrors how BackChart presents a report as a document you then choose to
+  // edit. Auto-flips to editing when a report loads with an unsaved local draft
+  // (see the hydration effect), so in-progress work is never hidden behind a
+  // click. `hasLocalDraft` drives the "Unsaved changes" cue in the note view.
+  const [isEditing, setIsEditing] = useState(false);
+  const [hasLocalDraft, setHasLocalDraft] = useState(false);
+
   // Refs to each field's textarea so macro-insert can splice at the caret.
   const fieldRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
 
@@ -272,9 +328,19 @@ export function ReportEditorPanel({
 
   useEffect(() => {
     if (!report) return;
+    // Only the FIRST hydration for a given report decides the initial view/edit
+    // mode: later refetches (e.g. a background invalidation after saving
+    // associated problems) must not yank a clinician out of an open editor.
+    const firstHydration = hydratedForReportRef.current !== reportId;
     suppressDraftWriteRef.current = true;
     draftDirtyRef.current = false;
     const draft = report.isSigned ? null : readReportDraft(reportId);
+    if (firstHydration) {
+      // Resume straight into editing when unsaved work exists; otherwise land on
+      // the read-only note.
+      setIsEditing(!!draft);
+      setHasLocalDraft(!!draft);
+    }
     if (draft) {
       // Unsaved local edits win over the server copy until Save/Sign.
       setReportDate(draft.reportDate);
@@ -362,6 +428,7 @@ export function ReportEditorPanel({
     }
     if (isSignedRef.current || !canUpdate || isForeignIncidentRef.current) return;
     draftDirtyRef.current = true;
+    setHasLocalDraft(true);
     const t = window.setTimeout(() => {
       writeReportDraft(reportId, draftSnapshotRef.current);
       draftDirtyRef.current = false;
@@ -412,6 +479,7 @@ export function ReportEditorPanel({
       toast.success("Report saved.");
       clearReportDraft(reportId);
       draftDirtyRef.current = false;
+      setHasLocalDraft(false);
       void queryClient.invalidateQueries({ queryKey: ["report", reportId] });
       void queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
@@ -424,6 +492,8 @@ export function ReportEditorPanel({
       toast.success("Report signed.");
       clearReportDraft(reportId);
       draftDirtyRef.current = false;
+      setHasLocalDraft(false);
+      setIsEditing(false);
       void queryClient.invalidateQueries({ queryKey: ["report", reportId] });
       void queryClient.invalidateQueries({ queryKey: ["reports"] });
     },
@@ -593,26 +663,74 @@ export function ReportEditorPanel({
     );
   }
 
-  const readOnly = isSigned || !canUpdate || isForeignIncident;
+  // `canEnterEdit` — may this report be opened for editing/signing at all? True
+  //   for an unsigned report on the chart's active incident when the user can
+  //   Update OR Sign (a sign-only reviewer enters the editor to sign, not type).
+  // `editing`  — is the editor actually open right now (the user clicked Edit or
+  //   is resuming an unsaved draft)?
+  // `readOnly` — the inputs' disabled flag: locked unless the editor is open AND
+  //   the user holds Update (so a sign-only user sees the fields but can't type).
+  const canEnterEdit = !isSigned && !isForeignIncident && (canUpdate || canSign);
+  const editing = canEnterEdit && isEditing;
+  const readOnly = !editing || !canUpdate;
   const isPending = saveMutation.isPending || signMutation.isPending;
+
+  // Resolve the ids the note view prints as human labels.
+  const providerLabel = providerId
+    ? providerOptions?.find((o) => o.value === providerId)?.label ?? "—"
+    : "—";
+  const clinicLabel = clinicId
+    ? clinicOptions?.find((o) => o.value === clinicId)?.label ?? "—"
+    : "—";
+
+  const onCancelEdit = () => setIsEditing(false);
 
   return (
     <div data-testid="report-editor-panel" className="min-w-0 space-y-4 sm:space-y-6">
-      {/* Patient + status strip */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-        <div className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
+      {/* Document masthead — patient, incident, dx codes and status, plus the
+          Print / Edit affordances. Shared by both the read (note) and edit
+          views so the header never jumps when toggling between them. */}
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--color-primary-soft)] text-[var(--color-primary)]">
             <FileText className="size-5" />
           </div>
-          <div>
-            <p className="text-[15px] font-semibold leading-tight">{fullName || "Patient"}</p>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-[16px] font-semibold leading-tight">{fullName || "Patient"}</p>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ${
+                  isSigned
+                    ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
+                    : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]"
+                }`}
+              >
+                {report.workflowStatus}
+              </span>
+              {/* Signals a local, unsaved edit sitting behind the read view — the
+                  clinician stepped out of the editor without saving. */}
+              {hasLocalDraft && !editing && (
+                <span
+                  data-testid="report-unsaved-badge"
+                  className="inline-flex items-center gap-1 rounded-full bg-[oklch(from_var(--color-warning)_l_c_h_/_0.14)] px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-warning)]"
+                >
+                  Unsaved changes
+                </span>
+              )}
+              {editing && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-primary-soft)] px-2.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-[var(--color-primary)]">
+                  <Pencil className="size-3" />
+                  Editing
+                </span>
+              )}
+            </div>
             {/* Which incident this report is filed under — sits with the patient
                 name so an open report can never be mistaken for one belonging to
                 another incident. */}
             <IncidentRef
               incident={incidentQuery.data}
               testId="report-incident-ref"
-              className="block text-[11px] font-medium"
+              className="mt-0.5 block text-[11px] font-medium"
             />
             {/* What this visit is being coded against, in view while the note is
                 written. Renders even when empty — an absent line reads as "still
@@ -667,15 +785,19 @@ export function ReportEditorPanel({
               </Button>
             </>
           )}
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ${
-              isSigned
-                ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
-                : "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]"
-            }`}
-          >
-            {report.workflowStatus}
-          </span>
+          {/* Read-only-first: an editable report opens as a note; Edit unlocks the
+              form. Absent on signed and foreign-incident reports, which can't be
+              edited from here anyway. */}
+          {canEnterEdit && !editing && (
+            <Button
+              size="sm"
+              data-testid="report-edit-button"
+              onClick={() => setIsEditing(true)}
+            >
+              <Pencil className="size-4" />
+              {hasLocalDraft ? "Resume editing" : "Edit"}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -711,6 +833,9 @@ export function ReportEditorPanel({
         </div>
       )}
 
+      {/* ══ Edit view — the form, shown only while the editor is open ══ */}
+      {editing && (
+      <>
       {/* Header fields */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
         <div className="grid gap-3 sm:grid-cols-3">
@@ -895,6 +1020,88 @@ export function ReportEditorPanel({
           </div>
         ))
       )}
+      </>
+      )}
+
+      {/* ══ Read view — the report rendered as a clinical note document ══ */}
+      {!editing && (
+        <article className="space-y-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-sm sm:p-7">
+          {/* Note meta — the visit's who/where/when, as a document sub-header. */}
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+            <NoteMeta label="Report date" value={formatDate(report.reportDate)} />
+            <NoteMeta label="Provider" value={providerLabel} />
+            <NoteMeta label="Clinic" value={clinicLabel} />
+            <NoteMeta label="Visit" value={isNoShow ? "No show" : "Seen"} />
+          </dl>
+
+          {/* Vitals readout — the same set the edit form captures, as a
+              document stat row (only for templates that record vitals). */}
+          {supportsVitals && (
+            <section className="border-t border-[var(--color-border)] pt-5">
+              <NoteSectionHeading icon={Activity}>Vitals</NoteSectionHeading>
+              <dl className="grid grid-cols-3 gap-x-6 gap-y-3 sm:grid-cols-4 lg:grid-cols-7">
+                <NoteStat label="Height" value={height ? `${height} in` : "—"} />
+                <NoteStat label="Weight" value={weight ? `${weight} lb` : "—"} />
+                <NoteStat label="BMI" value={bmi != null ? String(bmi) : "—"} />
+                <NoteStat label="Systolic" value={systolic || "—"} />
+                <NoteStat label="Diastolic" value={diastolic || "—"} />
+                <NoteStat label="Pulse" value={pulse || "—"} />
+                <NoteStat label="Temp" value={temperature ? `${temperature} °F` : "—"} />
+              </dl>
+            </section>
+          )}
+
+          {/* Field sections, grouped by category, rendered as prose. */}
+          {fieldsQuery.isLoading ? (
+            <div className="skeleton h-40 rounded-xl" />
+          ) : (
+            groups.map((group) => (
+              <section key={group.category} className="border-t border-[var(--color-border)] pt-5">
+                <NoteSectionHeading>{group.category}</NoteSectionHeading>
+                <div className="space-y-4">
+                  {group.fields.map((f) => {
+                    const text = (values[f.id] ?? "").trim();
+                    return (
+                      <div key={f.id} className="space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[11.5px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                            {f.name}
+                          </p>
+                          {/* Legacy parity: the super bill stays reachable even on a
+                              read-only/ signed report, so this rides on the note view too. */}
+                          {canViewSuperBills && fieldIsPlan(f.name) && (
+                            <button
+                              type="button"
+                              title="Record the procedures performed for this report"
+                              onClick={() => {
+                                setProceduresFieldId(f.id);
+                                setProceduresOpen(true);
+                              }}
+                              className="inline-flex h-7 items-center gap-1 rounded-md border border-[var(--color-border)] px-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-accent)] hover:text-[var(--color-foreground)]"
+                            >
+                              <ClipboardList className="size-3.5" />
+                              Procedures Performed
+                            </button>
+                          )}
+                        </div>
+                        {text ? (
+                          <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-[var(--color-foreground)]">
+                            {text}
+                          </p>
+                        ) : (
+                          <p className="text-[13px] italic text-[var(--color-muted-foreground)]">
+                            Not documented.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))
+          )}
+        </article>
+      )}
 
       {/* Associated Problems */}
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
@@ -918,7 +1125,7 @@ export function ReportEditorPanel({
                       type="checkbox"
                       checked={associatedProblemIds.includes(p.id)}
                       onChange={() => toggleProblem(p.id)}
-                      disabled={!canUpdate || isForeignIncident}
+                      disabled={!canUpdate || isForeignIncident || (!editing && !isSigned)}
                       className="rounded border-[var(--color-border)]"
                     />
                     <span className="min-w-0 flex-1">
@@ -934,7 +1141,7 @@ export function ReportEditorPanel({
                 </li>
               ))}
             </ul>
-            {canUpdate && !isForeignIncident && (
+            {canUpdate && !isForeignIncident && (editing || isSigned) && (
               <Button
                 size="sm"
                 className="mt-3"
@@ -1097,22 +1304,29 @@ export function ReportEditorPanel({
         </div>
       )}
 
-      {/* Action bar (draft only) — gone entirely when the report belongs to a
-          different incident than the chart's active one. */}
-      {!isSigned && !isForeignIncident && (canUpdate || canSign) && (
-        <div className="sticky bottom-4 flex items-center justify-end gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-md">
-          {canUpdate && (
-            <Button variant="outline" onClick={onSave} disabled={isPending}>
-              <Save className="size-4" />
-              {saveMutation.isPending ? "Saving…" : "Save Draft"}
-            </Button>
-          )}
-          {canSign && (
-            <Button onClick={onSign} disabled={isPending}>
-              <PenLine className="size-4" />
-              {signMutation.isPending ? "Signing…" : "Sign Report"}
-            </Button>
-          )}
+      {/* Editor action bar — only while the editor is open (an editable report
+          on the active incident). Close leaves the editor without discarding:
+          unsaved typing is kept as a draft and flagged in the note view. */}
+      {editing && (
+        <div className="sticky bottom-4 flex items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-md">
+          <Button variant="ghost" onClick={onCancelEdit} disabled={isPending}>
+            <X className="size-4" />
+            Close
+          </Button>
+          <div className="flex items-center gap-2">
+            {canUpdate && (
+              <Button variant="outline" onClick={onSave} disabled={isPending}>
+                <Save className="size-4" />
+                {saveMutation.isPending ? "Saving…" : "Save Draft"}
+              </Button>
+            )}
+            {canSign && (
+              <Button onClick={onSign} disabled={isPending}>
+                <PenLine className="size-4" />
+                {signMutation.isPending ? "Signing…" : "Sign Report"}
+              </Button>
+            )}
+          </div>
         </div>
       )}
 

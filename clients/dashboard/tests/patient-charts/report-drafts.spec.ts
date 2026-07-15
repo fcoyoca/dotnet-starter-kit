@@ -8,6 +8,7 @@ import { mockJsonResponse } from "../helpers/api-mocks";
 import { seedAuthedSession, TEST_USER } from "../helpers/auth-seed";
 import { installShellMocks, paged } from "../helpers/shell-mocks";
 import { seedPatientWorkspace } from "../helpers/workspace-seed";
+import { enterReportEdit } from "../helpers/report-editor";
 
 const REPORT_PERMS = [
   "Permissions.Patient.Reports.View",
@@ -159,14 +160,19 @@ test.describe("report drafts", () => {
     await seedBothReportsOpen(page);
     await page.goto(`/patient-charts/${PATIENT_ID}`);
 
+    // The report opens as a read-only note; unlock the editor to type.
+    await enterReportEdit(page);
     await page.locator("#f-11").fill("unsaved chief complaint text");
 
     // Switch to the second open report (unmounts the panel → flush write).
+    // Report 2 has no draft, so it opens read-only too — unlock it as well.
     await page.getByRole("button", { name: REPORT_2_TAB, exact: true }).click();
+    await enterReportEdit(page);
     await expect(page.locator("#f-21")).toBeVisible();
     await expect(page.locator("#f-21")).toHaveValue("");
 
-    // Switch back — the draft (not the empty server copy) hydrates.
+    // Switch back — the draft (not the empty server copy) hydrates, and because
+    // an unsaved draft exists the editor re-opens straight into edit mode.
     await page.getByRole("button", { name: REPORT_1_TAB, exact: true }).click();
     await expect(page.locator("#f-11")).toHaveValue("unsaved chief complaint text");
   });
@@ -175,6 +181,7 @@ test.describe("report drafts", () => {
     await seedBothReportsOpen(page);
     await page.goto(`/patient-charts/${PATIENT_ID}`);
 
+    await enterReportEdit(page);
     await page.locator("#f-11").fill("text that must survive a reload");
 
     // Wait for the 500ms debounce to land in sessionStorage (a hard
@@ -195,6 +202,7 @@ test.describe("report drafts", () => {
     await seedBothReportsOpen(page);
     await page.goto(`/patient-charts/${PATIENT_ID}`);
 
+    await enterReportEdit(page);
     await page.locator("#f-11").fill("about to be saved");
     await expect
       .poll(async () => {
