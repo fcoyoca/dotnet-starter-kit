@@ -74,7 +74,7 @@ import { describe, formatDate, formatDateTimeInTz } from "@/lib/list-helpers";
 import { cn } from "@/lib/cn";
 import { usePatientTab, usePatientWorkspace } from "@/state/patient-workspace-context";
 import { PatientTabStrip } from "@/components/layout/patient-tab-strip";
-import { searchPatientInsurancePolicies } from "@/api/patient-insurance";
+import { pickPrimaryInsuranceType, searchPatientInsurancePolicies } from "@/api/patient-insurance";
 import { AllergyListDialog } from "@/pages/patient-charts/allergy-list-dialog";
 import { DocumentsListDialog } from "@/pages/patient-charts/documents-list-dialog";
 import { ExportReportsDialog } from "@/pages/patient-charts/export-reports-dialog";
@@ -183,6 +183,20 @@ function ChartInsuranceSummary({ patientId }: { patientId: string }) {
       ))}
     </ul>
   );
+}
+
+/**
+ * The incident-info panel's insurance-type line: the patient's primary active insurance type —
+ * the same value the Procedures Performed picker defaults to. Reuses the sidebar's cached
+ * policies query (identical query key), so it adds no extra request.
+ */
+function IncidentInsuranceType({ patientId }: { patientId: string }) {
+  const { data } = useQuery({
+    queryKey: ["patient-insurance-policies", patientId, false],
+    queryFn: () => searchPatientInsurancePolicies({ patientId, pageSize: 200 }),
+  });
+  const primary = pickPrimaryInsuranceType(data?.items ?? []);
+  return <span className="font-medium">{primary?.name ?? "—"}</span>;
 }
 
 function IconShortcut({
@@ -860,6 +874,14 @@ export function PatientChartDetailPage() {
                       </span>
                     </button>
                   </li>
+                  {patientId && (
+                    <li className="px-2 py-1 text-[12px]">
+                      <span className="font-medium text-[var(--color-muted-foreground)]">
+                        Insurance Type:{" "}
+                      </span>
+                      <IncidentInsuranceType patientId={patientId} />
+                    </li>
+                  )}
                   <li>
                     <button
                       type="button"

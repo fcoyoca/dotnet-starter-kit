@@ -19,6 +19,7 @@ const REPORT_ID = "00000000-0000-0000-0000-0000000c3333";
 const DX_ID = "00000000-0000-0000-0000-0000000d4444";
 const PC_ID = "00000000-0000-0000-0000-0000000e5555";
 const IT_ID = "00000000-0000-0000-0000-0000000f6666";
+const IT_ID_2 = "00000000-0000-0000-0000-0000000f7777";
 
 const PATIENT = {
   id: PATIENT_ID,
@@ -210,5 +211,54 @@ test.describe("procedures performed", () => {
     await expect(
       page.getByText("Please add at least one DX code before picking procedures."),
     ).toBeVisible();
+  });
+
+  test("defaults the insurance picker to the patient's primary policy type", async ({ page }) => {
+    await mockChartLookups(page);
+
+    // Two admin insurance types, "Aetna PPO" sorting before "Medicare". The picker's
+    // fallback would pick the alphabetical-first ("Aetna PPO"); the patient's primary
+    // policy names "Medicare", so the patient's type must win. Re-register the price
+    // sub-route after the broad list glob so LIFO doesn't let the list shadow it.
+    await mockJsonResponse(page, "**/api/v1/administration/insurance-types**", paged([
+      { id: IT_ID_2, name: "Aetna PPO", isActive: true, procedureCategoryId: null },
+      { id: IT_ID, name: "Medicare", isActive: true, procedureCategoryId: null },
+    ]));
+    await mockJsonResponse(page, `**/api/v1/administration/insurance-types/${IT_ID}/procedures`, [{
+      id: "00000000-0000-0000-0000-000000009999",
+      insuranceTypeId: IT_ID,
+      procedureCodeId: PC_ID,
+      procedureCode: "98940",
+      procedureName: "CMT 1-2 regions",
+      procedureCategoryName: "CMT",
+      price: 20.0,
+      createdAtUtc: "2026-01-01T00:00:00Z",
+      updatedAtUtc: null,
+    }]);
+    await mockJsonResponse(page, "**/api/v1/patient/insurance-policies**", paged([{
+      id: "00000000-0000-0000-0000-00000010aaaa",
+      patientId: PATIENT_ID,
+      insuranceCompanyId: "00000000-0000-0000-0000-00000010bbbb",
+      insuranceCompanyName: "Medicare Nationwide",
+      insuranceTypeId: IT_ID,
+      insuranceTypeName: "Medicare",
+      priority: "Primary",
+      subscriberRelationship: "Self",
+      isActive: true,
+      createdAtUtc: "2026-01-01T00:00:00Z",
+      updatedAtUtc: null,
+    }]));
+
+    await page.goto(`/patient-charts/${PATIENT_ID}`);
+
+    // The incident-info sidebar surfaces the same associated type.
+    await expect(page.getByText("Insurance Type:")).toBeVisible();
+
+    await page.getByRole("button", { name: "Procedures", exact: true }).click();
+    const dialog = page.getByRole("dialog").filter({ hasText: "Procedures Performed" });
+    await dialog.getByRole("button", { name: /Draft/ }).click();
+
+    // The Insurance combobox defaults to the patient's primary type, not the fallback.
+    await expect(dialog.getByRole("button", { name: "Insurance" })).toContainText("Medicare");
   });
 });

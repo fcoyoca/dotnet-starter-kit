@@ -4,6 +4,7 @@ import { Pencil, Plus, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { getPatientIncident } from "@/api/incidents";
 import { searchPatientReports } from "@/api/reports";
+import { pickPrimaryInsuranceType, searchPatientInsurancePolicies } from "@/api/patient-insurance";
 import {
   listCustomDiagnostics,
   listInsuranceTypeProcedures,
@@ -147,13 +148,26 @@ export function ProceduresPerformedDialog({
   const insuranceOptions = useInsuranceTypeOptions();
   const categoryOptions = useProcedureCategoryOptions();
 
-  // Default to the first active insurance type (legacy incident/patient insurance-type
-  // links are not ported — see the design spec).
+  // The patient's policies — used to default the picker to their primary insurance type,
+  // matching legacy BackChart's superbill behavior. Same query key as the chart sidebar, so
+  // it's served from cache when the chart already loaded it.
+  const policiesQuery = useQuery({
+    queryKey: ["patient-insurance-policies", patientId, false],
+    queryFn: () => searchPatientInsurancePolicies({ patientId, pageSize: 200 }),
+    enabled: open,
+  });
+
+  // Default the insurance type to the patient's primary active policy's type when it resolves
+  // to a known (active) option; otherwise the first active admin insurance type. Waits for the
+  // policies query so the patient's primary wins over the fallback. User can still override.
   useEffect(() => {
-    if (insuranceTypeId === null && insuranceOptions && insuranceOptions.length > 0) {
-      setInsuranceTypeId(insuranceOptions[0].value);
-    }
-  }, [insuranceOptions, insuranceTypeId]);
+    if (!open || insuranceTypeId !== null) return;
+    if (!insuranceOptions || insuranceOptions.length === 0) return;
+    if (policiesQuery.isPending) return;
+    const primary = pickPrimaryInsuranceType(policiesQuery.data?.items ?? []);
+    const primaryIsKnown = !!primary && insuranceOptions.some((o) => o.value === primary.id);
+    setInsuranceTypeId(primaryIsKnown ? primary!.id : insuranceOptions[0].value);
+  }, [open, insuranceOptions, insuranceTypeId, policiesQuery.isPending, policiesQuery.data]);
 
   const codesQuery = useQuery({
     queryKey: ["procedure-codes", "picker", categoryId ?? "all"],

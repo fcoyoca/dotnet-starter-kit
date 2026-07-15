@@ -62,6 +62,33 @@ export type PatientInsurancePolicy = {
   updatedAtUtc?: string | null;
 };
 
+const PRIORITY_RANK: Record<InsurancePriority, number> = {
+  Primary: 0,
+  Secondary: 1,
+  Tertiary: 2,
+  Quaternary: 3,
+};
+
+/**
+ * The insurance type charting/billing flows should default to: taken from the patient's
+ * highest-priority *active* policy that names an insurance type. Mirrors legacy BackChart,
+ * whose superbill picker reads the patient's primary insurance type
+ * (`InsurancesTop2.First().PinInsuranceTypeID`) rather than a per-incident field.
+ *
+ * Priority is ranked explicitly rather than trusting list order. Returns null when no active
+ * policy carries an insurance type — callers fall back to their own default.
+ */
+export function pickPrimaryInsuranceType(
+  policies: PatientInsurancePolicy[],
+): { id: string; name: string | null } | null {
+  const withType = policies.filter((p) => p.isActive && p.insuranceTypeId);
+  if (withType.length === 0) return null;
+  const primary = withType.reduce((best, p) =>
+    PRIORITY_RANK[p.priority] < PRIORITY_RANK[best.priority] ? p : best,
+  );
+  return { id: primary.insuranceTypeId!, name: primary.insuranceTypeName ?? null };
+}
+
 export type SearchInsurancePoliciesParams = {
   patientId: string;
   includeInactive?: boolean;
