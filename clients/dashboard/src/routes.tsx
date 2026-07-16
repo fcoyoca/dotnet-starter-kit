@@ -133,6 +133,8 @@ const PatientChartDetailPage = lazyNamed(
   () => import("@/pages/patient-charts/chart"),
   "PatientChartDetailPage",
 );
+const ClaimsListPage = lazyNamed(() => import("@/pages/billing/claims-list"), "ClaimsListPage");
+const ClaimDetailPage = lazyNamed(() => import("@/pages/billing/claim-detail"), "ClaimDetailPage");
 
 /**
  * RouteFallback — what shows while a lazy chunk is downloading. Mirrors
@@ -222,6 +224,8 @@ export const router = createBrowserRouter([
           { path: "subscription", element: withSuspense(<SubscriptionPage />) },
           { path: "invoices", element: withSuspense(<InvoicesPage />) },
           { path: "invoices/:id", element: withSuspense(<InvoiceDetailPage />) },
+          { path: "billing/claims", element: withSuspense(<ClaimsListPage />) },
+          { path: "billing/claims/:claimId", element: withSuspense(<ClaimDetailPage />) },
           { path: "system/health", element: withSuspense(<HealthPage />) },
           { path: "system/audits", element: withSuspense(<AuditsPage />) },
           { path: "system/trash", element: withSuspense(<TrashPage />) },

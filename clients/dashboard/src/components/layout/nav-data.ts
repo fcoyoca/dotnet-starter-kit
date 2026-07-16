@@ -21,6 +21,7 @@ import {
   Network,
   Pill,
   Receipt,
+  ReceiptText,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -247,6 +248,14 @@ export const sections: NavSection[] = [
         icon: CalendarClock,
         perm: "Permissions.Scheduling.Appointments.View",
       }
+    ],
+  },
+  {
+    id: "billing",
+    caption: "Billing",
+    icon: ReceiptText,
+    items: [
+      { to: "/billing/claims", label: "Claims", icon: ReceiptText, perm: "Permissions.Claims.View" },
     ],
   },
   // {
