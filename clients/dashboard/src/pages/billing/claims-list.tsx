@@ -8,17 +8,17 @@ import { useInsuranceTypeOptions } from "@/api/administration";
 const STATUSES: ClaimStatus[] = ["Draft", "Ready", "Submitted", "Paid", "Denied", "Voided"];
 
 export function ClaimStatusPill({ status }: { status: ClaimStatus }) {
-  // Billing accent + per-status colors; frontend-design skill refines the exact palette.
+  // Per-status semantic colors; the neutral fallback covers any server-added status.
   const cls: Record<string, string> = {
-    Draft: "bg-slate-200 text-slate-700",
-    Ready: "bg-teal-100 text-teal-800",
-    Submitted: "bg-blue-100 text-blue-800",
-    Paid: "bg-green-100 text-green-800",
-    Denied: "bg-red-100 text-red-800",
-    Voided: "bg-slate-100 text-slate-500 line-through",
+    Draft: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
+    Ready: "bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-200",
+    Submitted: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200",
+    Paid: "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200",
+    Denied: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200",
+    Voided: "bg-slate-100 text-slate-500 line-through dark:bg-slate-800 dark:text-slate-400",
   };
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${cls[status] ?? cls.Draft}`}>
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls[status] ?? cls.Draft}`}>
       {status}
     </span>
   );
@@ -53,7 +53,7 @@ export function ClaimsListPage() {
   );
   const patientQueries = useQueries({
     queries: patientIds.map((id) => ({
-      queryKey: ["patient", id],
+      queryKey: ["patients", id],
       queryFn: () => getPatientById(id),
       staleTime: 5 * 60_000,
     })),
@@ -69,6 +69,8 @@ export function ClaimsListPage() {
     return (id: string) => map.get(id) ?? "—";
   }, [patientQueries, patientIds]);
 
+  const totalPages = claimsQuery.data?.page.totalPages ?? 1;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -76,7 +78,7 @@ export function ClaimsListPage() {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi label="Draft" value={summary?.draft ?? 0} />
         <Kpi label="Ready" value={summary?.ready ?? 0} />
         <Kpi label="Submitted" value={summary?.submitted ?? 0} />
@@ -84,7 +86,7 @@ export function ClaimsListPage() {
       </div>
 
       {/* Status filter */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <FilterChip active={!status} onClick={() => { setStatus(undefined); setPage(1); }}>All</FilterChip>
         {STATUSES.map((s) => (
           <FilterChip key={s} active={status === s} onClick={() => { setStatus(s); setPage(1); }}>{s}</FilterChip>
@@ -92,51 +94,86 @@ export function ClaimsListPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase text-muted-foreground">
+      <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+        <table className="w-full text-[13px]">
+          <thead className="border-b border-[var(--color-border)] text-left text-[11px] uppercase tracking-wide text-[var(--color-muted-foreground)]">
             <tr>
-              <th className="p-2">Patient</th><th className="p-2">Payer</th>
-              <th className="p-2">CPT</th><th className="p-2">Charge</th><th className="p-2">Status</th>
+              <th className="p-3">Patient</th>
+              <th className="p-3">Payer</th>
+              <th className="p-3 text-center">CPT</th>
+              <th className="p-3 text-right">Charge</th>
+              <th className="p-3">Status</th>
             </tr>
           </thead>
           <tbody>
             {items.map((c) => (
-              <tr key={c.id} className="border-t hover:bg-muted/40">
-                <td className="p-2">
-                  <Link className="font-medium hover:underline" to={`/billing/claims/${c.id}`}>
+              <tr key={c.id} className="border-t border-[var(--color-border)] transition-colors hover:bg-[var(--color-accent)]">
+                <td className="p-3">
+                  <Link className="font-medium text-[var(--color-primary)] hover:underline" to={`/billing/claims/${c.id}`}>
                     {patientName(c.patientId)}
                   </Link>
                 </td>
-                <td className="p-2">{payerName(c.insuranceTypeId)}</td>
-                <td className="p-2">{c.lineCount}</td>
-                <td className="p-2">${c.totalCharge.toLocaleString()}</td>
-                <td className="p-2"><ClaimStatusPill status={c.status} /></td>
+                <td className="p-3">{payerName(c.insuranceTypeId)}</td>
+                <td className="p-3 text-center tabular-nums">{c.lineCount}</td>
+                <td className="p-3 text-right font-medium tabular-nums">${c.totalCharge.toLocaleString()}</td>
+                <td className="p-3"><ClaimStatusPill status={c.status} /></td>
               </tr>
             ))}
             {items.length === 0 && !claimsQuery.isLoading && (
-              <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">No claims yet.</td></tr>
+              <tr><td colSpan={5} className="p-8 text-center text-[var(--color-muted-foreground)]">No claims yet.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end gap-2 text-[13px]">
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-1 disabled:opacity-40"
+          >
+            Prev
+          </button>
+          <span className="text-[var(--color-muted-foreground)]">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="rounded-lg border border-[var(--color-border)] px-3 py-1 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 function Kpi({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
   return (
-    <div className="rounded-lg border p-3">
-      <div className={`text-2xl font-bold ${accent ? "text-teal-600" : ""}`}>{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+      <div className={`text-2xl font-bold tabular-nums ${accent ? "text-[var(--color-primary)]" : ""}`}>{value}</div>
+      <div className="text-[12px] text-[var(--color-muted-foreground)]">{label}</div>
     </div>
   );
 }
 
 function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick}
-      className={`rounded-full border px-3 py-1 text-xs ${active ? "border-teal-500 bg-teal-50 text-teal-800" : ""}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1 text-[12px] font-medium transition-colors ${
+        active
+          ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
+          : "border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)]"
+      }`}
+    >
       {children}
     </button>
   );
