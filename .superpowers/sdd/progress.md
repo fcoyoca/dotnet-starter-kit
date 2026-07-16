@@ -14,7 +14,7 @@ Branch: clinic-app  (base for review-package: record each task's pre-dispatch HE
 - Task 9: complete (commit 18e50937, review clean; tsc+eslint clean) — frontend api/claims.ts
 - Task 10: complete (commit 7fd73f77, review clean; tsc+eslint clean) — worklist page + Billing nav + routes (claim-detail stub)
 - Task 11: complete (commit 7b5e9e48, review clean; tsc+eslint clean) — claim detail page (two-column + sticky actions)
-- Task 12: pending — Playwright e2e
+- Task 12: complete (commit d10487f7, review clean; spec passes 1/1) — Playwright worklist+detail e2e
 - Task 13: DEFERRED — docs+changelog (separate fullstackhero/docs repo)
 
 ## Minor findings roll-up (for final review)
@@ -78,3 +78,6 @@ Plan: docs/superpowers/plans/2026-07-15-claims-billing-module.md
 - [Task 7] Minors (trivial): Submit handler Include(Lines) is intentional (needs Lines for ToDetailDto); test import ordering cosmetic. No action.
 - [ENV note] Repo path changed mid-session: was C:\Users\fcoyo\source\repos\clinic-app, now C:\Users\FrancisCoyoca\source\repos\clinic-solution-app (profile rename). Skill scripts absent under FrancisCoyoca/.claude — regenerate briefs via awk from the plan and review packages via `git log/diff BASE..HEAD`. Git-ignored scratch briefs/reports do NOT carry across clones; ledger (progress.md) is tracked so it does.
 - [Task 8 / FOLLOW-UP] GetClaimsQuery.Search is validated + passed but NOT applied in the handler (plan-inherited). Reviewer notes Claim.ControlNumber is a plausible server-side search target. Final-review decision: wire Search→ControlNumber (+ maybe patient-code) in a follow-up slice, OR drop the param. Also no explicit test asserts Summary is unchanged under a status filter (structurally guaranteed).
+
+## ALL 12 IMPLEMENTATION TASKS COMPLETE (2026-07-16). Remaining: final whole-branch review + finishing.
+### Task 12 minors: filter chips not exercised by e2e (brief gap, follow-up coverage); cold-Vite nav-timeout flake risk (pre-existing). Non-blocking.
