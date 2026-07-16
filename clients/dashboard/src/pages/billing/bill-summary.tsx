@@ -34,13 +34,19 @@ export type BillSummaryData = {
     /** Address lines, already assembled and non-empty. */
     address?: string[];
   };
+  /** Appointment / encounter context card (mirrors BackChart's Appointment card). */
+  appointment?: {
+    date?: string | null;
+    reason?: string | null;
+    location?: string | null;
+    doctor?: string | null;
+    dateOfLoss?: string | null;
+    dateOfInitialVisit?: string | null;
+  } | null;
+  /** Primary/secondary insurance always render (blank rows when absent), so the bill's
+   * insurance section is present even for self-pay / no-policy patients. */
   primaryInsurance?: InsuranceBlock | null;
   secondaryInsurance?: InsuranceBlock | null;
-  /** Kept for the print sheet's subtitle date only; encounter is no longer a card
-   * (it lives on the SuperBill / claim mini-cards instead). */
-  encounter?: {
-    reportDate?: string | null;
-  } | null;
   lines: BillLine[];
   /** Omit for a charge-only summary; present enables the payments/remainder rows. */
   totalPayments?: number | null;
@@ -74,6 +80,19 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+/** Insurance card that always renders — blank rows (—) when no policy is present. */
+function InsuranceCard({ title, ins }: { title: string; ins?: InsuranceBlock | null }) {
+  return (
+    <Card title={title}>
+      <Row label="Insurance Type">{ins?.type}</Row>
+      <Row label="Provider">{ins?.provider}</Row>
+      <Row label="Group Number">{ins?.groupNumber}</Row>
+      <Row label="Policy Number">{ins?.policyNumber}</Row>
+      <Row label="Subscriber">{ins?.subscriber}</Row>
+    </Card>
+  );
+}
+
 /** On-screen bill summary — the same data the Print sheet renders. */
 export function BillSummaryView({ data }: { data: BillSummaryData }) {
   const total = billTotalCharge(data);
@@ -95,24 +114,20 @@ export function BillSummaryView({ data }: { data: BillSummaryData }) {
           <Row label="Code">{data.patient.code}</Row>
         </Card>
 
-        {data.primaryInsurance && (
-          <Card title="Primary Insurance">
-            <Row label="Insurance Type">{data.primaryInsurance.type}</Row>
-            <Row label="Provider">{data.primaryInsurance.provider}</Row>
-            <Row label="Group Number">{data.primaryInsurance.groupNumber}</Row>
-            <Row label="Policy Number">{data.primaryInsurance.policyNumber}</Row>
-            <Row label="Subscriber">{data.primaryInsurance.subscriber}</Row>
+        {data.appointment && (
+          <Card title="Appointment">
+            <Row label="Appt. Date">{formatDate(data.appointment.date)}</Row>
+            <Row label="Reason">{data.appointment.reason}</Row>
+            <Row label="Location">{data.appointment.location}</Row>
+            <Row label="Doctor">{data.appointment.doctor}</Row>
+            <Row label="Date of Loss">{formatDate(data.appointment.dateOfLoss)}</Row>
+            <Row label="Initial Visit">{formatDate(data.appointment.dateOfInitialVisit)}</Row>
           </Card>
         )}
 
+        <InsuranceCard title="Primary Insurance" ins={data.primaryInsurance} />
         {data.secondaryInsurance && (
-          <Card title="Secondary Insurance">
-            <Row label="Insurance Type">{data.secondaryInsurance.type}</Row>
-            <Row label="Provider">{data.secondaryInsurance.provider}</Row>
-            <Row label="Group Number">{data.secondaryInsurance.groupNumber}</Row>
-            <Row label="Policy Number">{data.secondaryInsurance.policyNumber}</Row>
-            <Row label="Subscriber">{data.secondaryInsurance.subscriber}</Row>
-          </Card>
+          <InsuranceCard title="Secondary Insurance" ins={data.secondaryInsurance} />
         )}
       </div>
 
@@ -203,15 +218,28 @@ function billHtml(data: BillSummaryData, title: string): string {
     row("Code", data.patient.code),
   ].join("");
 
-  const insuranceRows = (ins: InsuranceBlock) =>
+  const appointmentRows = data.appointment
+    ? [
+        row("Appt. Date", formatDate(data.appointment.date)),
+        row("Reason", data.appointment.reason),
+        row("Location", data.appointment.location),
+        row("Doctor", data.appointment.doctor),
+        row("Date of Loss", formatDate(data.appointment.dateOfLoss)),
+        row("Initial Visit", formatDate(data.appointment.dateOfInitialVisit)),
+      ].join("")
+    : "";
+
+  // Always rendered — blank rows (—) when no policy, so the bill's insurance section shows.
+  const insuranceRows = (ins?: InsuranceBlock | null) =>
     [
-      row("Insurance Type", ins.type),
-      row("Provider", ins.provider),
-      row("Group Number", ins.groupNumber),
-      row("Policy Number", ins.policyNumber),
-      row("Subscriber", ins.subscriber),
+      row("Insurance Type", ins?.type),
+      row("Provider", ins?.provider),
+      row("Group Number", ins?.groupNumber),
+      row("Policy Number", ins?.policyNumber),
+      row("Subscriber", ins?.subscriber),
     ].join("");
-  const primaryRows = data.primaryInsurance ? insuranceRows(data.primaryInsurance) : "";
+  const primaryRows = insuranceRows(data.primaryInsurance);
+  // Primary always prints (blank rows if absent); secondary only when a policy exists.
   const secondaryRows = data.secondaryInsurance ? insuranceRows(data.secondaryInsurance) : "";
 
   const lineRows = data.lines.length
@@ -261,10 +289,11 @@ function billHtml(data: BillSummaryData, title: string): string {
       @media print { body { margin: 12px; } }
     </style></head><body onload="window.print()">
     <h1>${esc(title)}</h1>
-    <div class="sub">${esc(data.patient.name)}${data.encounter?.reportDate ? " &middot; " + esc(formatDate(data.encounter.reportDate)) : ""}</div>
+    <div class="sub">${esc(data.patient.name)}${data.appointment?.date ? " &middot; " + esc(formatDate(data.appointment.date)) : ""}</div>
     <div class="cards">
       <div class="card"><h2>Patient</h2><table>${patientRows}</table></div>
-      ${primaryRows ? `<div class="card"><h2>Primary Insurance</h2><table>${primaryRows}</table></div>` : ""}
+      ${appointmentRows ? `<div class="card"><h2>Appointment</h2><table>${appointmentRows}</table></div>` : ""}
+      <div class="card"><h2>Primary Insurance</h2><table>${primaryRows}</table></div>
       ${secondaryRows ? `<div class="card"><h2>Secondary Insurance</h2><table>${secondaryRows}</table></div>` : ""}
     </div>
     <table class="lines">

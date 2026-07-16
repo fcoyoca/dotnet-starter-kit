@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   keepPreviousData,
   useMutation,
@@ -246,6 +246,12 @@ export function PatientChartDetailPage() {
   const openReportIds = workspaceTab?.openReportIds ?? [];
   const activeReportId = workspaceTab?.activeReportId ?? null;
 
+  // Deep-link from billing ("open report"): ?incidentId=&reportId= selects that incident and
+  // opens that report on load, skipping the incident chooser. Handled once, then cleared.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkIncidentId = searchParams.get("incidentId");
+  const deepLinkReportId = searchParams.get("reportId");
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editIncidentId, setEditIncidentId] = useState<string | null>(null);
   const [incidentsListOpen, setIncidentsListOpen] = useState(false);
@@ -473,9 +479,14 @@ export function PatientChartDetailPage() {
       return;
     }
     if (!activeIncidentId || !incidents.some((x) => x.id === activeIncidentId)) {
-      setActiveIncident(patientId, incidents[0].id);
+      // A billing deep-link picks its own incident as the initial selection.
+      const target =
+        deepLinkIncidentId && incidents.some((x) => x.id === deepLinkIncidentId)
+          ? deepLinkIncidentId
+          : incidents[0].id;
+      setActiveIncident(patientId, target);
     }
-  }, [incidents, activeIncidentId, patientId, setActiveIncident, workspaceTab]);
+  }, [incidents, activeIncidentId, patientId, setActiveIncident, workspaceTab, deepLinkIncidentId]);
 
   const activeIncident = useMemo<PatientIncidentListItemDto | null>(
     () => incidents.find((x) => x.id === activeIncidentId) ?? null,
@@ -551,16 +562,40 @@ export function PatientChartDetailPage() {
     if (!patientId || !incidentsQuery.data) return;
     if (incidentsPromptedForRef.current === patientId) return;
     incidentsPromptedForRef.current = patientId;
+    // A billing deep-link already targets a specific incident — don't pop the chooser.
+    if (deepLinkIncidentId || deepLinkReportId) return;
     if (openIncidents.length > 1) {
       setIncidentsListOpen(true);
       setChooserAutoOpened(true);
     }
-  }, [patientId, incidentsQuery.data, openIncidents]);
+  }, [patientId, incidentsQuery.data, openIncidents, deepLinkIncidentId, deepLinkReportId]);
 
   const closeIncidentsList = () => {
     setIncidentsListOpen(false);
     setChooserAutoOpened(false);
   };
+
+  // Open the deep-linked report once incidents have loaded, then clear the params so a
+  // refresh or later navigation doesn't reopen it. The active incident is picked by the
+  // auto-select effect above.
+  const deepLinkHandledRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandledRef.current) return;
+    if (!patientId || !workspaceTab || !incidentsQuery.data) return;
+    if (!deepLinkIncidentId && !deepLinkReportId) return;
+    if (deepLinkReportId && canViewReports) openReport(patientId, deepLinkReportId);
+    deepLinkHandledRef.current = true;
+    setSearchParams(new URLSearchParams(), { replace: true });
+  }, [
+    patientId,
+    workspaceTab,
+    incidentsQuery.data,
+    deepLinkIncidentId,
+    deepLinkReportId,
+    canViewReports,
+    openReport,
+    setSearchParams,
+  ]);
 
   // "Patient Reports" row in the Incident card scrolls to the reports list
   // (BackChart's card switches the workspace to the reports view; here the

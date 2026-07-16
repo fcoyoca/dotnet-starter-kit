@@ -26,6 +26,7 @@ import {
   listProcedureCodes,
   listReportFields,
   listReportTypes,
+  useClinicOptions,
   useDepartmentOptions,
   useIncidentTypeOptions,
   useInsuranceTypeOptions,
@@ -199,6 +200,11 @@ export function ProceduresPerformedDialog({
   const providerName = useMemo(
     () => providerOptions?.find((o) => o.value === reportDetail?.providerId)?.label ?? null,
     [providerOptions, reportDetail?.providerId],
+  );
+  const clinicOptions = useClinicOptions();
+  const clinicName = useMemo(
+    () => clinicOptions?.find((o) => o.value === reportDetail?.clinicId)?.label ?? null,
+    [clinicOptions, reportDetail?.clinicId],
   );
   const incidentTypeOptions = useIncidentTypeOptions();
   const incidentTypeName = useMemo(
@@ -506,7 +512,13 @@ export function ProceduresPerformedDialog({
         insuranceOptions?.find((o) => o.value === insuranceTypeId)?.label ?? primaryPolicy?.insuranceTypeName,
       ),
       secondaryInsurance: insBlock(secondaryPolicy),
-      encounter: { reportDate: reportDetail?.reportDate },
+      appointment: {
+        date: reportDetail?.reportDate,
+        location: clinicName,
+        doctor: providerName,
+        dateOfLoss: incidentQuery.data?.dateOfLoss,
+        dateOfInitialVisit: incidentQuery.data?.dateOfInitialVisit,
+      },
       lines: rows.map((r) => ({
         code: r.code,
         description: r.description,
@@ -521,6 +533,9 @@ export function ProceduresPerformedDialog({
     insuranceOptions,
     insuranceTypeId,
     reportDetail,
+    providerName,
+    clinicName,
+    incidentQuery.data,
     rows,
     dxLabel,
   ]);

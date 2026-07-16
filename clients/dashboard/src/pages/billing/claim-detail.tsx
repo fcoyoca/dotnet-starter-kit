@@ -13,6 +13,7 @@ import { searchPatientInsurancePolicies, type PatientInsurancePolicy } from "@/a
 import {
   listCustomDiagnostics,
   listReportTypes,
+  useClinicOptions,
   useDepartmentOptions,
   useIncidentTypeOptions,
   useInsuranceTypeOptions,
@@ -112,8 +113,10 @@ export function ClaimDetailPage() {
   const incidentTypeOptions = useIncidentTypeOptions();
   const departmentOptions = useDepartmentOptions();
   const providerOptions = useProviderOptions();
+  const clinicOptions = useClinicOptions();
 
   const payerName = insuranceOptions?.find((o) => o.value === claim?.insuranceTypeId)?.label ?? null;
+  const clinicName = clinicOptions?.find((o) => o.value === reportQuery.data?.clinicId)?.label ?? null;
   const reportTypeName =
     reportTypesQuery.data?.find((t) => t.id === reportQuery.data?.reportTypeId)?.name ?? null;
   const incidentTypeName =
@@ -157,10 +160,16 @@ export function ClaimDetailPage() {
         dob: d?.dateOfBirth,
         phone: patientQuery.data?.contact.phone,
       },
+      appointment: {
+        date: reportQuery.data?.reportDate,
+        location: clinicName,
+        doctor: providerName,
+        dateOfLoss: incidentQuery.data?.dateOfLoss,
+        dateOfInitialVisit: incidentQuery.data?.dateOfInitialVisit,
+      },
       // Fall back to the claim's own payer type when the patient has no policy on file.
       primaryInsurance: insBlock(primaryPolicy) ?? (claim?.insuranceTypeId ? { type: payerName } : null),
       secondaryInsurance: insBlock(secondaryPolicy),
-      encounter: reportQuery.data ? { reportDate: reportQuery.data.reportDate } : null,
       lines: (claim?.lines ?? []).map((l) => ({
         code: l.code,
         description: l.description,
@@ -169,7 +178,7 @@ export function ClaimDetailPage() {
       })),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientQuery.data, reportQuery.data, primaryPolicy, secondaryPolicy, claim, payerName, patientName, dxInfo]);
+  }, [patientQuery.data, reportQuery.data, incidentQuery.data, primaryPolicy, secondaryPolicy, claim, payerName, clinicName, providerName, patientName, dxInfo]);
 
   if (!claim) return <div className="p-6 text-[var(--color-muted-foreground)]">Loading…</div>;
 
@@ -200,8 +209,17 @@ export function ClaimDetailPage() {
             {patientName}
             {claim.controlNumber ? ` · ${claim.controlNumber}` : ""}
             {" · "}
-            <Link className="text-[var(--color-primary)] hover:underline" to={`/patient-charts/${claim.patientId}`}>
-              open chart
+            <Link
+              className="text-[var(--color-primary)] hover:underline"
+              to={{
+                pathname: `/patient-charts/${claim.patientId}`,
+                search: new URLSearchParams({
+                  ...(reportQuery.data?.incidentId ? { incidentId: reportQuery.data.incidentId } : {}),
+                  reportId: claim.reportId,
+                }).toString(),
+              }}
+            >
+              open report
             </Link>
           </div>
         </div>
