@@ -36,6 +36,7 @@ gap; the rest is wiring.
 | Tab identity | Title **and** favicon follow tenant | `faviconUrl` already exists on the DTO and is currently unused. |
 | Logo assets | Text wordmark now; images supplied later | No FRC logo exists in the repo. Cannot be invented. |
 | Rate limiting | New dedicated `public-read` policy | Correct limit for a page-load endpoint. **Explicitly approved to modify `src/BuildingBlocks`** (see below). |
+| Subdomains | Two-step now; subdomain as an additive follow-up | Subdomain is the better end state and the backend already supports it, but it drags in TLS, proxy, Aspire and Playwright work. The two-step page is the discovery tier that survives either way. See "Subdomain follow-up". |
 
 ### Golden-rule exception — recorded
 
@@ -108,9 +109,18 @@ No existing policy, partition, or limiter behaviour changes.
   render on step 2.
 - `login()` takes the code from the route; the tenant text field disappears from the
   credentials form. `env.defaultTenant` remains the step-1 prefill.
+
 - **Demo picker:** `DemoAccountsDialog` accounts each carry their own tenant. It stays
   on step 1 and bypasses the two-step (picking an account signs in directly), since
   each demo account already specifies its tenant. Gated on `demoMode` as today.
+
+**Forward compatibility — single tenant-code seam.** Subdomains are a planned
+follow-up (below) whose *only* difference is where the code comes from. So the code
+must be read through **one** resolver — `resolveTenantCode()` — rather than each
+component reaching for `useParams()` directly. Today it returns route param →
+localStorage. Adding subdomains later means adding a hostname branch inside that one
+function. Written this way now, that follow-up is a handful of lines; written the
+obvious way, it is a refactor across every consumer.
 
 ### Frontend — branding context
 
@@ -183,9 +193,43 @@ the FSH logo image is dropped from the lockup rather than shown beside the FRC n
 
 Admin's `tests/auth/login.spec.ts` needs updating only for the rename.
 
+## Subdomain follow-up (planned, not this change)
+
+Subdomain-per-tenant (`acme.clinic.com`) is the industry-standard end state — Slack,
+Zendesk, Okta, Atlassian all use it. All of them **also** keep a root-domain discovery
+page (`slack.com/signin` → "find your workspace" → redirect to `acme.slack.com`). The
+two-step page in this spec **is** that discovery tier. The two are layers, not
+alternatives, so nothing here is throwaway.
+
+Findings from investigating this on 2026-07-16 (recorded so the follow-up doesn't
+re-derive them):
+
+- **No backend change is needed.** `MultitenancyModule.cs:99-110` resolves tenant via
+  claim → header → query param, and the code comment is explicit that resolution is
+  header-driven (`UseMultiTenant()` runs before `UseAuthentication()`, so the claim
+  strategy no-ops). `api-client.ts:182-184` sources that header client-side. A
+  subdomain is simply a different client-side source for a header already being sent.
+  No `WithHostStrategy`, no new resolution path, no migration.
+- **The anonymous branding endpoint in this spec is required either way.** A hostname
+  identifies *which* tenant; it does not supply the name or logo. `acme.clinic.com`
+  still fetches branding with no token before first paint.
+- **One wildcard cert covers it** (`*.clinic.com`) — not per-subdomain certs. Per-host
+  certs only arise for custom domains (`portal.acmedental.com`), a separate feature.
+- **CORS is likely a non-issue**: `config.json` ships `apiBase: ""` (same-origin), and
+  prod `AllowedHeaders` omits `tenant`, which corroborates same-origin. Confirm against
+  the real deploy before relying on this — prod `AllowedOrigins` is `[]` in the repo
+  and supplied by environment variables.
+- **Security upside**: `localStorage` is per-origin, so subdomains isolate tokens
+  between tenants on shared clinic workstations. Today all tenants share one origin and
+  one token store.
+
+Real costs, which is why it is deferred: wildcard TLS, a proxy rule serving the bundle
+for any `*.clinic.com`, the Aspire local-dev story, reworking Playwright for multiple
+origins, tenant-aware links in password-reset/invite emails, and the fact that tenant
+codes become permanent public URLs (renaming a code breaks bookmarks).
+
 ## Out of scope
 
-- Subdomain tenant resolution (considered; needs wildcard DNS + per-subdomain TLS).
 - Per-tenant branding on the admin console.
 - Opt-in per-tenant branding visibility toggle.
 - Tenant-specific colour palettes on the login page (branding is name + logo only).
