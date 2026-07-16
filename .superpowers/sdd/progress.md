@@ -12,7 +12,7 @@ Branch: clinic-app  (base for review-package: record each task's pre-dispatch HE
 - Task 7: complete (commits 324d590a..54eea869, review clean; 36/36 tests, ArchTests 51/51) — transition commands+validators+endpoints
 - Task 8: complete (commits d4e33bc1..b09d44d8, review clean; 38/38 tests, ArchTests 51/51) — GetClaims (KPI summary) + GetClaimById
 - Task 9: complete (commit 18e50937, review clean; tsc+eslint clean) — frontend api/claims.ts
-- Task 10: pending — Worklist page + nav + route
+- Task 10: complete (commit 7fd73f77, review clean; tsc+eslint clean) — worklist page + Billing nav + routes (claim-detail stub)
 - Task 11: pending — Claim detail page
 - Task 12: pending — Playwright e2e
 - Task 13: DEFERRED — docs+changelog (separate fullstackhero/docs repo)
