@@ -11,6 +11,11 @@ public sealed class PatientReportFieldValueConfiguration : IEntityTypeConfigurat
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("PatientReportFieldValues");
         builder.HasKey(x => x.Id);
+
+        // Id is app-assigned (Guid.CreateVersion7) and values attach only via the PatientReport aggregate's
+        // nav collection. Without ValueGeneratedNever, EF tracks the populated Guid as Modified → UPDATE-0-rows.
+        builder.Property(x => x.Id).ValueGeneratedNever();
+
         builder.Property(x => x.ReportId).IsRequired();
         builder.Property(x => x.ReportFieldId).IsRequired();
         builder.Property(x => x.Text).HasMaxLength(16000).IsRequired();

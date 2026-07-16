@@ -12,6 +12,10 @@ public sealed class PatientReportProblemConfiguration : IEntityTypeConfiguration
         builder.ToTable("PatientReportProblems");
         builder.HasKey(x => x.Id);
 
+        // Id is app-assigned (Guid.CreateVersion7) and join rows attach only via the PatientReport aggregate's
+        // nav collection. Without ValueGeneratedNever, EF tracks the populated Guid as Modified → UPDATE-0-rows.
+        builder.Property(x => x.Id).ValueGeneratedNever();
+
         builder.Property(x => x.ReportId).IsRequired();
         builder.Property(x => x.ProblemId).IsRequired();
 
