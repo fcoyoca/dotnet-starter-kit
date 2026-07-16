@@ -3,6 +3,8 @@ using FSH.Framework.Eventing;
 using FSH.Framework.Persistence;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Claims.Data;
+using FSH.Modules.Claims.Features.v1.Claims.GetClaimById;
+using FSH.Modules.Claims.Features.v1.Claims.GetClaims;
 using FSH.Modules.Claims.Features.v1.Claims.MarkDenied;
 using FSH.Modules.Claims.Features.v1.Claims.MarkPaid;
 using FSH.Modules.Claims.Features.v1.Claims.MarkReady;
@@ -56,12 +58,12 @@ public sealed class ClaimsModule : IModule
             .WithApiVersionSet(versionSet)
             .RequireAuthorization();
 
+        group.MapGetClaimsEndpoint();
+        group.MapGetClaimByIdEndpoint();
         group.MapMarkClaimReadyEndpoint();
         group.MapSubmitClaimEndpoint();
         group.MapMarkClaimPaidEndpoint();
         group.MapMarkClaimDeniedEndpoint();
         group.MapVoidClaimEndpoint();
-
-        // List claims + get claim by id land on this group in Task 8.
     }
 }
