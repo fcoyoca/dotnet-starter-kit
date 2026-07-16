@@ -6,9 +6,9 @@ Branch: clinic-app  (base for review-package: record each task's pre-dispatch HE
 - Task 1: complete (commits 88a066ff..724db470, review clean) — Scaffold Contracts project (marker, permissions, status)
 - Task 2: complete (commits 724db470..feccc9a6, review clean) — Claim aggregate + lifecycle (TDD)
 - Task 3: complete (commits feccc9a6..7f3ce968, review clean; ArchTests 51/51) — Data layer + 4-place registration + migration
-- Task 4: IMPLEMENTED, REVIEW PENDING (commit 7f3ce968..555771c7) — Contracts DTOs/commands/queries/submitter iface
-- Task 5: pending — SuperBillSaved event handler (upsert + freeze)
-- Task 6: pending — Stub submitter + DI
+- Task 4: complete (commits 7f3ce968..555771c7, review clean) — Contracts DTOs/commands/queries/submitter iface
+- Task 5: complete (commits 83ea6ebc..6c6efbb7, incl. fix round; review clean; 13/13 tests) — event handler + freeze + tenant-isolation test
+- Task 6: complete (commits 6c6efbb7..324d590a, review clean; 14/14 tests) — Stub submitter + DI
 - Task 7: pending — Transition commands + validators + endpoints
 - Task 8: pending — Query handlers (GetClaims + GetClaimById)
 - Task 9: pending — Frontend api/claims.ts
@@ -69,3 +69,9 @@ SDD process reminders: fresh implementer subagent per task (model: sonnet), revi
 each task's brief, update this ledger when each review comes back clean. Env: dev Postgres/Redis/MinIO
 up in Docker; dotnet 10, node 24. Spec: docs/superpowers/specs/2026-07-15-claims-billing-module-design.md
 Plan: docs/superpowers/plans/2026-07-15-claims-billing-module.md
+
+### Minor findings roll-up (updated after Task 5)
+- [Task 5] Handler <remarks>/null-guard comment says it "mirrors Billing's TenantSubscribedIntegrationEventHandler" — partial analogy (Billing's DbContext is NOT tenant-isolated). Cosmetic.
+- [Task 5 / DOCS follow-up, Golden Rule #10] `.agents/rules/eventing.md` line ~37 says background handlers "must restore Finbuckle context first via IMultiTenantContextSetter" — now MISLEADING; the central FinbuckleEventTenantScope (opened in InMemoryEventBus before handler scope) satisfies this for all handlers. Update the rule to cite FinbuckleEventTenantScope / Billing's handler as the current pattern. (Out of scope for Task 5; do in docs pass / final.)
+- Task 5 handler correctly relies on central tenant scope + fail-fast on null TenantId. Do NOT add WebhookFanoutHandler-style self-set (inert on an injected DbContext).
+- [Task 6] StubClaimSubmitter control number uses 8 hex chars of Guid — stub-only, collision risk if ever promoted; determinism not test-asserted. No action.
