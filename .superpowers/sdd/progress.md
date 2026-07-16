@@ -10,7 +10,7 @@ Branch: clinic-app  (base for review-package: record each task's pre-dispatch HE
 - Task 5: complete (commits 83ea6ebc..6c6efbb7, incl. fix round; review clean; 13/13 tests) — event handler + freeze + tenant-isolation test
 - Task 6: complete (commits 6c6efbb7..324d590a, review clean; 14/14 tests) — Stub submitter + DI
 - Task 7: complete (commits 324d590a..54eea869, review clean; 36/36 tests, ArchTests 51/51) — transition commands+validators+endpoints
-- Task 8: pending — Query handlers (GetClaims + GetClaimById)
+- Task 8: complete (commits d4e33bc1..b09d44d8, review clean; 38/38 tests, ArchTests 51/51) — GetClaims (KPI summary) + GetClaimById
 - Task 9: pending — Frontend api/claims.ts
 - Task 10: pending — Worklist page + nav + route
 - Task 11: pending — Claim detail page
@@ -77,3 +77,4 @@ Plan: docs/superpowers/plans/2026-07-15-claims-billing-module.md
 - [Task 6] StubClaimSubmitter control number uses 8 hex chars of Guid — stub-only, collision risk if ever promoted; determinism not test-asserted. No action.
 - [Task 7] Minors (trivial): Submit handler Include(Lines) is intentional (needs Lines for ToDetailDto); test import ordering cosmetic. No action.
 - [ENV note] Repo path changed mid-session: was C:\Users\fcoyo\source\repos\clinic-app, now C:\Users\FrancisCoyoca\source\repos\clinic-solution-app (profile rename). Skill scripts absent under FrancisCoyoca/.claude — regenerate briefs via awk from the plan and review packages via `git log/diff BASE..HEAD`. Git-ignored scratch briefs/reports do NOT carry across clones; ledger (progress.md) is tracked so it does.
+- [Task 8 / FOLLOW-UP] GetClaimsQuery.Search is validated + passed but NOT applied in the handler (plan-inherited). Reviewer notes Claim.ControlNumber is a plausible server-side search target. Final-review decision: wire Search→ControlNumber (+ maybe patient-code) in a follow-up slice, OR drop the param. Also no explicit test asserts Summary is unchanged under a status filter (structurally guaranteed).
