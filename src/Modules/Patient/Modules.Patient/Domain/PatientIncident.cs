@@ -118,8 +118,17 @@ public sealed class PatientIncident : AggregateRoot<Guid>, ISoftDeletable
 
     internal void SetDiagnostics(IList<Guid> ids)
     {
-        _diagnostics.Clear();
-        _diagnostics.AddRange(ids.Select(id => PatientIncidentDiagnostic.Create(Id, id)));
+        // Reconcile in place (see PatientReport.SetFieldValues) — Clear()+re-add on a tracked
+        // aggregate triggers phantom writes → DbUpdateConcurrencyException on update.
+        HashSet<Guid> desired = ids.ToHashSet();
+
+        _diagnostics.RemoveAll(d => !desired.Contains(d.DiagnosticId));
+
+        HashSet<Guid> present = _diagnostics.Select(d => d.DiagnosticId).ToHashSet();
+        foreach (Guid id in desired.Where(id => !present.Contains(id)))
+        {
+            _diagnostics.Add(PatientIncidentDiagnostic.Create(Id, id));
+        }
     }
 
     private static string? Trim(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

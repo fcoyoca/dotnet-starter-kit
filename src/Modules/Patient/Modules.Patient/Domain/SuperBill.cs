@@ -73,12 +73,30 @@ public sealed class SuperBill : AggregateRoot<Guid>
     {
         ArgumentNullException.ThrowIfNull(procedures);
 
-        _procedures.Clear();
-        for (int i = 0; i < procedures.Count; i++)
+        // Positional in-place reconcile rather than Clear()+re-add: duplicate procedure codes are
+        // allowed and each row owns a nested diagnostics collection, so match by position
+        // (DisplayOrder). Replacing the tracked collection with freshly client-keyed rows makes EF
+        // issue phantom UPDATEs against non-existent keys on a loaded bill → DbUpdateConcurrencyException.
+        // Keep overlapping rows (real keys → correct UPDATE), add the tail, remove the surplus.
+        List<SuperBillProcedure> existing = _procedures.OrderBy(p => p.DisplayOrder).ToList();
+        int overlap = Math.Min(existing.Count, procedures.Count);
+
+        for (int i = 0; i < overlap; i++)
+        {
+            ReportProcedureItem item = procedures[i];
+            existing[i].Update(item.ProcedureCodeId, item.Code, item.Description, item.Charge, i, item.DiagnosticIds);
+        }
+
+        for (int i = overlap; i < procedures.Count; i++)
         {
             ReportProcedureItem item = procedures[i];
             _procedures.Add(SuperBillProcedure.Create(
                 Id, item.ProcedureCodeId, item.Code, item.Description, item.Charge, i, item.DiagnosticIds));
+        }
+
+        for (int i = overlap; i < existing.Count; i++)
+        {
+            _procedures.Remove(existing[i]);
         }
 
         UpdatedAtUtc = DateTime.UtcNow;

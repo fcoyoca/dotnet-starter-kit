@@ -54,4 +54,33 @@ public sealed class SuperBillProcedure
 
         return procedure;
     }
+
+    /// <summary>Updates this procedure in place (keeps the row's key so a collection replace issues a
+    /// real UPDATE instead of a phantom insert/delete → avoids DbUpdateConcurrencyException). Applies
+    /// the same normalization as <see cref="Create"/> and reconciles the nested diagnostics by id.</summary>
+    public void Update(
+        Guid procedureCodeId,
+        string code,
+        string? description,
+        decimal charge,
+        int displayOrder,
+        IReadOnlyList<Guid> diagnosticIds)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentNullException.ThrowIfNull(diagnosticIds);
+
+        ProcedureCodeId = procedureCodeId;
+        Code = code.Trim();
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        Charge = charge < 0 ? 0 : charge;
+        DisplayOrder = displayOrder;
+
+        HashSet<Guid> desired = diagnosticIds.Distinct().ToHashSet();
+        _diagnostics.RemoveAll(d => !desired.Contains(d.DiagnosticId));
+        HashSet<Guid> present = _diagnostics.Select(d => d.DiagnosticId).ToHashSet();
+        foreach (Guid diagnosticId in desired.Where(id => !present.Contains(id)))
+        {
+            _diagnostics.Add(SuperBillProcedureDiagnostic.Create(Id, diagnosticId));
+        }
+    }
 }

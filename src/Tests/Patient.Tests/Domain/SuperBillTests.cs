@@ -53,6 +53,31 @@ public sealed class SuperBillTests
     }
 
     [Fact]
+    public void ReplaceProcedures_Update_Should_ReuseOverlappingRows_AndTrimSurplus()
+    {
+        // Regression: replacing procedures on a populated bill must reconcile in place (keep the
+        // overlapping row's key → real EF UPDATE) rather than Clear()+re-add, which triggered a
+        // phantom UPDATE against a fresh client key → DbUpdateConcurrencyException.
+        SuperBill bill = SuperBill.Create(Guid.NewGuid(), Guid.NewGuid());
+        Guid pcA = Guid.NewGuid(), pcB = Guid.NewGuid();
+        bill.ReplaceProcedures(
+        [
+            new ReportProcedureItem(pcA, "111", "A", 10m, [Guid.NewGuid()]),
+            new ReportProcedureItem(pcB, "222", "B", 20m, []),
+        ]);
+        Guid keptId = bill.Procedures[0].Id;
+
+        Guid dx = Guid.NewGuid();
+        bill.ReplaceProcedures([new ReportProcedureItem(pcB, "333", "C", 30m, [dx])]);
+
+        bill.Procedures.Count.ShouldBe(1);
+        bill.Procedures[0].Id.ShouldBe(keptId);   // overlapping row reused, not re-created
+        bill.Procedures[0].Code.ShouldBe("333");  // updated in place
+        bill.Procedures[0].Charge.ShouldBe(30m);
+        bill.Procedures[0].Diagnostics.Single().DiagnosticId.ShouldBe(dx); // nested reconciled
+    }
+
+    [Fact]
     public void ProcedureCreate_Should_Clamp_Negative_Charge_And_Dedupe_Diagnostics()
     {
         Guid dx = Guid.NewGuid();

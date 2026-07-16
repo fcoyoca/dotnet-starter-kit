@@ -93,14 +93,29 @@ public sealed class PatientReport : AggregateRoot<Guid>, ISoftDeletable
     {
         EnsureNotSigned();
         ArgumentNullException.ThrowIfNull(values);
-        _fieldValues.Clear();
-        foreach ((int fieldId, string text) in values)
+
+        // Reconcile in place rather than Clear()+re-add: replacing the tracked collection with
+        // freshly-created (client-keyed) children makes EF issue phantom UPDATEs against
+        // non-existent keys on a loaded aggregate → DbUpdateConcurrencyException. Keep existing
+        // rows (real keys → correct UPDATE), add new, remove missing. Blank text is dropped.
+        Dictionary<int, string> desired = values
+            .Where(v => !string.IsNullOrWhiteSpace(v.Text))
+            .GroupBy(v => v.FieldId)
+            .ToDictionary(g => g.Key, g => g.Last().Text);
+
+        _fieldValues.RemoveAll(fv => !desired.ContainsKey(fv.ReportFieldId));
+
+        foreach (PatientReportFieldValue existing in _fieldValues)
         {
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                _fieldValues.Add(PatientReportFieldValue.Create(Id, fieldId, text));
-            }
+            existing.UpdateText(desired[existing.ReportFieldId]);
         }
+
+        HashSet<int> present = _fieldValues.Select(fv => fv.ReportFieldId).ToHashSet();
+        foreach ((int fieldId, string text) in desired.Where(d => !present.Contains(d.Key)))
+        {
+            _fieldValues.Add(PatientReportFieldValue.Create(Id, fieldId, text));
+        }
+
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
@@ -121,14 +136,19 @@ public sealed class PatientReport : AggregateRoot<Guid>, ISoftDeletable
     public void SetAssociatedProblems(IEnumerable<Guid> problemIds)
     {
         ArgumentNullException.ThrowIfNull(problemIds);
-        _associatedProblems.Clear();
-        foreach (Guid problemId in problemIds.Distinct())
+
+        // Reconcile in place (see SetFieldValues) — Clear()+re-add of client-keyed join rows on a
+        // tracked aggregate triggers phantom UPDATEs → DbUpdateConcurrencyException.
+        HashSet<Guid> desired = problemIds.Where(id => id != Guid.Empty).ToHashSet();
+
+        _associatedProblems.RemoveAll(p => !desired.Contains(p.ProblemId));
+
+        HashSet<Guid> present = _associatedProblems.Select(p => p.ProblemId).ToHashSet();
+        foreach (Guid problemId in desired.Where(id => !present.Contains(id)))
         {
-            if (problemId != Guid.Empty)
-            {
-                _associatedProblems.Add(PatientReportProblem.Create(Id, problemId));
-            }
+            _associatedProblems.Add(PatientReportProblem.Create(Id, problemId));
         }
+
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
