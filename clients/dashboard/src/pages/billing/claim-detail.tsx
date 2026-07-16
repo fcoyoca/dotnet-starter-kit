@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, FileText, Receipt, Stethoscope, User } from "lucide-react";
+import { ArrowLeft, FileText, Pencil, Receipt, Stethoscope, User } from "lucide-react";
 import {
   getClaim, markClaimReady, submitClaim, markClaimPaid, markClaimDenied, voidClaim,
   type ClaimStatus,
@@ -9,6 +9,7 @@ import {
 import { getPatientById } from "@/api/patients";
 import { getReport } from "@/api/reports";
 import { getPatientIncident } from "@/api/incidents";
+import { searchPatientInsurancePolicies, type PatientInsurancePolicy } from "@/api/patient-insurance";
 import {
   listCustomDiagnostics,
   listReportTypes,
@@ -18,8 +19,11 @@ import {
   useProviderOptions,
 } from "@/api/administration";
 import { formatDate } from "@/lib/list-helpers";
+import { useReportPlanField } from "@/lib/report-plan";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ClaimStatusPill } from "@/pages/billing/claims-list";
+import { ProceduresPerformedDialog } from "@/pages/patient-charts/procedures-performed-dialog";
 import { ViewBillDialog } from "@/pages/billing/view-bill-dialog";
 import { MiniCard, MiniDxRow, MiniRow } from "@/pages/billing/mini-info";
 import type { BillSummaryData } from "@/pages/billing/bill-summary";
@@ -28,6 +32,7 @@ export function ClaimDetailPage() {
   const { claimId = "" } = useParams();
   const qc = useQueryClient();
   const [viewBillOpen, setViewBillOpen] = useState(false);
+  const [proceduresOpen, setProceduresOpen] = useState(false);
   const claimQuery = useQuery({ queryKey: ["claim", claimId], queryFn: () => getClaim(claimId) });
   const claim = claimQuery.data;
 
@@ -62,6 +67,23 @@ export function ClaimDetailPage() {
     queryFn: () => listReportTypes(true),
     staleTime: 10 * 60 * 1000,
   });
+  const policiesQuery = useQuery({
+    queryKey: ["patient-insurance-policies", claim?.patientId, false],
+    queryFn: () => searchPatientInsurancePolicies({ patientId: claim!.patientId, pageSize: 200 }),
+    enabled: !!claim?.patientId,
+  });
+  const primaryPolicy = useMemo<PatientInsurancePolicy | null>(() => {
+    const active = (policiesQuery.data?.items ?? []).filter((p) => p.isActive);
+    return active.find((p) => p.priority === "Primary") ?? active[0] ?? null;
+  }, [policiesQuery.data]);
+  const secondaryPolicy = useMemo<PatientInsurancePolicy | null>(() => {
+    const active = (policiesQuery.data?.items ?? []).filter((p) => p.isActive);
+    return (
+      active.find((p) => p.priority === "Secondary") ??
+      active.find((p) => p.id !== primaryPolicy?.id) ??
+      null
+    );
+  }, [policiesQuery.data, primaryPolicy]);
 
   // DX codes: resolve the union of the claim lines' pointers and the incident's dx set.
   const dxIds = useMemo(
@@ -106,8 +128,28 @@ export function ClaimDetailPage() {
     return d ? `${d.lastName}, ${d.firstName}`.trim().replace(/^,|,$/g, "") : "—";
   }, [patientQuery.data]);
 
+  // Editable Plan bound to the claim's report; read-only once the report is signed
+  // (BackChart's HasPlanDisable condition). Shares the report cache with the mini-cards.
+  const plan = useReportPlanField(claim?.reportId, !!claim?.reportId);
+
   const billData = useMemo<BillSummaryData>(() => {
     const d = patientQuery.data?.demographics;
+    const subscriberOf = (policy: PatientInsurancePolicy | null): string | null =>
+      !policy
+        ? null
+        : policy.subscriberRelationship === "Self"
+          ? patientName
+          : [policy.subscriberLastName, policy.subscriberFirstName].filter(Boolean).join(", ") || null;
+    const insBlock = (policy: PatientInsurancePolicy | null) =>
+      policy
+        ? {
+            type: policy.insuranceTypeName,
+            provider: policy.insuranceCompanyName,
+            groupNumber: policy.groupNumber,
+            policyNumber: policy.policyNumber,
+            subscriber: subscriberOf(policy),
+          }
+        : null;
     return {
       patient: {
         name: patientName,
@@ -115,16 +157,10 @@ export function ClaimDetailPage() {
         dob: d?.dateOfBirth,
         phone: patientQuery.data?.contact.phone,
       },
-      insurance: claim?.insuranceTypeId ? { type: payerName } : null,
-      encounter: reportQuery.data
-        ? {
-            reportDate: reportQuery.data.reportDate,
-            reportType: reportTypeName,
-            provider: providerName,
-            dateOfLoss: incidentQuery.data?.dateOfLoss,
-            dateOfInitialVisit: incidentQuery.data?.dateOfInitialVisit,
-          }
-        : null,
+      // Fall back to the claim's own payer type when the patient has no policy on file.
+      primaryInsurance: insBlock(primaryPolicy) ?? (claim?.insuranceTypeId ? { type: payerName } : null),
+      secondaryInsurance: insBlock(secondaryPolicy),
+      encounter: reportQuery.data ? { reportDate: reportQuery.data.reportDate } : null,
       lines: (claim?.lines ?? []).map((l) => ({
         code: l.code,
         description: l.description,
@@ -133,13 +169,16 @@ export function ClaimDetailPage() {
       })),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientQuery.data, reportQuery.data, incidentQuery.data, reportTypeName, providerName, claim, payerName, patientName, dxInfo]);
+  }, [patientQuery.data, reportQuery.data, primaryPolicy, secondaryPolicy, claim, payerName, patientName, dxInfo]);
 
   if (!claim) return <div className="p-6 text-[var(--color-muted-foreground)]">Loading…</div>;
 
   const s: ClaimStatus = claim.status;
   const busy =
     ready.isPending || submit.isPending || paid.isPending || denied.isPending || doVoid.isPending;
+  // Only reopen the source bill for edits before the claim is filed — a Submitted/Paid/Denied/
+  // Voided claim is a finalized snapshot and its bill shouldn't be re-edited from here.
+  const canEditProcedures = s === "Draft" || s === "Ready";
 
   return (
     <div className="flex flex-col gap-4 pb-24">
@@ -166,10 +205,26 @@ export function ClaimDetailPage() {
             </Link>
           </div>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => setViewBillOpen(true)}>
-          <Receipt className="size-4" />
-          View Bill
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Edits the source SuperBill for this report. Hidden once the claim is resolved/void
+              so a finalized claim's bill isn't reopened for edits. */}
+          {canEditProcedures && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!reportQuery.data?.incidentId}
+              onClick={() => setProceduresOpen(true)}
+            >
+              <Pencil className="size-4" />
+              Edit Procedures
+            </Button>
+          )}
+          <Button type="button" variant="outline" size="sm" onClick={() => setViewBillOpen(true)}>
+            <Receipt className="size-4" />
+            View Bill
+          </Button>
+        </div>
       </div>
 
       {/* Mini-info cards: Patient · Incident · Report (read-only snapshot) */}
@@ -240,6 +295,34 @@ export function ClaimDetailPage() {
               </tbody>
             </table>
           </section>
+
+          {/* Plan — editable unless the report is signed (BackChart parity) */}
+          {plan.hasPlanField && (
+            <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                  Plan
+                </h2>
+                {plan.canEdit && (
+                  <Button type="button" size="sm" disabled={!plan.dirty || plan.isSaving} onClick={plan.save}>
+                    {plan.isSaving ? "Saving…" : "Save Plan"}
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                rows={4}
+                value={plan.text}
+                onChange={(e) => plan.setText(e.target.value)}
+                readOnly={!plan.canEdit}
+                placeholder={plan.canEdit ? "Plan / treatment notes…" : ""}
+              />
+              {plan.isSigned && (
+                <p className="mt-1 text-[12px] italic text-[var(--color-muted-foreground)]">
+                  This report has been signed. The plan cannot be edited.
+                </p>
+              )}
+            </section>
+          )}
         </div>
 
         {/* Right: payer + activity rail */}
@@ -294,6 +377,24 @@ export function ClaimDetailPage() {
       </div>
 
       <ViewBillDialog open={viewBillOpen} onClose={() => setViewBillOpen(false)} data={billData} title="Claim Bill" />
+
+      {/* Modify procedures via the shared SuperBill editor (edits this report's source bill) */}
+      {reportQuery.data?.incidentId && (
+        <ProceduresPerformedDialog
+          patientId={claim.patientId}
+          patientName={patientName !== "—" ? patientName : undefined}
+          incidentId={reportQuery.data.incidentId}
+          reportId={claim.reportId}
+          open={proceduresOpen}
+          onClose={() => {
+            setProceduresOpen(false);
+            // Snapshot won't change server-side, but refresh in case the backend regenerates
+            // a draft claim from its SuperBill, and refresh the plan card.
+            void qc.invalidateQueries({ queryKey: ["claim", claimId] });
+            void qc.invalidateQueries({ queryKey: ["report", claim.reportId] });
+          }}
+        />
+      )}
     </div>
   );
 }

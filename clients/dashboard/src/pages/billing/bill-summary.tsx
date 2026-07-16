@@ -17,6 +17,14 @@ export type BillLine = {
   dxCodes: string[];
 };
 
+export type InsuranceBlock = {
+  type?: string | null;
+  provider?: string | null;
+  groupNumber?: string | null;
+  policyNumber?: string | null;
+  subscriber?: string | null;
+};
+
 export type BillSummaryData = {
   patient: {
     name: string;
@@ -26,19 +34,12 @@ export type BillSummaryData = {
     /** Address lines, already assembled and non-empty. */
     address?: string[];
   };
-  insurance?: {
-    type?: string | null;
-    provider?: string | null;
-    groupNumber?: string | null;
-    policyNumber?: string | null;
-    subscriber?: string | null;
-  } | null;
+  primaryInsurance?: InsuranceBlock | null;
+  secondaryInsurance?: InsuranceBlock | null;
+  /** Kept for the print sheet's subtitle date only; encounter is no longer a card
+   * (it lives on the SuperBill / claim mini-cards instead). */
   encounter?: {
     reportDate?: string | null;
-    reportType?: string | null;
-    provider?: string | null;
-    dateOfLoss?: string | null;
-    dateOfInitialVisit?: string | null;
   } | null;
   lines: BillLine[];
   /** Omit for a charge-only summary; present enables the payments/remainder rows. */
@@ -94,23 +95,23 @@ export function BillSummaryView({ data }: { data: BillSummaryData }) {
           <Row label="Code">{data.patient.code}</Row>
         </Card>
 
-        {data.encounter && (
-          <Card title="Encounter">
-            <Row label="Report Date">{formatDate(data.encounter.reportDate)}</Row>
-            <Row label="Report Type">{data.encounter.reportType}</Row>
-            <Row label="Provider">{data.encounter.provider}</Row>
-            <Row label="Date of Loss">{formatDate(data.encounter.dateOfLoss)}</Row>
-            <Row label="Initial Visit">{formatDate(data.encounter.dateOfInitialVisit)}</Row>
+        {data.primaryInsurance && (
+          <Card title="Primary Insurance">
+            <Row label="Insurance Type">{data.primaryInsurance.type}</Row>
+            <Row label="Provider">{data.primaryInsurance.provider}</Row>
+            <Row label="Group Number">{data.primaryInsurance.groupNumber}</Row>
+            <Row label="Policy Number">{data.primaryInsurance.policyNumber}</Row>
+            <Row label="Subscriber">{data.primaryInsurance.subscriber}</Row>
           </Card>
         )}
 
-        {data.insurance && (
-          <Card title="Insurance">
-            <Row label="Insurance Type">{data.insurance.type}</Row>
-            <Row label="Provider">{data.insurance.provider}</Row>
-            <Row label="Group Number">{data.insurance.groupNumber}</Row>
-            <Row label="Policy Number">{data.insurance.policyNumber}</Row>
-            <Row label="Subscriber">{data.insurance.subscriber}</Row>
+        {data.secondaryInsurance && (
+          <Card title="Secondary Insurance">
+            <Row label="Insurance Type">{data.secondaryInsurance.type}</Row>
+            <Row label="Provider">{data.secondaryInsurance.provider}</Row>
+            <Row label="Group Number">{data.secondaryInsurance.groupNumber}</Row>
+            <Row label="Policy Number">{data.secondaryInsurance.policyNumber}</Row>
+            <Row label="Subscriber">{data.secondaryInsurance.subscriber}</Row>
           </Card>
         )}
       </div>
@@ -202,25 +203,16 @@ function billHtml(data: BillSummaryData, title: string): string {
     row("Code", data.patient.code),
   ].join("");
 
-  const encounterRows = data.encounter
-    ? [
-        row("Report Date", formatDate(data.encounter.reportDate)),
-        row("Report Type", data.encounter.reportType),
-        row("Provider", data.encounter.provider),
-        row("Date of Loss", formatDate(data.encounter.dateOfLoss)),
-        row("Initial Visit", formatDate(data.encounter.dateOfInitialVisit)),
-      ].join("")
-    : "";
-
-  const insuranceRows = data.insurance
-    ? [
-        row("Insurance Type", data.insurance.type),
-        row("Provider", data.insurance.provider),
-        row("Group Number", data.insurance.groupNumber),
-        row("Policy Number", data.insurance.policyNumber),
-        row("Subscriber", data.insurance.subscriber),
-      ].join("")
-    : "";
+  const insuranceRows = (ins: InsuranceBlock) =>
+    [
+      row("Insurance Type", ins.type),
+      row("Provider", ins.provider),
+      row("Group Number", ins.groupNumber),
+      row("Policy Number", ins.policyNumber),
+      row("Subscriber", ins.subscriber),
+    ].join("");
+  const primaryRows = data.primaryInsurance ? insuranceRows(data.primaryInsurance) : "";
+  const secondaryRows = data.secondaryInsurance ? insuranceRows(data.secondaryInsurance) : "";
 
   const lineRows = data.lines.length
     ? data.lines
@@ -272,8 +264,8 @@ function billHtml(data: BillSummaryData, title: string): string {
     <div class="sub">${esc(data.patient.name)}${data.encounter?.reportDate ? " &middot; " + esc(formatDate(data.encounter.reportDate)) : ""}</div>
     <div class="cards">
       <div class="card"><h2>Patient</h2><table>${patientRows}</table></div>
-      ${encounterRows ? `<div class="card"><h2>Encounter</h2><table>${encounterRows}</table></div>` : ""}
-      ${insuranceRows ? `<div class="card"><h2>Insurance</h2><table>${insuranceRows}</table></div>` : ""}
+      ${primaryRows ? `<div class="card"><h2>Primary Insurance</h2><table>${primaryRows}</table></div>` : ""}
+      ${secondaryRows ? `<div class="card"><h2>Secondary Insurance</h2><table>${secondaryRows}</table></div>` : ""}
     </div>
     <table class="lines">
       <thead><tr><th>Code</th><th>Description</th><th style="text-align:right">Cost</th></tr></thead>

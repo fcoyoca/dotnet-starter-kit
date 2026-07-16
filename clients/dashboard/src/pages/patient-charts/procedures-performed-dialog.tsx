@@ -54,14 +54,11 @@ import {
 import { Combobox, Field } from "@/components/list";
 import { EntityStatusBadge } from "@/components/list";
 import { describe, formatDate } from "@/lib/list-helpers";
+import { fieldIsPlan } from "@/lib/report-plan";
 import { DiagnosticCodesDialog } from "@/pages/patient-charts/diagnostic-codes-dialog";
 import { ViewBillDialog } from "@/pages/billing/view-bill-dialog";
 import { MiniCard, MiniDxRow, MiniRow } from "@/pages/billing/mini-info";
 import type { BillSummaryData } from "@/pages/billing/bill-summary";
-
-// Plan field, matched by name (legacy ldfID 24 "Plan") — mirrors report-editor-panel.
-const PLAN_FIELDS = new Set(["plan", "plan comments", "treatment plan"]);
-const fieldIsPlan = (name: string) => PLAN_FIELDS.has(name.trim().toLowerCase());
 
 type Props = {
   patientId: string;
@@ -326,11 +323,19 @@ export function ProceduresPerformedDialog({
     return map;
   }, [pricesQuery.data]);
 
-  // ── Insurance for mini-card + View Bill (highest-priority active policy) ──
+  // ── Insurance for mini-card + View Bill (highest-priority active policies) ──
   const primaryPolicy = useMemo<PatientInsurancePolicy | null>(() => {
     const active = (policiesQuery.data?.items ?? []).filter((p) => p.isActive);
     return active.find((p) => p.priority === "Primary") ?? active[0] ?? null;
   }, [policiesQuery.data]);
+  const secondaryPolicy = useMemo<PatientInsurancePolicy | null>(() => {
+    const active = (policiesQuery.data?.items ?? []).filter((p) => p.isActive);
+    return (
+      active.find((p) => p.priority === "Secondary") ??
+      active.find((p) => p.id !== primaryPolicy?.id) ??
+      null
+    );
+  }, [policiesQuery.data, primaryPolicy]);
 
   // ── Row operations ──
   const appendMacro = (text: string) => {
@@ -469,12 +474,23 @@ export function ProceduresPerformedDialog({
     const cityLine = [contact?.city, contact?.state].filter(Boolean).join(", ");
     if (cityLine || contact?.zipCode) addr.push([cityLine, contact?.zipCode].filter(Boolean).join(" "));
 
-    const subscriber =
-      primaryPolicy?.subscriberRelationship === "Self"
-        ? name
-        : [primaryPolicy?.subscriberLastName, primaryPolicy?.subscriberFirstName]
-            .filter(Boolean)
-            .join(", ") || null;
+    const subscriberOf = (policy: PatientInsurancePolicy | null): string | null =>
+      !policy
+        ? null
+        : policy.subscriberRelationship === "Self"
+          ? name
+          : [policy.subscriberLastName, policy.subscriberFirstName].filter(Boolean).join(", ") || null;
+
+    const insBlock = (policy: PatientInsurancePolicy | null, typeName?: string | null) =>
+      policy
+        ? {
+            type: typeName ?? policy.insuranceTypeName,
+            provider: policy.insuranceCompanyName,
+            groupNumber: policy.groupNumber,
+            policyNumber: policy.policyNumber,
+            subscriber: subscriberOf(policy),
+          }
+        : null;
 
     return {
       patient: {
@@ -484,24 +500,13 @@ export function ProceduresPerformedDialog({
         phone: contact?.phone,
         address: addr.length ? addr : undefined,
       },
-      insurance: primaryPolicy
-        ? {
-            type:
-              insuranceOptions?.find((o) => o.value === insuranceTypeId)?.label ??
-              primaryPolicy.insuranceTypeName,
-            provider: primaryPolicy.insuranceCompanyName,
-            groupNumber: primaryPolicy.groupNumber,
-            policyNumber: primaryPolicy.policyNumber,
-            subscriber,
-          }
-        : null,
-      encounter: {
-        reportDate: reportDetail?.reportDate,
-        reportType: reportTypeName,
-        provider: providerName,
-        dateOfLoss: incidentQuery.data?.dateOfLoss,
-        dateOfInitialVisit: incidentQuery.data?.dateOfInitialVisit,
-      },
+      // Primary is priced under the picker's insurance type when the bill named one.
+      primaryInsurance: insBlock(
+        primaryPolicy,
+        insuranceOptions?.find((o) => o.value === insuranceTypeId)?.label ?? primaryPolicy?.insuranceTypeName,
+      ),
+      secondaryInsurance: insBlock(secondaryPolicy),
+      encounter: { reportDate: reportDetail?.reportDate },
       lines: rows.map((r) => ({
         code: r.code,
         description: r.description,
@@ -512,12 +517,10 @@ export function ProceduresPerformedDialog({
   }, [
     patientQuery.data,
     primaryPolicy,
+    secondaryPolicy,
     insuranceOptions,
     insuranceTypeId,
     reportDetail,
-    reportTypeName,
-    providerName,
-    incidentQuery.data,
     rows,
     dxLabel,
   ]);
