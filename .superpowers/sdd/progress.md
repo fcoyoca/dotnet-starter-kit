@@ -81,3 +81,13 @@ Plan: docs/superpowers/plans/2026-07-15-claims-billing-module.md
 
 ## ALL 12 IMPLEMENTATION TASKS COMPLETE (2026-07-16). Remaining: final whole-branch review + finishing.
 ### Task 12 minors: filter chips not exercised by e2e (brief gap, follow-up coverage); cold-Vite nav-timeout flake risk (pre-existing). Non-blocking.
+
+## FINAL WHOLE-BRANCH REVIEW (opus, 2026-07-16): READY TO MERGE — 0 Critical, 0 Important.
+Base a0c70566..HEAD. Verified: enum parity + JsonStringEnumConverter (status serializes as strings), DTO<->TS field parity, tenant isolation (central FinbuckleEventTenantScope + fail-fast + regression test), permissions (View reads / Manage writes on all 7 endpoints + nav), 4-place registration, snapshot-not-FK, migration non-destructive w/ compound (SuperBillId,TenantId) unique + DiagnosticIds uuid[].
+Non-blocking follow-ups (all triaged as safe-follow-up, none block merge):
+  M1 GetClaimsQuery.Search bound+validated but unwired (wire->ControlNumber or drop param) — most defensible cleanup.
+  M2 ClaimLine.DiagnosticIds/Claim.Lines return naked backing list (use .AsReadOnly()).
+  M3 add domain unit tests for MarkDenied() + double-Void() (MarkDenied IS covered at handler level — earlier ledger note corrected).
+  M4 StubClaimSubmitter 8-hex control number collision (stub-only).
+  M5 claim-detail "Source report" link uses patientId; infinite "Loading..." on query error.
+  + eventing.md ~L37 docs update; docs+changelog in fullstackhero/docs (deferred, not in workspace).
