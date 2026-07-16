@@ -9,7 +9,7 @@ Branch: clinic-app  (base for review-package: record each task's pre-dispatch HE
 - Task 4: complete (commits 7f3ce968..555771c7, review clean) — Contracts DTOs/commands/queries/submitter iface
 - Task 5: complete (commits 83ea6ebc..6c6efbb7, incl. fix round; review clean; 13/13 tests) — event handler + freeze + tenant-isolation test
 - Task 6: complete (commits 6c6efbb7..324d590a, review clean; 14/14 tests) — Stub submitter + DI
-- Task 7: pending — Transition commands + validators + endpoints
+- Task 7: complete (commits 324d590a..54eea869, review clean; 36/36 tests, ArchTests 51/51) — transition commands+validators+endpoints
 - Task 8: pending — Query handlers (GetClaims + GetClaimById)
 - Task 9: pending — Frontend api/claims.ts
 - Task 10: pending — Worklist page + nav + route
@@ -75,3 +75,5 @@ Plan: docs/superpowers/plans/2026-07-15-claims-billing-module.md
 - [Task 5 / DOCS follow-up, Golden Rule #10] `.agents/rules/eventing.md` line ~37 says background handlers "must restore Finbuckle context first via IMultiTenantContextSetter" — now MISLEADING; the central FinbuckleEventTenantScope (opened in InMemoryEventBus before handler scope) satisfies this for all handlers. Update the rule to cite FinbuckleEventTenantScope / Billing's handler as the current pattern. (Out of scope for Task 5; do in docs pass / final.)
 - Task 5 handler correctly relies on central tenant scope + fail-fast on null TenantId. Do NOT add WebhookFanoutHandler-style self-set (inert on an injected DbContext).
 - [Task 6] StubClaimSubmitter control number uses 8 hex chars of Guid — stub-only, collision risk if ever promoted; determinism not test-asserted. No action.
+- [Task 7] Minors (trivial): Submit handler Include(Lines) is intentional (needs Lines for ToDetailDto); test import ordering cosmetic. No action.
+- [ENV note] Repo path changed mid-session: was C:\Users\fcoyo\source\repos\clinic-app, now C:\Users\FrancisCoyoca\source\repos\clinic-solution-app (profile rename). Skill scripts absent under FrancisCoyoca/.claude — regenerate briefs via awk from the plan and review packages via `git log/diff BASE..HEAD`. Git-ignored scratch briefs/reports do NOT carry across clones; ledger (progress.md) is tracked so it does.
